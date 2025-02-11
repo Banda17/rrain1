@@ -46,8 +46,8 @@ class GoogleDriveHandler:
 
             file_content = request.execute()
 
-            # Convert to DataFrame
+            # Convert to DataFrame, specifically reading from the 'bhanu' sheet
             excel_data = BytesIO(file_content)
-            return pd.read_excel(excel_data)
+            return pd.read_excel(excel_data, sheet_name='bhanu')
         except Exception as e:
             raise Exception(f"Error accessing Google Drive file: {str(e)}")
