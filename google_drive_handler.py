@@ -133,6 +133,9 @@ class GoogleDriveHandler:
                 # Read Excel file without specifying dtypes to handle all columns as strings initially
                 df = pd.read_excel(excel_data, sheet_name=sheet_name)
 
+                # Log the actual column names from the sheet
+                logger.info(f"Actual columns in sheet: {list(df.columns)}")
+
                 # Clean column names (remove leading/trailing whitespace)
                 df.columns = df.columns.str.strip()
 
