@@ -68,21 +68,11 @@ if 'visualizer' not in st.session_state:
 st.title("🚂 Train Tracking and Analysis System")
 
 try:
-    # Load data from Google Drive
-    # Use a default value for testing if file IDs are not in secrets
-    train_details_file_id = "1mGfULwzS5BvMXYQkgN1TzZ9vU6mB4tKd"  # Default test file ID
-    wtt_timings_file_id = "1kPjR2sQ9xL3yNwM5vH7XtZ8bU9nK6pLe"   # Default test file ID
-
-    if "train_details_file_id" in st.secrets:
-        train_details_file_id = st.secrets["train_details_file_id"]
-    if "wtt_timings_file_id" in st.secrets:
-        wtt_timings_file_id = st.secrets["wtt_timings_file_id"]
+    # Load data from Google Drive Excel file
+    file_id = "1OuiQ3FEoNAtH10NllgLusxACjn2NU0yZUcHh68hLoI4"  # Use the provided Excel file ID
 
     # Load data
-    success, message = st.session_state.data_handler.load_data_from_drive(
-        train_details_file_id,
-        wtt_timings_file_id
-    )
+    success, message = st.session_state.data_handler.load_data_from_drive(file_id)
 
     if success:
         # Get analyzed data

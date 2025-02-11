@@ -2,7 +2,6 @@ import streamlit as st
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from io import BytesIO
-import json
 import pandas as pd
 
 class GoogleDriveHandler:
@@ -28,8 +27,8 @@ class GoogleDriveHandler:
         )
         self.service = build('drive', 'v3', credentials=self.credentials)
 
-    def get_file_content(self, file_id: str) -> dict:
-        """Download and read JSON content from a Google Drive file"""
+    def get_file_content(self, file_id: str) -> pd.DataFrame:
+        """Download and read Excel content from a Google Drive file"""
         try:
             # Get the file metadata
             file = self.service.files().get(fileId=file_id).execute()
@@ -38,7 +37,8 @@ class GoogleDriveHandler:
             request = self.service.files().get_media(fileId=file_id)
             file_content = request.execute()
 
-            # Parse JSON content
-            return json.loads(file_content.decode('utf-8'))
+            # Convert to DataFrame
+            excel_data = BytesIO(file_content)
+            return pd.read_excel(excel_data)
         except Exception as e:
             raise Exception(f"Error accessing Google Drive file: {str(e)}")
