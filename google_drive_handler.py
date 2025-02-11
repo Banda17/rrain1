@@ -111,8 +111,11 @@ class GoogleDriveHandler:
             try:
                 df = pd.read_excel(excel_data, sheet_name=sheet_name)
 
-                # Verify required columns exist
-                required_columns = ['Train Name', 'Station', 'Time', 'Status']
+                # Verify exact required columns exist
+                required_columns = [
+                    'BD No', 'Sl No', 'Train Name', 'LOCO', 'Station',
+                    'Status', 'Time', 'Remarks', 'FOISID'
+                ]
                 missing_columns = [col for col in required_columns if col not in df.columns]
 
                 if missing_columns:
