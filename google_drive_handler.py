@@ -49,7 +49,10 @@ class GoogleDriveHandler:
                 # Make sure to load the private key correctly from the multi-line string
                 credentials = service_account.Credentials.from_service_account_info(
                     credentials_info,
-                    scopes=['https://www.googleapis.com/auth/drive.readonly']
+                    scopes=[
+                        'https://www.googleapis.com/auth/spreadsheets',
+                        'https://www.googleapis.com/auth/drive'
+                    ]
                 )
             except Exception as e:
                 error_msg = f"Invalid credentials format: {str(e)}"
@@ -81,8 +84,16 @@ class GoogleDriveHandler:
             logger.info(f"Attempting to read file with ID: {file_id}")
 
             # Get the file metadata to check if it's a Google Sheets file
-            file = self.service.files().get(fileId=file_id, fields='mimeType').execute()
-            mime_type = file.get('mimeType', '')
+            try:
+                file = self.service.files().get(fileId=file_id, fields='mimeType').execute()
+                mime_type = file.get('mimeType', '')
+            except Exception as e:
+                if "File not found" in str(e):
+                    error_msg = f"File not found: {file_id}. Please verify the file ID is correct and the service account has access to it."
+                    logger.error(error_msg)
+                    st.error(error_msg)
+                    raise ValueError(error_msg)
+                raise
 
             if mime_type == 'application/vnd.google-apps.spreadsheet':
                 # For Google Sheets, use the export method
