@@ -46,7 +46,6 @@ class GoogleDriveHandler:
 
             # Create credentials object
             try:
-                # Make sure to load the private key correctly from the multi-line string
                 credentials = service_account.Credentials.from_service_account_info(
                     credentials_info,
                     scopes=[
@@ -63,7 +62,7 @@ class GoogleDriveHandler:
             # Initialize service
             try:
                 self.service = build('drive', 'v3', credentials=credentials)
-                # Test connection by trying to access the Drive API
+                # Test connection
                 self.service.files().list(pageSize=1).execute()
                 logger.info("Google Drive connection initialized successfully")
             except Exception as e:
@@ -83,7 +82,7 @@ class GoogleDriveHandler:
         try:
             logger.info(f"Attempting to read file with ID: {file_id}")
 
-            # Get the file metadata to check if it's a Google Sheets file
+            # Get file metadata
             try:
                 file = self.service.files().get(fileId=file_id, fields='mimeType').execute()
                 mime_type = file.get('mimeType', '')
@@ -96,19 +95,16 @@ class GoogleDriveHandler:
                 raise
 
             if mime_type == 'application/vnd.google-apps.spreadsheet':
-                # For Google Sheets, use the export method
                 request = self.service.files().export_media(
                     fileId=file_id,
                     mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
                 )
             else:
-                # For already uploaded Excel files
                 request = self.service.files().get_media(fileId=file_id)
 
             file_content = request.execute()
             excel_data = BytesIO(file_content)
 
-            # Use sheet name from secrets
             sheet_name = st.secrets.get("sheet_name", "Sheet1")
             logger.info(f"Reading sheet: {sheet_name}")
 
@@ -116,7 +112,7 @@ class GoogleDriveHandler:
                 df = pd.read_excel(excel_data, sheet_name=sheet_name)
 
                 # Verify required columns exist
-                required_columns = ['train_id', 'station', 'time_actual', 'time_scheduled']
+                required_columns = ['Train Name', 'Station', 'Time', 'Status']
                 missing_columns = [col for col in required_columns if col not in df.columns]
 
                 if missing_columns:
@@ -125,21 +121,32 @@ class GoogleDriveHandler:
                     st.error(error_msg)
                     raise ValueError(error_msg)
 
+                # Map columns to expected format
+                df = df.rename(columns={
+                    'Train Name': 'train_id',
+                    'Station': 'station',
+                    'Time': 'time_actual',
+                    'Status': 'status'
+                })
+
+                # Set scheduled time same as actual time for now
+                df['time_scheduled'] = df['time_actual']
+
                 # Convert time columns to datetime
-                for col in ['time_actual', 'time_scheduled']:
-                    try:
-                        df[col] = pd.to_datetime(df[col], errors='coerce')
-                    except Exception as e:
-                        error_msg = f"Error converting {col} to datetime: {str(e)}"
-                        logger.error(error_msg)
-                        st.error(error_msg)
-                        raise ValueError(error_msg)
+                try:
+                    df['time_actual'] = pd.to_datetime(df['time_actual'], errors='coerce')
+                    df['time_scheduled'] = df['time_actual']  # Using same time for both
+                except Exception as e:
+                    error_msg = f"Error converting time column to datetime: {str(e)}"
+                    logger.error(error_msg)
+                    st.error(error_msg)
+                    raise ValueError(error_msg)
 
                 # Drop rows with invalid dates
-                invalid_dates = df[df['time_actual'].isna() | df['time_scheduled'].isna()]
+                invalid_dates = df[df['time_actual'].isna()]
                 if not invalid_dates.empty:
                     logger.warning(f"Dropping {len(invalid_dates)} rows with invalid dates")
-                    df = df.dropna(subset=['time_actual', 'time_scheduled'])
+                    df = df.dropna(subset=['time_actual'])
 
                 if df.empty:
                     error_msg = f"No valid data found in sheet '{sheet_name}'"
