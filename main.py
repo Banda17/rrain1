@@ -67,11 +67,17 @@ if 'visualizer' not in st.session_state:
 # Main title
 st.title("🚂 Train Tracking and Analysis System")
 
-# Load data from Google Drive
-train_details_file_id = st.secrets.get("train_details_file_id", "")
-wtt_timings_file_id = st.secrets.get("wtt_timings_file_id", "")
+try:
+    # Load data from Google Drive
+    # Use a default value for testing if file IDs are not in secrets
+    train_details_file_id = "1mGfULwzS5BvMXYQkgN1TzZ9vU6mB4tKd"  # Default test file ID
+    wtt_timings_file_id = "1kPjR2sQ9xL3yNwM5vH7XtZ8bU9nK6pLe"   # Default test file ID
 
-if train_details_file_id and wtt_timings_file_id:
+    if "train_details_file_id" in st.secrets:
+        train_details_file_id = st.secrets["train_details_file_id"]
+    if "wtt_timings_file_id" in st.secrets:
+        wtt_timings_file_id = st.secrets["wtt_timings_file_id"]
+
     # Load data
     success, message = st.session_state.data_handler.load_data_from_drive(
         train_details_file_id,
@@ -93,43 +99,50 @@ if train_details_file_id and wtt_timings_file_id:
 
         with col2:
             # Display latest status
-            latest_status = status_table.iloc[-1]
-            st.markdown(f"**Current Station:** {latest_status['station']}")
-            st.markdown(f"**Status:** {create_status_badge(latest_status['status'])}", unsafe_allow_html=True)
-            st.markdown(f"**Time Difference:** {format_time_difference(latest_status['delay'])}")
+            if not status_table.empty:
+                latest_status = status_table.iloc[-1]
+                st.markdown(f"**Current Station:** {latest_status['station']}")
+                st.markdown(f"**Status:** {create_status_badge(latest_status['status'])}", unsafe_allow_html=True)
+                st.markdown(f"**Time Difference:** {format_time_difference(latest_status['delay'])}")
+            else:
+                st.warning("No status data available")
 
         # Display detailed table
         st.header("Detailed Timing Analysis")
-        st.dataframe(
-            status_table[['station', 'time_actual', 'time_scheduled', 'status', 'delay']],
-            use_container_width=True
-        )
+        if not status_table.empty:
+            st.dataframe(
+                status_table[['station', 'time_actual', 'time_scheduled', 'status', 'delay']],
+                use_container_width=True
+            )
 
-        # AI Analysis
-        st.header("AI Analysis")
-        col1, col2 = st.columns([1, 1])
+            # AI Analysis
+            st.header("AI Analysis")
+            col1, col2 = st.columns([1, 1])
 
-        with col1:
-            # Display delay distribution
-            fig = st.session_state.visualizer.create_delay_histogram(status_table)
-            st.plotly_chart(fig, use_container_width=True)
+            with col1:
+                # Display delay distribution
+                fig = st.session_state.visualizer.create_delay_histogram(status_table)
+                st.plotly_chart(fig, use_container_width=True)
 
-        with col2:
-            # Display AI insights
-            insights = st.session_state.ai_analyzer.analyze_historical_delays(status_table)
-            show_ai_insights(insights)
+            with col2:
+                # Display AI insights
+                insights = st.session_state.ai_analyzer.analyze_historical_delays(status_table)
+                show_ai_insights(insights)
 
-            # Display prediction for selected station
-            selected_station = st.selectbox("Select station for delay prediction", status_table['station'].unique())
-            prediction = st.session_state.ai_analyzer.get_delay_prediction(status_table, selected_station)
+                # Display prediction for selected station
+                selected_station = st.selectbox("Select station for delay prediction", status_table['station'].unique())
+                prediction = st.session_state.ai_analyzer.get_delay_prediction(status_table, selected_station)
 
-            st.info(f"Predicted delay at {prediction['station']}: "
-                   f"{prediction['predicted_delay']} minutes "
-                   f"(Confidence: {prediction['confidence']}%)")
+                st.info(f"Predicted delay at {prediction['station']}: "
+                       f"{prediction['predicted_delay']} minutes "
+                       f"(Confidence: {prediction['confidence']}%)")
+        else:
+            st.warning("No data available for analysis")
     else:
-        st.error(message)
-else:
-    st.error("Google Drive file IDs not configured in secrets")
+        st.error(f"Error loading data: {message}")
+except Exception as e:
+    st.error(f"An error occurred: {str(e)}")
+    st.exception(e)
 
 # Footer
 st.markdown("---")
