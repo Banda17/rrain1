@@ -28,13 +28,22 @@ class GoogleDriveHandler:
         self.service = build('drive', 'v3', credentials=self.credentials)
 
     def get_file_content(self, file_id: str) -> pd.DataFrame:
-        """Download and read Excel content from a Google Drive file"""
+        """Download and read Excel/Sheets content from a Google Drive file"""
         try:
-            # Get the file metadata
-            file = self.service.files().get(fileId=file_id).execute()
+            # Get the file metadata to check if it's a Google Sheets file
+            file = self.service.files().get(fileId=file_id, fields='mimeType').execute()
+            mime_type = file.get('mimeType', '')
 
-            # Download the file content
-            request = self.service.files().get_media(fileId=file_id)
+            if mime_type == 'application/vnd.google-apps.spreadsheet':
+                # For Google Sheets, use the export method
+                request = self.service.files().export_media(
+                    fileId=file_id,
+                    mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                )
+            else:
+                # For already uploaded Excel files
+                request = self.service.files().get_media(fileId=file_id)
+
             file_content = request.execute()
 
             # Convert to DataFrame
