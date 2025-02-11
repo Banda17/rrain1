@@ -3,15 +3,35 @@ import json
 from typing import Dict, List, Tuple
 from datetime import datetime
 from database import get_database_connection, TrainDetails
+from google_drive_handler import GoogleDriveHandler
 
 class DataHandler:
     def __init__(self):
         self.train_details = None
         self.wtt_timings = None
         self.db_session = get_database_connection()
+        self.drive_handler = GoogleDriveHandler()
+
+    def load_data_from_drive(self, train_details_file_id: str, wtt_timings_file_id: str) -> Tuple[bool, str]:
+        """Load data from Google Drive files"""
+        try:
+            # Get data from Google Drive
+            train_details_data = self.drive_handler.get_file_content(train_details_file_id)
+            wtt_timings_data = self.drive_handler.get_file_content(wtt_timings_file_id)
+
+            # Convert to DataFrames
+            self.train_details = pd.DataFrame(train_details_data)
+            self.wtt_timings = pd.DataFrame(wtt_timings_data)
+
+            # Store data in database
+            self._store_data_in_db()
+
+            return True, "Data loaded successfully from Google Drive"
+        except Exception as e:
+            return False, f"Error loading data from Google Drive: {str(e)}"
 
     def load_json_data(self, train_details_json: str, wtt_timings_json: str) -> Tuple[bool, str]:
-        """Load and validate JSON data"""
+        """Load and validate JSON data from uploaded files"""
         try:
             self.train_details = pd.read_json(train_details_json)
             self.wtt_timings = pd.read_json(wtt_timings_json)

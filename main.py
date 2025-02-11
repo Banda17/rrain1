@@ -67,16 +67,15 @@ if 'visualizer' not in st.session_state:
 # Main title
 st.title("🚂 Train Tracking and Analysis System")
 
-# File upload section
-st.sidebar.header("Data Input")
-train_details_file = st.sidebar.file_uploader("Upload Train Details JSON", type=['json'])
-wtt_timings_file = st.sidebar.file_uploader("Upload WTT Timings JSON", type=['json'])
+# Load data from Google Drive
+train_details_file_id = st.secrets.get("train_details_file_id", "")
+wtt_timings_file_id = st.secrets.get("wtt_timings_file_id", "")
 
-if train_details_file and wtt_timings_file:
+if train_details_file_id and wtt_timings_file_id:
     # Load data
-    success, message = st.session_state.data_handler.load_json_data(
-        train_details_file,
-        wtt_timings_file
+    success, message = st.session_state.data_handler.load_data_from_drive(
+        train_details_file_id,
+        wtt_timings_file_id
     )
 
     if success:
@@ -130,7 +129,7 @@ if train_details_file and wtt_timings_file:
     else:
         st.error(message)
 else:
-    st.info("Please upload both JSON files to begin analysis")
+    st.error("Google Drive file IDs not configured in secrets")
 
 # Footer
 st.markdown("---")
