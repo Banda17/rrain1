@@ -112,16 +112,49 @@ class GoogleDriveHandler:
             sheet_name = st.secrets.get("sheet_name", "Sheet1")
             logger.info(f"Reading sheet: {sheet_name}")
 
-            df = pd.read_excel(excel_data, sheet_name=sheet_name)
+            try:
+                df = pd.read_excel(excel_data, sheet_name=sheet_name)
 
-            if df.empty:
-                error_msg = f"No data found in sheet '{sheet_name}'"
+                # Verify required columns exist
+                required_columns = ['train_id', 'station', 'time_actual', 'time_scheduled']
+                missing_columns = [col for col in required_columns if col not in df.columns]
+
+                if missing_columns:
+                    error_msg = f"Missing required columns: {', '.join(missing_columns)}"
+                    logger.error(error_msg)
+                    st.error(error_msg)
+                    raise ValueError(error_msg)
+
+                # Convert time columns to datetime
+                for col in ['time_actual', 'time_scheduled']:
+                    try:
+                        df[col] = pd.to_datetime(df[col], errors='coerce')
+                    except Exception as e:
+                        error_msg = f"Error converting {col} to datetime: {str(e)}"
+                        logger.error(error_msg)
+                        st.error(error_msg)
+                        raise ValueError(error_msg)
+
+                # Drop rows with invalid dates
+                invalid_dates = df[df['time_actual'].isna() | df['time_scheduled'].isna()]
+                if not invalid_dates.empty:
+                    logger.warning(f"Dropping {len(invalid_dates)} rows with invalid dates")
+                    df = df.dropna(subset=['time_actual', 'time_scheduled'])
+
+                if df.empty:
+                    error_msg = f"No valid data found in sheet '{sheet_name}'"
+                    logger.error(error_msg)
+                    st.error(error_msg)
+                    raise ValueError(error_msg)
+
+                logger.info(f"Successfully loaded data with {len(df)} rows")
+                return df
+
+            except Exception as e:
+                error_msg = f"Error processing Excel data: {str(e)}"
                 logger.error(error_msg)
                 st.error(error_msg)
                 raise ValueError(error_msg)
-
-            logger.info(f"Successfully loaded data with {len(df)} rows")
-            return df
 
         except Exception as e:
             error_msg = f"Error accessing Google Drive file: {str(e)}"
