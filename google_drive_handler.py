@@ -4,6 +4,7 @@ from googleapiclient.discovery import build
 from io import BytesIO
 import pandas as pd
 import logging
+from datetime import datetime
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -77,6 +78,26 @@ class GoogleDriveHandler:
             st.error(f"Google Drive connection failed: {error_msg}")
             raise Exception(error_msg)
 
+    def parse_time(self, time_str):
+        """Parse time string in format 'HH:MM DD-MM'"""
+        try:
+            if pd.isna(time_str):
+                return None
+            time_str = str(time_str).strip()
+            # Add current year since it's not in the time string
+            current_year = datetime.now().year
+            # Parse time string with current year
+            time_parts = time_str.split()
+            if len(time_parts) != 2:
+                return None
+            time, date = time_parts
+            hours, minutes = map(int, time.split(':'))
+            day, month = map(int, date.split('-'))
+            return pd.Timestamp(year=current_year, month=month, day=day, hour=hours, minute=minutes)
+        except Exception as e:
+            logger.warning(f"Error parsing time string '{time_str}': {str(e)}")
+            return None
+
     def get_file_content(self, file_id: str) -> pd.DataFrame:
         """Download and read Excel/Sheets content from a Google Drive file"""
         try:
@@ -109,7 +130,11 @@ class GoogleDriveHandler:
             logger.info(f"Reading sheet: {sheet_name}")
 
             try:
+                # Read Excel file without specifying dtypes to handle all columns as strings initially
                 df = pd.read_excel(excel_data, sheet_name=sheet_name)
+
+                # Clean column names (remove leading/trailing whitespace)
+                df.columns = df.columns.str.strip()
 
                 # Verify exact required columns exist
                 required_columns = [
@@ -124,26 +149,21 @@ class GoogleDriveHandler:
                     st.error(error_msg)
                     raise ValueError(error_msg)
 
+                # Clean string columns
+                string_columns = ['Train Name', 'LOCO', 'Station', 'Status', 'Remarks', 'FOISID']
+                for col in string_columns:
+                    df[col] = df[col].astype(str).str.strip()
+
+                # Parse time column
+                df['time_actual'] = df['Time'].apply(self.parse_time)
+                df['time_scheduled'] = df['time_actual']  # Using same time for both
+
                 # Map columns to expected format
                 df = df.rename(columns={
                     'Train Name': 'train_id',
                     'Station': 'station',
-                    'Time': 'time_actual',
                     'Status': 'status'
                 })
-
-                # Set scheduled time same as actual time for now
-                df['time_scheduled'] = df['time_actual']
-
-                # Convert time columns to datetime
-                try:
-                    df['time_actual'] = pd.to_datetime(df['time_actual'], errors='coerce')
-                    df['time_scheduled'] = df['time_actual']  # Using same time for both
-                except Exception as e:
-                    error_msg = f"Error converting time column to datetime: {str(e)}"
-                    logger.error(error_msg)
-                    st.error(error_msg)
-                    raise ValueError(error_msg)
 
                 # Drop rows with invalid dates
                 invalid_dates = df[df['time_actual'].isna()]
