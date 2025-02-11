@@ -46,7 +46,8 @@ class GoogleDriveHandler:
 
             # Create credentials object
             try:
-                self.credentials = service_account.Credentials.from_service_account_info(
+                # Make sure to load the private key correctly from the multi-line string
+                credentials = service_account.Credentials.from_service_account_info(
                     credentials_info,
                     scopes=['https://www.googleapis.com/auth/drive.readonly']
                 )
@@ -58,7 +59,7 @@ class GoogleDriveHandler:
 
             # Initialize service
             try:
-                self.service = build('drive', 'v3', credentials=self.credentials)
+                self.service = build('drive', 'v3', credentials=credentials)
                 # Test connection by trying to access the Drive API
                 self.service.files().list(pageSize=1).execute()
                 logger.info("Google Drive connection initialized successfully")
