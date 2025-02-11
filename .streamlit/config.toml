@@ -8,3 +8,8 @@ primaryColor = "#0066cc"
 backgroundColor = "#ffffff"
 secondaryBackgroundColor = "#f0f2f6"
 textColor = "#262730"
+
+[secrets]
+sheet_name = "Sheet1"
+spreadsheet_id = "1OuiQ3FEoNAtH10NllgLusxACjn2"
+spreadsheet_name = "bhanu"
