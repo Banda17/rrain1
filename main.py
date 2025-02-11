@@ -68,8 +68,8 @@ if 'visualizer' not in st.session_state:
 st.title("🚂 Train Tracking and Analysis System")
 
 try:
-    # Load data from Google Drive Excel file
-    file_id = "1OuiQ3FEoNAtH10NllgLusxACjn2NU0yZUcHh68hLoI4"  # Use the provided Excel file ID
+    # Load data from Google Drive Excel file using spreadsheet_id from secrets
+    file_id = st.secrets["spreadsheet_id"]  # Get spreadsheet ID from secrets
 
     # Load data
     success, message = st.session_state.data_handler.load_data_from_drive(file_id)

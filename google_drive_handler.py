@@ -45,9 +45,12 @@ class GoogleDriveHandler:
                 request = self.service.files().get_media(fileId=file_id)
 
             file_content = request.execute()
-
-            # Convert to DataFrame, specifically reading from the 'bhanu' sheet
             excel_data = BytesIO(file_content)
-            return pd.read_excel(excel_data, sheet_name='bhanu')
+
+            # Use sheet name from secrets
+            sheet_name = st.secrets.get("sheet_name", "Sheet1")
+            df = pd.read_excel(excel_data, sheet_name=sheet_name)
+
+            return df
         except Exception as e:
             raise Exception(f"Error accessing Google Drive file: {str(e)}")
