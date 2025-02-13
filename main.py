@@ -140,13 +140,16 @@ try:
 
             # Match train names from cached data
             for idx, row in detailed_table.iterrows():
-                matching_row = cached_data[cached_data['Station'] == row['station']]
-                if not matching_row.empty:
-                    detailed_table.at[idx, 'train_name'] = matching_row.iloc[0]['Train Name']
+                matching_rows = cached_data[cached_data['Station'].str.strip() == row['station'].strip()]
+                if not matching_rows.empty:
+                    detailed_table.at[idx, 'train_name'] = matching_rows.iloc[0]['Train Name']
 
             # Reorganize columns
             display_table = detailed_table[['station', 'train_name', 'time_actual', 'status']].copy()
             display_table.columns = ['Station', 'Train Name', 'Time', 'ARR_DEP']
+
+            # Format time column
+            display_table['Time'] = pd.to_datetime(display_table['Time']).dt.strftime('%Y-%m-%d %H:%M:%S')
 
             st.dataframe(
                 display_table,
