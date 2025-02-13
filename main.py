@@ -125,7 +125,7 @@ try:
             else:
                 st.warning("No status data available")
 
-        # Get cached data for train names
+        # Get cached data for train names and stations
         cached_data = pd.DataFrame(st.session_state['data_handler'].get_cached_data())
         if not cached_data.empty:
             cached_data.columns = cached_data.iloc[0]
@@ -145,11 +145,12 @@ try:
                     detailed_table.at[idx, 'train_name'] = matching_rows.iloc[0]['Train Name']
 
             # Reorganize columns
-            display_table = detailed_table[['station', 'train_name', 'time_actual', 'status']].copy()
-            display_table.columns = ['Station', 'Train Name', 'Time', 'ARR_DEP']
-
-            # Format time column
-            display_table['Time'] = pd.to_datetime(display_table['Time']).dt.strftime('%Y-%m-%d %H:%M:%S')
+            display_table = pd.DataFrame({
+                'Station': detailed_table['station'].map(lambda x: cached_data[cached_data['Station'].str.strip() == x.strip()].iloc[0]['Station'] if not cached_data[cached_data['Station'].str.strip() == x.strip()].empty else x),
+                'Train Name': detailed_table['train_name'],
+                'Time': pd.to_datetime(detailed_table['time_actual']).dt.strftime('%Y-%m-%d %H:%M:%S'),
+                'ARR_DEP': detailed_table['status']
+            })
 
             st.dataframe(
                 display_table,
