@@ -51,16 +51,14 @@ try:
         numeric_trains = cached_data[cached_data['Train Name'].str.match(r'^\d.*', na=False)]
 
         if not numeric_trains.empty:
-            # Create simple display table
+            # Create simple display table with only Train Name
             display_table = pd.DataFrame({
-                'Train Number': numeric_trains['Train Name'],
-                'Station': numeric_trains['Station'],
-                'Status': numeric_trains['Status'].fillna('Unknown')
+                'Train Name': numeric_trains['Train Name']
             })
 
             # Display the table
             st.dataframe(
-                display_table.drop_duplicates('Train Number'),
+                display_table.drop_duplicates('Train Name'),
                 use_container_width=True,
                 height=400
             )
