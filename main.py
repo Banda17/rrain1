@@ -69,11 +69,19 @@ try:
         # Show filtering info
         st.info(f"Found {len(numeric_trains)} trains with numeric names")
 
-        # Add empty Sch_Time column
+        # Add Sch_Time column with debug logging
+        def get_scheduled_time_with_logging(row):
+            train_name = row['Train Name']
+            station = row['Station']
+            logger.debug(f"Getting schedule for train {train_name} at station {station}")
+            scheduled_time = st.session_state['train_schedule'].get_scheduled_time(
+                train_name, station
+            )
+            logger.debug(f"Got scheduled time: {scheduled_time}")
+            return scheduled_time or ''
+
         numeric_trains['Sch_Time'] = numeric_trains.apply(
-            lambda row: st.session_state['train_schedule'].get_scheduled_time(
-                row['Train Name'], row['Station']
-            ) or '',
+            get_scheduled_time_with_logging,
             axis=1
         )
 

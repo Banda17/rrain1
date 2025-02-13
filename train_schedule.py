@@ -7,30 +7,26 @@ logger = logging.getLogger(__name__)
 
 class TrainSchedule:
     def __init__(self):
-        """Initialize train schedule data structure with sample data"""
-        # Sample data structure
-        self.schedule_data = {
-            "VNEC": {
-                "Arr": {
-                    "times": {
-                        "12345": "10:00",
-                        "67890": "11:30"
-                    }
-                },
-                "DEP": {
-                    "times": {
-                        "12345": "10:15",
-                        "67890": "11:45"
-                    }
+        """Initialize train schedule data structure"""
+        try:
+            # Load data from bhanu.json
+            with open('bhanu.json', 'r') as f:
+                self.schedule_data = json.load(f)
+            logger.info("Loaded schedule data from bhanu.json")
+        except Exception as e:
+            logger.error(f"Error loading schedule data: {str(e)}")
+            # Initialize with empty structure if file can't be loaded
+            self.schedule_data = {
+                "VNEC": {
+                    "Arr": {"times": {}},
+                    "DEP": {"times": {}}
                 }
             }
-        }
-        logger.info("Initialized schedule data with sample entries")
 
     def set_schedule_data(self, data: Dict):
         """Set the schedule data"""
         self.schedule_data = data
-        logger.info(f"Schedule data updated: {json.dumps(self.schedule_data, indent=2)}")
+        logger.info(f"Schedule data updated")
 
     def get_scheduled_time(self, train_name: str, station: str) -> Optional[str]:
         """
@@ -55,16 +51,16 @@ class TrainSchedule:
 
             if station_code in self.schedule_data:
                 station_data = self.schedule_data[station_code]
-                logger.debug(f"Found station data: {json.dumps(station_data, indent=2)}")
+                logger.debug(f"Found station data for {station_code}")
 
                 # Check both arrival and departure times
-                for direction in ["Arr", "DEP"]:
+                for direction in ["Arr", "Dep"]:  
                     if direction in station_data:
                         times = station_data[direction].get("times", {})
                         if train_number in times:
                             time = times[train_number]
                             logger.debug(f"Found schedule time for train {train_number}: {time}")
-                            return time
+                            return time if time else None  
 
             logger.debug(f"No schedule found for train {train_number} at station {station_code}")
             return None
