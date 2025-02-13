@@ -66,8 +66,11 @@ try:
         # Show filtering info
         st.info(f"Found {len(numeric_trains)} trains with numeric names")
 
-        # Select only required columns including Time
-        selected_columns = ['Train Name', 'Station', 'Time', 'Status']
+        # Add empty Sch_Time column
+        numeric_trains['Sch_Time'] = ''
+
+        # Select only required columns including Time and Sch_Time
+        selected_columns = ['Train Name', 'Station', 'Time', 'Sch_Time', 'Status']
         display_data = numeric_trains[selected_columns]
 
         # Display the filtered data
