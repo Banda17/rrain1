@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import time
 from data_handler import DataHandler
 
 # Page configuration
@@ -22,13 +23,16 @@ try:
     success, message = st.session_state.data_handler.load_data_from_drive()
 
     if success:
-        # Get raw data
-        raw_data = st.session_state.data_handler.data
+        # Get raw data from cache
+        raw_data = pd.DataFrame.from_dict(st.session_state.data_handler.get_cached_data())
 
         if raw_data is not None and not raw_data.empty:
             # Reset the index and use first row as header
             raw_data.columns = raw_data.iloc[0]
             raw_data = raw_data.iloc[1:].reset_index(drop=True)
+
+            # Add last update time
+            st.info(f"Last updated: {st.session_state.data_handler.last_update.strftime('%Y-%m-%d %H:%M:%S')}")
 
             # Add search functionality
             search_term = st.text_input("🔍 Search in data", "")
@@ -56,6 +60,10 @@ try:
                 file_name="train_data.csv",
                 mime="text/csv"
             )
+
+            # Auto-refresh
+            time.sleep(1)  # Small delay to prevent excessive CPU usage
+            st.rerun()
         else:
             st.warning("No data available to display")
     else:

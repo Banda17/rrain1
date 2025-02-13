@@ -3,6 +3,7 @@ from typing import Dict, List, Tuple
 from datetime import datetime
 from database import get_database_connection, TrainDetails
 import logging
+import time
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -11,13 +12,28 @@ logger = logging.getLogger(__name__)
 class DataHandler:
     def __init__(self):
         self.data = None
+        self.data_cache = {}
+        self.last_update = None
+        self.update_interval = 300  # 5 minutes in seconds
         self.db_session = get_database_connection()
         self.csv_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRO2ZV-BOcL11_5NhlrOnn5Keph3-cVp7Tyr1t6RxsoDvxZjdOyDsmRkdvesJLbSnZwY8v3CATt1Of9/pub?gid=0&single=true&output=csv"
 
+    def should_update(self) -> bool:
+        """Check if data should be updated"""
+        if self.last_update is None:
+            return True
+        time_diff = (datetime.now() - self.last_update).total_seconds()
+        return time_diff >= self.update_interval
+
     def load_data_from_drive(self, file_id: str = None) -> Tuple[bool, str]:
-        """Load data from CSV URL"""
+        """Load data from CSV URL with caching"""
         try:
-            logger.debug(f"Attempting to read CSV from URL")
+            if not self.should_update() and self.data_cache:
+                logger.debug("Using cached data")
+                self.data = pd.DataFrame.from_dict(self.data_cache)
+                return True, "Using cached data"
+
+            logger.debug("Attempting to read CSV from URL")
 
             # Read CSV directly from URL
             self.data = pd.read_csv(self.csv_url)
@@ -25,6 +41,10 @@ class DataHandler:
             # Clean the data
             for col in self.data.columns:
                 self.data[col] = self.data[col].astype(str).apply(lambda x: x.strip() if isinstance(x, str) else x)
+
+            # Update cache
+            self.data_cache = self.data.to_dict('records')
+            self.last_update = datetime.now()
 
             # Process and store data in database
             self._store_data_in_db()
@@ -90,3 +110,7 @@ class DataHandler:
             'status': record.status,
             'delay': record.delay
         } for record in records])
+
+    def get_cached_data(self) -> Dict:
+        """Get the cached data dictionary"""
+        return self.data_cache

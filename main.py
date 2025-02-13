@@ -5,6 +5,7 @@ from ai_analyzer import AIAnalyzer
 from visualizer import Visualizer
 from utils import format_time_difference, create_status_badge, show_ai_insights
 from database import init_db
+import time
 
 # Initialize database
 init_db()
@@ -63,16 +64,25 @@ if 'ai_analyzer' not in st.session_state:
     st.session_state.ai_analyzer = AIAnalyzer()
 if 'visualizer' not in st.session_state:
     st.session_state.visualizer = Visualizer()
+if 'last_update' not in st.session_state:
+    st.session_state.last_update = None
 
 # Main title
 st.title("🚂 Train Tracking and Analysis System")
 st.markdown("Welcome to the Train Tracking System. Use the sidebar to navigate between different pages.")
 
 try:
+    # Add auto-refresh status
+    if st.session_state.last_update:
+        st.sidebar.text(f"Last updated: {st.session_state.last_update.strftime('%H:%M:%S')}")
+
     # Load data from CSV URL
     success, message = st.session_state.data_handler.load_data_from_drive()
 
     if success:
+        # Update last update time
+        st.session_state.last_update = st.session_state.data_handler.last_update
+
         # Get analyzed data
         status_table = st.session_state.data_handler.get_train_status_table()
 
@@ -128,6 +138,11 @@ try:
             st.warning("No data available for analysis")
     else:
         st.error(f"Error loading data: {message}")
+
+    # Auto-refresh every 5 minutes
+    time.sleep(1)  # Small delay to prevent excessive CPU usage
+    st.rerun()
+
 except Exception as e:
     st.error(f"An error occurred: {str(e)}")
     st.exception(e)
