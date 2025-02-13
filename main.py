@@ -60,9 +60,15 @@ try:
         cached_data.columns = cached_data.iloc[0]
         cached_data = cached_data.iloc[1:].reset_index(drop=True)
 
+        # Filter trains that start with numbers
+        numeric_trains = cached_data[cached_data['Train Name'].str.match(r'^\d.*', na=False)]
+
+        # Show filtering info
+        st.info(f"Found {len(numeric_trains)} trains with numeric names")
+
         # Select only required columns
         selected_columns = ['Train Name', 'Station', 'Status']
-        display_data = cached_data[selected_columns]
+        display_data = numeric_trains[selected_columns]
 
         # Display the filtered data
         st.dataframe(
