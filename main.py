@@ -135,8 +135,11 @@ try:
             # Display detailed table
             st.header("Detailed Timing Analysis")
             if len(cached_data) > 0:
+                # Filter trains that start with numbers (same as data status page)
+                numeric_trains = cached_data[cached_data['Train Name'].str.match(r'^\d.*', na=False)]
+
                 # Select and rename specific columns
-                display_table = cached_data[['Train Name', 'Station', 'Time', 'Status']]
+                display_table = numeric_trains[['Train Name', 'Station', 'Time', 'Status']]
 
                 st.dataframe(
                     display_table,
