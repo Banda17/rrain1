@@ -12,21 +12,27 @@ class TrainSchedule:
             # Load data from bhanu.json
             with open('bhanu.json', 'r') as f:
                 self.schedule_data = json.load(f)
-            logger.info("Loaded schedule data from bhanu.json")
+                logger.info("Loaded schedule data from bhanu.json")
+                # Log a sample of available stations and train numbers
+                sample_station = next(iter(self.schedule_data))
+                if sample_station:
+                    sample_times = self.schedule_data[sample_station]["Arr"]["times"]
+                    logger.info(f"Sample station {sample_station} has {len(sample_times)} train schedules")
+                    logger.info(f"Sample train numbers: {list(sample_times.keys())[:5]}")
         except Exception as e:
             logger.error(f"Error loading schedule data: {str(e)}")
             # Initialize with empty structure if file can't be loaded
             self.schedule_data = {
                 "VNEC": {
                     "Arr": {"times": {}},
-                    "DEP": {"times": {}}
+                    "Dep": {"times": {}}
                 }
             }
 
     def set_schedule_data(self, data: Dict):
         """Set the schedule data"""
         self.schedule_data = data
-        logger.info(f"Schedule data updated")
+        logger.info("Schedule data updated")
 
     def get_scheduled_time(self, train_name: str, station: str) -> Optional[str]:
         """
