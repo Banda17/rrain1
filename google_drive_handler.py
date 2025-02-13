@@ -1,4 +1,3 @@
-
 import streamlit as st
 from google.oauth2 import service_account
 import gspread
@@ -42,35 +41,24 @@ class GoogleDriveHandler:
                 raise ValueError(error_msg)
 
             # Create credentials object
-            try:
-                credentials = service_account.Credentials.from_service_account_info(
-                    credentials_info,
-                    scopes=[
-                        'https://www.googleapis.com/auth/spreadsheets',
-                        'https://www.googleapis.com/auth/drive'
-                    ]
-                )
-            except Exception as e:
-                error_msg = f"Invalid credentials format: {str(e)}"
-                logger.error(error_msg)
-                st.error(f"Google Sheets connection failed: {error_msg}")
-                raise ValueError(error_msg)
+            credentials = service_account.Credentials.from_service_account_info(
+                credentials_info,
+                scopes=[
+                    'https://www.googleapis.com/auth/spreadsheets',
+                    'https://www.googleapis.com/auth/drive'
+                ]
+            )
 
             # Initialize gspread client
-            try:
-                self.client = gspread.Client(auth=credentials)
-                logger.info("Google Sheets connection initialized successfully")
-            except Exception as e:
-                error_msg = f"Failed to authorize with Google: {str(e)}"
-                logger.error(error_msg)
-                st.error(f"Google Sheets connection failed: {error_msg}")
-                raise Exception(error_msg)
+            self.client = gspread.Client(auth=credentials)
+            self.client.connect()  # Ensure connection is established
+            logger.info("Google Sheets connection initialized successfully")
 
         except Exception as e:
-            error_msg = f"Unexpected error initializing Google Sheets: {str(e)}"
+            error_msg = f"Error initializing Google Sheets: {str(e)}"
             logger.error(error_msg)
-            st.error(f"Google Sheets connection failed: {error_msg}")
-            raise Exception(error_msg)
+            st.error(error_msg)
+            raise
 
     def get_file_content(self, file_id: str) -> pd.DataFrame:
         """Download and read spreadsheet content using gspread"""
@@ -78,41 +66,34 @@ class GoogleDriveHandler:
             logger.info(f"Attempting to read spreadsheet with ID: {file_id}")
 
             # Open the spreadsheet
-            try:
-                spreadsheet = self.client.open_by_key(file_id)
-                worksheet = spreadsheet.sheet1  # Get the first sheet
-            except Exception as e:
-                error_msg = f"Error accessing spreadsheet: {str(e)}"
-                logger.error(error_msg)
-                st.error(error_msg)
-                raise ValueError(error_msg)
+            spreadsheet = self.client.open_by_key(file_id)
+            worksheet = spreadsheet.sheet1  # Get the first sheet
 
             # Get all values including headers
-            try:
-                data = worksheet.get_all_values()
-                if not data:
-                    error_msg = "Spreadsheet is empty"
-                    logger.error(error_msg)
-                    st.error(error_msg)
-                    raise ValueError(error_msg)
+            data = worksheet.get_all_values()
+            if not data:
+                raise ValueError("Spreadsheet is empty")
 
-                # Convert to DataFrame, keeping everything as strings
-                df = pd.DataFrame(data[1:], columns=data[0])  # First row as headers
+            # Convert to DataFrame
+            df = pd.DataFrame(data[1:], columns=data[0])  # First row as headers
 
-                # Clean all string data
-                df = df.apply(lambda x: x.astype(str).str.strip() if x.dtype == "object" else x)
+            # Clean data - handle both string and non-string columns
+            for col in df.columns:
+                try:
+                    # Try to convert to numeric first
+                    df[col] = pd.to_numeric(df[col])
+                except (ValueError, TypeError):
+                    # If conversion fails, treat as string and strip whitespace
+                    df[col] = df[col].astype(str).str.strip()
 
-                logger.info(f"Successfully loaded {len(df)} rows of data")
-                return df
+            logger.info(f"Successfully loaded {len(df)} rows of data")
+            return df
 
-            except Exception as e:
-                error_msg = f"Error processing spreadsheet data: {str(e)}"
-                logger.error(error_msg)
-                st.error(error_msg)
-                raise ValueError(error_msg)
-
-        except Exception as e:
-            error_msg = f"Error accessing Google Sheets: {str(e)}"
+        except gspread.exceptions.APIError as e:
+            error_msg = f"Google Sheets API error: {str(e)}"
             logger.error(error_msg)
-            st.error(error_msg)
-            raise Exception(error_msg)
+            raise ValueError(error_msg)
+        except Exception as e:
+            error_msg = f"Error reading spreadsheet: {str(e)}"
+            logger.error(error_msg)
+            raise ValueError(error_msg)
