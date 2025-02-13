@@ -7,18 +7,30 @@ logger = logging.getLogger(__name__)
 
 class TrainSchedule:
     def __init__(self):
-        """Initialize train schedule data structure"""
+        """Initialize train schedule data structure with sample data"""
+        # Sample data structure
         self.schedule_data = {
             "VNEC": {
-                "Arr": {"times": {}},
-                "DEP": {"times": {}}
+                "Arr": {
+                    "times": {
+                        "12345": "10:00",
+                        "67890": "11:30"
+                    }
+                },
+                "DEP": {
+                    "times": {
+                        "12345": "10:15",
+                        "67890": "11:45"
+                    }
+                }
             }
         }
+        logger.info("Initialized schedule data with sample entries")
 
     def set_schedule_data(self, data: Dict):
         """Set the schedule data"""
         self.schedule_data = data
-        logger.info("Schedule data updated")
+        logger.info(f"Schedule data updated: {json.dumps(self.schedule_data, indent=2)}")
 
     def get_scheduled_time(self, train_name: str, station: str) -> Optional[str]:
         """
@@ -26,6 +38,8 @@ class TrainSchedule:
         Returns None if no schedule is found
         """
         try:
+            logger.debug(f"Looking up schedule for train: {train_name} at station: {station}")
+
             # Extract train number from train name using regex
             train_number_match = re.search(r'^\d+', train_name)
             if not train_number_match:
@@ -41,14 +55,16 @@ class TrainSchedule:
 
             if station_code in self.schedule_data:
                 station_data = self.schedule_data[station_code]
+                logger.debug(f"Found station data: {json.dumps(station_data, indent=2)}")
 
                 # Check both arrival and departure times
                 for direction in ["Arr", "DEP"]:
                     if direction in station_data:
                         times = station_data[direction].get("times", {})
                         if train_number in times:
-                            logger.debug(f"Found schedule time for train {train_number}")
-                            return times[train_number]
+                            time = times[train_number]
+                            logger.debug(f"Found schedule time for train {train_number}: {time}")
+                            return time
 
             logger.debug(f"No schedule found for train {train_number} at station {station_code}")
             return None
