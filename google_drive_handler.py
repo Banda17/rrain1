@@ -1,10 +1,10 @@
 import streamlit as st
 from google.oauth2 import service_account
-from googleapiclient.discovery import build
-from io import BytesIO
+import gspread
 import pandas as pd
 import logging
 from datetime import datetime
+from typing import Dict, Optional
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -60,22 +60,20 @@ class GoogleDriveHandler:
                 st.error(f"Google Sheets connection failed: {error_msg}")
                 raise ValueError(error_msg)
 
-            # Initialize service
+            # Initialize gspread client
             try:
-                self.service = build('drive', 'v3', credentials=credentials)
-                # Test connection
-                self.service.files().list(pageSize=1).execute()
-                logger.info("Google Drive connection initialized successfully")
+                self.client = gspread.authorize(credentials)
+                logger.info("Google Sheets connection initialized successfully")
             except Exception as e:
                 error_msg = f"Failed to authorize with Google: {str(e)}"
                 logger.error(error_msg)
-                st.error(f"Google Drive connection failed: {error_msg}")
+                st.error(f"Google Sheets connection failed: {error_msg}")
                 raise Exception(error_msg)
 
         except Exception as e:
-            error_msg = f"Unexpected error initializing Google Drive: {str(e)}"
+            error_msg = f"Unexpected error initializing Google Sheets: {str(e)}"
             logger.error(error_msg)
-            st.error(f"Google Drive connection failed: {error_msg}")
+            st.error(f"Google Sheets connection failed: {error_msg}")
             raise Exception(error_msg)
 
     def parse_time(self, time_str):
@@ -99,67 +97,35 @@ class GoogleDriveHandler:
             return None
 
     def get_file_content(self, file_id: str) -> pd.DataFrame:
-        """Download and read Excel/Sheets content from a Google Drive file"""
+        """Download and read spreadsheet content using gspread"""
         try:
-            logger.info(f"Attempting to read file with ID: {file_id}")
+            logger.info(f"Attempting to read spreadsheet with ID: {file_id}")
 
-            # Get file metadata
+            # Open the spreadsheet
             try:
-                file = self.service.files().get(fileId=file_id, fields='mimeType').execute()
-                mime_type = file.get('mimeType', '')
+                spreadsheet = self.client.open_by_key(file_id)
+                worksheet = spreadsheet.sheet1  # Get the first sheet
             except Exception as e:
-                if "File not found" in str(e):
-                    error_msg = f"File not found: {file_id}. Please verify the file ID is correct and the service account has access to it."
-                    logger.error(error_msg)
-                    st.error(error_msg)
-                    raise ValueError(error_msg)
-                raise
+                error_msg = f"Error accessing spreadsheet: {str(e)}"
+                logger.error(error_msg)
+                st.error(error_msg)
+                raise ValueError(error_msg)
 
-            if mime_type == 'application/vnd.google-apps.spreadsheet':
-                request = self.service.files().export_media(
-                    fileId=file_id,
-                    mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-                )
-            else:
-                request = self.service.files().get_media(fileId=file_id)
-
-            file_content = request.execute()
-            excel_data = BytesIO(file_content)
-
-            sheet_name = st.secrets.get("sheet_name", "Sheet1")
-            logger.info(f"Reading sheet: {sheet_name}")
-
+            # Get all values including headers
             try:
-                # Read Excel file without specifying dtypes to handle all columns as strings initially
-                df = pd.read_excel(excel_data, sheet_name=sheet_name)
-
-                # Log the actual column names from the sheet
-                logger.info(f"Actual columns in sheet: {list(df.columns)}")
-
-                # Clean column names (remove leading/trailing whitespace)
-                df.columns = df.columns.str.strip()
-
-                # Verify exact required columns exist
-                required_columns = [
-                    'BD No', 'Sl No', 'Train Name', 'LOCO', 'Station',
-                    'Status', 'Time', 'Remarks', 'FOISID'
-                ]
-                missing_columns = [col for col in required_columns if col not in df.columns]
-
-                if missing_columns:
-                    error_msg = f"Missing required columns: {', '.join(missing_columns)}"
+                data = worksheet.get_all_values()
+                if not data:
+                    error_msg = "Spreadsheet is empty"
                     logger.error(error_msg)
                     st.error(error_msg)
                     raise ValueError(error_msg)
 
-                # Clean string columns
-                string_columns = ['Train Name', 'LOCO', 'Station', 'Status', 'Remarks', 'FOISID']
-                for col in string_columns:
-                    df[col] = df[col].astype(str).str.strip()
+                # First row is headers
+                headers = data[0]
+                logger.info(f"Found headers in sheet: {headers}")
 
-                # Parse time column
-                df['time_actual'] = df['Time'].apply(self.parse_time)
-                df['time_scheduled'] = df['time_actual']  # Using same time for both
+                # Convert to DataFrame
+                df = pd.DataFrame(data[1:], columns=headers)
 
                 # Map columns to expected format
                 df = df.rename(columns={
@@ -168,29 +134,33 @@ class GoogleDriveHandler:
                     'Status': 'status'
                 })
 
-                # Drop rows with invalid dates
-                invalid_dates = df[df['time_actual'].isna()]
-                if not invalid_dates.empty:
-                    logger.warning(f"Dropping {len(invalid_dates)} rows with invalid dates")
-                    df = df.dropna(subset=['time_actual'])
+                # Parse time column
+                df['time_actual'] = df['Time'].apply(self.parse_time)
+                df['time_scheduled'] = df['time_actual']  # Using same time for both
+
+                # Clean string columns
+                string_columns = ['train_id', 'station', 'status', 'LOCO', 'Remarks', 'FOISID']
+                for col in string_columns:
+                    if col in df.columns:
+                        df[col] = df[col].astype(str).str.strip()
 
                 if df.empty:
-                    error_msg = f"No valid data found in sheet '{sheet_name}'"
+                    error_msg = "No valid data found after processing"
                     logger.error(error_msg)
                     st.error(error_msg)
                     raise ValueError(error_msg)
 
-                logger.info(f"Successfully loaded data with {len(df)} rows")
+                logger.info(f"Successfully loaded {len(df)} rows of data")
                 return df
 
             except Exception as e:
-                error_msg = f"Error processing Excel data: {str(e)}"
+                error_msg = f"Error processing spreadsheet data: {str(e)}"
                 logger.error(error_msg)
                 st.error(error_msg)
                 raise ValueError(error_msg)
 
         except Exception as e:
-            error_msg = f"Error accessing Google Drive file: {str(e)}"
+            error_msg = f"Error accessing Google Sheets: {str(e)}"
             logger.error(error_msg)
             st.error(error_msg)
             raise Exception(error_msg)
