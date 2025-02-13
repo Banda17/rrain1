@@ -156,28 +156,6 @@ try:
                 display_table,
                 use_container_width=True
             )
-
-            # AI Analysis
-            st.header("AI Analysis")
-            col1, col2 = st.columns([1, 1])
-
-            with col1:
-                # Display delay distribution
-                fig = st.session_state['visualizer'].create_delay_histogram(status_table)
-                st.plotly_chart(fig, use_container_width=True)
-
-            with col2:
-                # Display AI insights
-                insights = st.session_state['ai_analyzer'].analyze_historical_delays(status_table)
-                show_ai_insights(insights)
-
-                # Display prediction for selected station
-                selected_station = st.selectbox("Select station for delay prediction", status_table['station'].unique())
-                prediction = st.session_state['ai_analyzer'].get_delay_prediction(status_table, selected_station)
-
-                st.info(f"Predicted delay at {prediction['station']}: "
-                       f"{prediction['predicted_delay']} minutes "
-                       f"(Confidence: {prediction['confidence']}%)")
         else:
             st.warning("No data available for analysis")
     else:
@@ -193,4 +171,4 @@ except Exception as e:
 
 # Footer
 st.markdown("---")
-st.markdown("Train Tracking System - AI-Powered Analysis")
+st.markdown("Train Tracking System - Real-time Analysis")
