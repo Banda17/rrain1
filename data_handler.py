@@ -50,6 +50,7 @@ class DataHandler:
                 for col in self.data.columns
             }
             logger.debug(f"Updated column data with {len(self.column_data)} columns")
+            logger.debug(f"Column names: {list(self.column_data.keys())}")
         except Exception as e:
             logger.error(f"Error updating column data: {str(e)}")
             raise
@@ -59,13 +60,16 @@ class DataHandler:
         try:
             if not self.should_update() and self.data_cache:
                 logger.debug("Using cached data")
+                logger.debug(f"Cache size: {len(self.data_cache)} records")
                 self.data = pd.DataFrame.from_dict(self.data_cache)
                 return True, "Using cached data"
 
-            logger.debug("Attempting to read CSV from URL")
+            logger.debug(f"Attempting to read CSV from URL: {self.spreadsheet_url}")
 
             # Read CSV directly from URL
             self.data = pd.read_csv(self.spreadsheet_url)
+            logger.debug(f"Successfully read data. Shape: {self.data.shape}")
+            logger.debug(f"Columns found: {list(self.data.columns)}")
 
             # Clean the data
             for col in self.data.columns:
@@ -73,6 +77,10 @@ class DataHandler:
 
             # Update cache and column data
             self.data_cache = self.data.to_dict('records')
+            logger.debug(f"Data cached with {len(self.data_cache)} records")
+            if len(self.data_cache) > 0:
+                logger.debug(f"Sample record: {self.data_cache[0]}")
+
             self._update_column_data()
             self.last_update = datetime.now()
 
@@ -106,6 +114,14 @@ class DataHandler:
             'total_count': column_data['count'],
             'last_updated': column_data['last_updated']
         }
+
+    def get_cached_data(self) -> Dict:
+        """Get the cached data dictionary"""
+        if not self.data_cache:
+            logger.warning("No data in cache")
+            return {}
+        logger.debug(f"Returning cached data with {len(self.data_cache)} records")
+        return self.data_cache
 
     def _store_data_in_db(self):
         """Store the loaded data in the database"""
@@ -175,7 +191,3 @@ class DataHandler:
         except Exception as e:
             logger.error(f"Error retrieving train status table: {str(e)}")
             return pd.DataFrame()
-
-    def get_cached_data(self) -> Dict:
-        """Get the cached data dictionary"""
-        return self.data_cache
