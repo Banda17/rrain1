@@ -13,6 +13,29 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Move fetch_status outside class to avoid hashing self
+@st.cache_data(ttl=300, show_spinner=False)
+def _fetch_status(_session):
+    """Fetch status with caching, using _session to prevent hashing"""
+    try:
+        query = _session.query(TrainDetails).order_by(TrainDetails.time_actual)
+        records = query.all()
+
+        if not records:
+            return pd.DataFrame()
+
+        return pd.DataFrame([{
+            'train_id': record.train_id,
+            'station': record.station,
+            'time_actual': record.time_actual,
+            'time_scheduled': record.time_scheduled,
+            'status': record.status,
+            'delay': record.delay
+        } for record in records])
+    except Exception as e:
+        logger.error(f"Error retrieving train status: {str(e)}")
+        return pd.DataFrame()
+
 class DataHandler:
     def __init__(self):
         """Initialize data structures"""
@@ -64,31 +87,9 @@ class DataHandler:
             logger.error(f"Error processing data: {str(e)}")
             return pd.DataFrame()
 
-    @st.cache_data(ttl=300, show_spinner=False)
-    def fetch_status(_session):
-        """Fetch status with caching, using _session to prevent hashing"""
-        try:
-            query = _session.query(TrainDetails).order_by(TrainDetails.time_actual)
-            records = query.all()
-
-            if not records:
-                return pd.DataFrame()
-
-            return pd.DataFrame([{
-                'train_id': record.train_id,
-                'station': record.station,
-                'time_actual': record.time_actual,
-                'time_scheduled': record.time_scheduled,
-                'status': record.status,
-                'delay': record.delay
-            } for record in records])
-        except Exception as e:
-            logger.error(f"Error retrieving train status: {str(e)}")
-            return pd.DataFrame()
-
     def get_train_status_table(self) -> pd.DataFrame:
         """Get status table from database with caching"""
-        return self.fetch_status(self.db_session)
+        return _fetch_status(self.db_session)
 
     def load_data_from_drive(self) -> Tuple[bool, str]:
         """Load data from Google Sheets URL with optimized caching"""
