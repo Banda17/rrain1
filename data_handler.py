@@ -66,27 +66,14 @@ class DataHandler:
 
             logger.debug(f"Attempting to read CSV from URL: {self.spreadsheet_url}")
 
-            # Read CSV directly from URL, keeping the header row as index 0
-            raw_data = pd.read_csv(self.spreadsheet_url)
-            logger.debug(f"Raw data shape: {raw_data.shape}")
-            logger.debug(f"Raw columns: {list(raw_data.columns)}")
+            # Read CSV directly from URL
+            self.data = pd.read_csv(self.spreadsheet_url)
+            logger.debug(f"Successfully read data. Shape: {self.data.shape}")
+            logger.debug(f"Columns found: {list(self.data.columns)}")
 
-            # Reset index to make sure row 0 is the first data row
-            self.data = raw_data.reset_index(drop=True)
-
-            # Clean and validate the data
-            required_columns = ['time_actual', 'time_scheduled', 'station', 'train_id']
-            missing_columns = [col for col in required_columns if col not in self.data.columns]
-
-            if missing_columns:
-                error_msg = f"Missing required columns: {', '.join(missing_columns)}"
-                logger.error(error_msg)
-                return False, error_msg
-
-            # Clean string data
+            # Clean the data
             for col in self.data.columns:
-                if self.data[col].dtype == 'object':
-                    self.data[col] = self.data[col].astype(str).apply(lambda x: x.strip() if isinstance(x, str) else x)
+                self.data[col] = self.data[col].astype(str).apply(lambda x: x.strip() if isinstance(x, str) else x)
 
             # Update cache and column data
             self.data_cache = self.data.to_dict('records')
@@ -144,32 +131,22 @@ class DataHandler:
 
         try:
             for _, row in self.data.iterrows():
-                try:
-                    # Convert time columns to datetime with error handling
-                    try:
-                        time_actual = pd.to_datetime(row['time_actual'])
-                        time_scheduled = pd.to_datetime(row['time_scheduled'])
-                    except Exception as e:
-                        logger.error(f"Error converting time values for row: {row}")
-                        logger.error(f"Conversion error: {str(e)}")
-                        continue
+                # Convert time columns to datetime
+                time_actual = pd.to_datetime(row['time_actual'])
+                time_scheduled = pd.to_datetime(row['time_scheduled'])
 
-                    # Calculate delay and status
-                    status, delay = self.get_timing_status(time_actual, time_scheduled)
+                # Calculate delay and status
+                status, delay = self.get_timing_status(time_actual, time_scheduled)
 
-                    train_detail = TrainDetails(
-                        train_id=str(row['train_id']),
-                        station=str(row['station']),
-                        time_actual=time_actual,
-                        time_scheduled=time_scheduled,
-                        delay=delay,
-                        status=status
-                    )
-                    self.db_session.add(train_detail)
-
-                except Exception as e:
-                    logger.error(f"Error processing row {_}: {str(e)}")
-                    continue
+                train_detail = TrainDetails(
+                    train_id=str(row['train_id']),
+                    station=str(row['station']),
+                    time_actual=time_actual,
+                    time_scheduled=time_scheduled,
+                    delay=delay,
+                    status=status
+                )
+                self.db_session.add(train_detail)
 
             self.db_session.commit()
             logger.info("Successfully stored data in database")
