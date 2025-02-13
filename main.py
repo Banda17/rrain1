@@ -144,7 +144,7 @@ try:
                 if not matching_rows.empty:
                     detailed_table.at[idx, 'train_name'] = matching_rows.iloc[0]['Train Name']
 
-            # Reorganize columns
+            # Reorganize columns and use cached data where possible
             display_table = pd.DataFrame({
                 'Station': detailed_table['station'].map(lambda x: cached_data[cached_data['Station'].str.strip() == x.strip()].iloc[0]['Station'] if not cached_data[cached_data['Station'].str.strip() == x.strip()].empty else x),
                 'Train Name': detailed_table['train_name'],
