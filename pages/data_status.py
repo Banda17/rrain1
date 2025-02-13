@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import time
 from data_handler import DataHandler
 
 # Page configuration
@@ -72,6 +73,10 @@ try:
             st.write(f"- Total records: {stats['total_count']}")
             st.write(f"- Last updated: {stats['last_updated']}")
             st.write("---")
+
+        # Auto-refresh every 5 minutes
+        time.sleep(300)  # 5 minutes
+        st.rerun()
     else:
         st.error(f"Error loading data: {message}")
 

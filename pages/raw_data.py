@@ -61,8 +61,8 @@ try:
                 mime="text/csv"
             )
 
-            # Auto-refresh
-            time.sleep(1)  # Small delay to prevent excessive CPU usage
+            # Auto-refresh every 5 minutes
+            time.sleep(300)  # 5 minutes
             st.rerun()
         else:
             st.warning("No data available to display")

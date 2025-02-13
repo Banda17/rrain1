@@ -153,7 +153,7 @@ try:
         st.error(f"Error loading data: {message}")
 
     # Auto-refresh every 5 minutes
-    time.sleep(1)  # Small delay to prevent excessive CPU usage
+    time.sleep(300)
     st.rerun()
 
 except Exception as e:
