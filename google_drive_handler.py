@@ -120,29 +120,25 @@ class GoogleDriveHandler:
                     st.error(error_msg)
                     raise ValueError(error_msg)
 
-                # First row is headers
-                headers = data[0]
-                logger.info(f"Found headers in sheet: {headers}")
+                # Convert to DataFrame without header validation
+                df = pd.DataFrame(data[1:])  # Skip first row as header
 
-                # Convert to DataFrame
-                df = pd.DataFrame(data[1:], columns=headers)
+                # Find Time column index (assuming it contains time values like "HH:MM DD-MM")
+                time_col_idx = None
+                for idx, col in enumerate(df.columns):
+                    sample_values = df[col].iloc[:5].astype(str)  # Check first 5 rows
+                    if any((':' in str(val) and '-' in str(val)) for val in sample_values):
+                        time_col_idx = idx
+                        break
 
-                # Map columns to expected format
-                df = df.rename(columns={
-                    'Train Name': 'train_id',
-                    'Station': 'station',
-                    'Status': 'status'
-                })
+                if time_col_idx is not None:
+                    # Parse time data
+                    df['time_actual'] = df[time_col_idx].apply(self.parse_time)
+                    df['time_scheduled'] = df['time_actual']  # Using same time for both
 
-                # Parse time column
-                df['time_actual'] = df['Time'].apply(self.parse_time)
-                df['time_scheduled'] = df['time_actual']  # Using same time for both
-
-                # Clean string columns
-                string_columns = ['train_id', 'station', 'status', 'LOCO', 'Remarks', 'FOISID']
-                for col in string_columns:
-                    if col in df.columns:
-                        df[col] = df[col].astype(str).str.strip()
+                # Clean all string data
+                for col in df.columns:
+                    df[col] = df[col].astype(str).str.strip()
 
                 if df.empty:
                     error_msg = "No valid data found after processing"
