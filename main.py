@@ -57,6 +57,26 @@ else:
         </style>
     """, unsafe_allow_html=True)
 
+# Add after the theme toggle in sidebar
+st.sidebar.markdown("---")
+st.sidebar.subheader("Data Statistics")
+
+# Show column statistics in sidebar
+if st.session_state.data_handler:
+    columns = st.session_state.data_handler.get_all_columns()
+    selected_column = st.sidebar.selectbox("Select Column", columns)
+
+    if selected_column:
+        stats = st.session_state.data_handler.get_column_statistics(selected_column)
+        if stats:
+            st.sidebar.markdown(f"""
+            **Column Statistics:**
+            - Unique Values: {stats['unique_count']}
+            - Total Records: {stats['total_count']}
+            - Last Updated: {stats['last_updated']}
+            """)
+
+
 # Initialize session state
 if 'data_handler' not in st.session_state:
     st.session_state.data_handler = DataHandler()

@@ -1,5 +1,5 @@
 import pandas as pd
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Any
 from datetime import datetime
 from database import get_database_connection, TrainDetails
 import logging
@@ -13,6 +13,7 @@ class DataHandler:
     def __init__(self):
         self.data = None
         self.data_cache = {}
+        self.column_data = {}  # Store column-wise data
         self.last_update = None
         self.update_interval = 300  # 5 minutes in seconds
         self.db_session = get_database_connection()
@@ -24,6 +25,32 @@ class DataHandler:
             return True
         time_diff = (datetime.now() - self.last_update).total_seconds()
         return time_diff >= self.update_interval
+
+    def _update_column_data(self):
+        """Update column-wise data dictionary"""
+        if self.data is None or self.data.empty:
+            return
+
+        try:
+            # Get column headers from first row
+            headers = self.data.iloc[0]
+            data_rows = self.data.iloc[1:]
+
+            # Initialize column data dictionary
+            self.column_data = {
+                str(header).strip(): {
+                    'values': data_rows[col].tolist(),
+                    'unique_values': data_rows[col].unique().tolist(),
+                    'count': len(data_rows[col]),
+                    'last_updated': datetime.now().isoformat()
+                }
+                for col, header in enumerate(headers)
+            }
+
+            logger.debug(f"Updated column data with {len(self.column_data)} columns")
+        except Exception as e:
+            logger.error(f"Error updating column data: {str(e)}")
+            raise
 
     def load_data_from_drive(self, file_id: str = None) -> Tuple[bool, str]:
         """Load data from CSV URL with caching"""
@@ -42,8 +69,9 @@ class DataHandler:
             for col in self.data.columns:
                 self.data[col] = self.data[col].astype(str).apply(lambda x: x.strip() if isinstance(x, str) else x)
 
-            # Update cache
+            # Update cache and column data
             self.data_cache = self.data.to_dict('records')
+            self._update_column_data()
             self.last_update = datetime.now()
 
             # Process and store data in database
@@ -54,6 +82,28 @@ class DataHandler:
             error_msg = f"Error loading data from CSV URL: {str(e)}"
             logger.error(error_msg)
             return False, error_msg
+
+    def get_column_data(self, column_name: str) -> Dict[str, Any]:
+        """Get data for a specific column"""
+        if not self.column_data:
+            return {}
+        return self.column_data.get(column_name, {})
+
+    def get_all_columns(self) -> List[str]:
+        """Get list of all column names"""
+        return list(self.column_data.keys())
+
+    def get_column_statistics(self, column_name: str) -> Dict[str, Any]:
+        """Get statistics for a specific column"""
+        column_data = self.get_column_data(column_name)
+        if not column_data:
+            return {}
+
+        return {
+            'unique_count': len(column_data['unique_values']),
+            'total_count': column_data['count'],
+            'last_updated': column_data['last_updated']
+        }
 
     def _store_data_in_db(self):
         """Store the loaded data in the database"""
