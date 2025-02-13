@@ -125,11 +125,31 @@ try:
             else:
                 st.warning("No status data available")
 
+        # Get cached data for train names
+        cached_data = pd.DataFrame(st.session_state['data_handler'].get_cached_data())
+        if not cached_data.empty:
+            cached_data.columns = cached_data.iloc[0]
+            cached_data = cached_data.iloc[1:].reset_index(drop=True)
+
         # Display detailed table
         st.header("Detailed Timing Analysis")
-        if not status_table.empty:
+        if not status_table.empty and not cached_data.empty:
+            # Merge status_table with cached_data to get train names
+            detailed_table = status_table.copy()
+            detailed_table['train_name'] = ""
+
+            # Match train names from cached data
+            for idx, row in detailed_table.iterrows():
+                matching_row = cached_data[cached_data['Station'] == row['station']]
+                if not matching_row.empty:
+                    detailed_table.at[idx, 'train_name'] = matching_row.iloc[0]['Train Name']
+
+            # Reorganize columns
+            display_table = detailed_table[['station', 'train_name', 'time_actual', 'status']].copy()
+            display_table.columns = ['Station', 'Train Name', 'Time', 'ARR_DEP']
+
             st.dataframe(
-                status_table[['station', 'time_actual', 'time_scheduled', 'status', 'delay']],
+                display_table,
                 use_container_width=True
             )
 
