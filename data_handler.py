@@ -2,26 +2,38 @@ import pandas as pd
 from typing import Dict, List, Tuple
 from datetime import datetime
 from database import get_database_connection, TrainDetails
-from google_drive_handler import GoogleDriveHandler
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 class DataHandler:
     def __init__(self):
         self.data = None
         self.db_session = get_database_connection()
-        self.drive_handler = GoogleDriveHandler()
+        self.csv_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRO2ZV-BOcL11_5NhlrOnn5Keph3-cVp7Tyr1t6RxsoDvxZjdOyDsmRkdvesJLbSnZwY8v3CATt1Of9/pub?gid=0&single=true&output=csv"
 
-    def load_data_from_drive(self, file_id: str) -> Tuple[bool, str]:
-        """Load data from Google Drive Excel file"""
+    def load_data_from_drive(self, file_id: str = None) -> Tuple[bool, str]:
+        """Load data from CSV URL"""
         try:
-            # Get data from Google Drive
-            self.data = self.drive_handler.get_file_content(file_id)
+            logger.debug(f"Attempting to read CSV from URL")
+
+            # Read CSV directly from URL
+            self.data = pd.read_csv(self.csv_url)
+
+            # Clean the data
+            for col in self.data.columns:
+                self.data[col] = self.data[col].astype(str).apply(lambda x: x.strip() if isinstance(x, str) else x)
 
             # Process and store data in database
             self._store_data_in_db()
 
-            return True, "Data loaded successfully from Google Drive"
+            return True, "Data loaded successfully from CSV URL"
         except Exception as e:
-            return False, f"Error loading data from Google Drive: {str(e)}"
+            error_msg = f"Error loading data from CSV URL: {str(e)}"
+            logger.error(error_msg)
+            return False, error_msg
 
     def _store_data_in_db(self):
         """Store the loaded data in the database"""
@@ -30,15 +42,15 @@ class DataHandler:
 
         for _, row in self.data.iterrows():
             # Convert time columns to datetime if they're not already
-            time_actual = pd.to_datetime(row['time_actual'])
-            time_scheduled = pd.to_datetime(row['time_scheduled'])
+            time_actual = pd.to_datetime(row['time_actual']) if 'time_actual' in row else datetime.now()
+            time_scheduled = pd.to_datetime(row['time_scheduled']) if 'time_scheduled' in row else datetime.now()
 
             # Calculate delay and status
             status, delay = self.get_timing_status(time_actual, time_scheduled)
 
             train_detail = TrainDetails(
-                train_id=str(row['train_id']),
-                station=str(row['station']),
+                train_id=str(row.get('train_id', 'Unknown')),
+                station=str(row.get('station', 'Unknown')),
                 time_actual=time_actual,
                 time_scheduled=time_scheduled,
                 delay=delay,
