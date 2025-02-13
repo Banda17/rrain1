@@ -125,39 +125,27 @@ try:
             else:
                 st.warning("No status data available")
 
-        # Get cached data for train names and stations
+        # Get cached data and display timing analysis
         cached_data = pd.DataFrame(st.session_state['data_handler'].get_cached_data())
         if not cached_data.empty:
+            # Set the first row as column headers
             cached_data.columns = cached_data.iloc[0]
             cached_data = cached_data.iloc[1:].reset_index(drop=True)
 
-        # Display detailed table
-        st.header("Detailed Timing Analysis")
-        if not status_table.empty and not cached_data.empty:
-            # Merge status_table with cached_data to get train names
-            detailed_table = status_table.copy()
-            detailed_table['train_name'] = ""
+            # Display detailed table
+            st.header("Detailed Timing Analysis")
+            if len(cached_data) > 0:
+                # Select and rename specific columns
+                display_table = cached_data[['Train Name', 'Station', 'Time', 'Status']]
 
-            # Match train names from cached data
-            for idx, row in detailed_table.iterrows():
-                matching_rows = cached_data[cached_data['Station'].str.strip() == row['station'].strip()]
-                if not matching_rows.empty:
-                    detailed_table.at[idx, 'train_name'] = matching_rows.iloc[0]['Train Name']
-
-            # Reorganize columns and use cached data where possible
-            display_table = pd.DataFrame({
-                'Station': detailed_table['station'].map(lambda x: cached_data[cached_data['Station'].str.strip() == x.strip()].iloc[0]['Station'] if not cached_data[cached_data['Station'].str.strip() == x.strip()].empty else x),
-                'Train Name': detailed_table['train_name'],
-                'Time': pd.to_datetime(detailed_table['time_actual']).dt.strftime('%Y-%m-%d %H:%M:%S'),
-                'ARR_DEP': detailed_table['status']
-            })
-
-            st.dataframe(
-                display_table,
-                use_container_width=True
-            )
+                st.dataframe(
+                    display_table,
+                    use_container_width=True
+                )
+            else:
+                st.warning("No data available for analysis")
         else:
-            st.warning("No data available for analysis")
+            st.warning("No data available in cache")
     else:
         st.error(f"Error loading data: {message}")
 
