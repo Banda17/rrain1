@@ -1,3 +1,4 @@
+
 import streamlit as st
 from google.oauth2 import service_account
 import gspread
@@ -57,7 +58,7 @@ class GoogleDriveHandler:
 
             # Initialize gspread client
             try:
-                self.client = gspread.authorize(credentials)
+                self.client = gspread.Client(auth=credentials)
                 logger.info("Google Sheets connection initialized successfully")
             except Exception as e:
                 error_msg = f"Failed to authorize with Google: {str(e)}"
@@ -98,9 +99,8 @@ class GoogleDriveHandler:
                 # Convert to DataFrame, keeping everything as strings
                 df = pd.DataFrame(data[1:], columns=data[0])  # First row as headers
 
-                # Clean all string data (just strip whitespace)
-                for col in df.columns:
-                    df[col] = df[col].astype(str).str.strip()
+                # Clean all string data
+                df = df.apply(lambda x: x.astype(str).str.strip() if x.dtype == "object" else x)
 
                 logger.info(f"Successfully loaded {len(df)} rows of data")
                 return df
