@@ -56,9 +56,17 @@ try:
         # Log the columns for debugging
         logger.debug(f"DataFrame columns: {cached_data.columns}")
 
-        # Create display table with all data
+        # Reset the index and use first row as header
+        cached_data.columns = cached_data.iloc[0]
+        cached_data = cached_data.iloc[1:].reset_index(drop=True)
+
+        # Select only required columns
+        selected_columns = ['Train Name', 'Station', 'Status']
+        display_data = cached_data[selected_columns]
+
+        # Display the filtered data
         st.dataframe(
-            cached_data,
+            display_data,
             use_container_width=True,
             height=400
         )
