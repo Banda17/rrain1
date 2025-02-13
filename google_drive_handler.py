@@ -117,7 +117,7 @@ class GoogleDriveHandler:
 
                 # Clean all string data (just strip whitespace)
                 for col in df.columns:
-                    df[col] = df[col].astype(str).str.strip()
+                    df[col] = df[col].astype(str).apply(lambda x: x.strip() if isinstance(x, str) else x)
 
                 logger.info(f"Successfully loaded {len(df)} rows of data")
                 return df
