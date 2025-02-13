@@ -73,31 +73,26 @@ try:
 
         # Process and display timing analysis
         if not cached_data.empty:
-            st.header("Detailed Timing Analysis")
+            st.header("All Train Timings")
 
             # Convert time column to datetime if it's not already
             if 'Time' in cached_data.columns:
                 cached_data['Time'] = pd.to_datetime(cached_data['Time'])
 
-            # Filter for June 16th, 2024 trains
-            target_date = pd.Timestamp('2024-06-16')
-            today_trains = cached_data[
-                (cached_data['Train Name'].str.match(r'^\d.*', na=False)) &
-                (cached_data['Time'].dt.date == target_date.date())
-            ]
+            # Filter only numeric train numbers
+            numeric_trains = cached_data[cached_data['Train Name'].str.match(r'^\d.*', na=False)]
 
-            if not today_trains.empty:
-                # Create display table with scheduled and actual times
+            if not numeric_trains.empty:
+                # Create display table with timestamps
                 display_table = pd.DataFrame({
-                    'Train Name': today_trains['Train Name'],
-                    'Station': today_trains['Station'],
-                    'Scheduled Time': today_trains['Time'].dt.strftime('%H:%M'),
-                    'Running Status': today_trains['Status'].fillna('Unknown'),
-                    'Current Location': today_trains['Station'],
+                    'Train Number': numeric_trains['Train Name'],
+                    'Station': numeric_trains['Station'],
+                    'Time': numeric_trains['Time'].dt.strftime('%Y-%m-%d %H:%M'),
+                    'Running Status': numeric_trains['Status'].fillna('Unknown'),
                 })
 
                 st.dataframe(
-                    display_table,
+                    display_table.sort_values('Time'),
                     use_container_width=True,
                     height=400  # Fixed height for better performance
                 )
@@ -106,7 +101,7 @@ try:
                 metrics = st.session_state['data_handler'].get_performance_metrics()
                 st.info(f"Data load time: {metrics['load_time']:.2f}s | Processing time: {metrics['process_time']:.2f}s")
             else:
-                st.info("No trains scheduled for June 16th, 2024")
+                st.info("No trains with numeric IDs found")
         else:
             st.warning("No data available for analysis")
     else:
