@@ -12,7 +12,7 @@ st.set_page_config(
 
 # Initialize data handler
 if 'data_handler' not in st.session_state:
-    st.session_state.data_handler = DataHandler()
+    st.session_state['data_handler'] = DataHandler()
 
 # Page title
 st.title("📊 Raw CSV Data")
@@ -20,11 +20,11 @@ st.markdown("This page shows the raw data loaded from the CSV file.")
 
 try:
     # Load data
-    success, message = st.session_state.data_handler.load_data_from_drive()
+    success, message = st.session_state['data_handler'].load_data_from_drive()
 
     if success:
         # Get raw data from cache
-        raw_data = pd.DataFrame.from_dict(st.session_state.data_handler.get_cached_data())
+        raw_data = pd.DataFrame.from_dict(st.session_state['data_handler'].get_cached_data())
 
         if raw_data is not None and not raw_data.empty:
             # Reset the index and use first row as header
@@ -32,7 +32,7 @@ try:
             raw_data = raw_data.iloc[1:].reset_index(drop=True)
 
             # Add last update time
-            st.info(f"Last updated: {st.session_state.data_handler.last_update.strftime('%Y-%m-%d %H:%M:%S')}")
+            st.info(f"Last updated: {st.session_state['data_handler'].last_update.strftime('%Y-%m-%d %H:%M:%S')}")
 
             # Add search functionality
             search_term = st.text_input("🔍 Search in data", "")

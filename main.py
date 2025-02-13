@@ -17,20 +17,30 @@ st.set_page_config(
     layout="wide"
 )
 
+# Initialize session state
+if 'data_handler' not in st.session_state:
+    st.session_state['data_handler'] = DataHandler()
+if 'ai_analyzer' not in st.session_state:
+    st.session_state['ai_analyzer'] = AIAnalyzer()
+if 'visualizer' not in st.session_state:
+    st.session_state['visualizer'] = Visualizer()
+if 'last_update' not in st.session_state:
+    st.session_state['last_update'] = None
+
 # Theme toggle in sidebar
 st.sidebar.title("Settings")
 if 'theme' not in st.session_state:
-    st.session_state.theme = "light"
+    st.session_state['theme'] = "light"
 
 theme = st.sidebar.radio(
     "Choose Theme",
     ("Light", "Dark"),
-    index=0 if st.session_state.theme == "light" else 1
+    index=0 if st.session_state['theme'] == "light" else 1
 )
 
 # Apply theme
 if theme == "Dark":
-    st.session_state.theme = "dark"
+    st.session_state['theme'] = "dark"
     st.markdown("""
         <style>
         .stApp {
@@ -47,7 +57,7 @@ if theme == "Dark":
         </style>
     """, unsafe_allow_html=True)
 else:
-    st.session_state.theme = "light"
+    st.session_state['theme'] = "light"
     st.markdown("""
         <style>
         .stApp {
@@ -62,30 +72,20 @@ st.sidebar.markdown("---")
 st.sidebar.subheader("Data Statistics")
 
 # Show column statistics in sidebar
-if st.session_state.data_handler:
-    columns = st.session_state.data_handler.get_all_columns()
-    selected_column = st.sidebar.selectbox("Select Column", columns)
-
-    if selected_column:
-        stats = st.session_state.data_handler.get_column_statistics(selected_column)
-        if stats:
-            st.sidebar.markdown(f"""
-            **Column Statistics:**
-            - Unique Values: {stats['unique_count']}
-            - Total Records: {stats['total_count']}
-            - Last Updated: {stats['last_updated']}
-            """)
-
-
-# Initialize session state
-if 'data_handler' not in st.session_state:
-    st.session_state.data_handler = DataHandler()
-if 'ai_analyzer' not in st.session_state:
-    st.session_state.ai_analyzer = AIAnalyzer()
-if 'visualizer' not in st.session_state:
-    st.session_state.visualizer = Visualizer()
-if 'last_update' not in st.session_state:
-    st.session_state.last_update = None
+data_handler = st.session_state['data_handler']
+if data_handler:
+    columns = data_handler.get_all_columns()
+    if columns:
+        selected_column = st.sidebar.selectbox("Select Column", columns)
+        if selected_column:
+            stats = data_handler.get_column_statistics(selected_column)
+            if stats:
+                st.sidebar.markdown(f"""
+                **Column Statistics:**
+                - Unique Values: {stats['unique_count']}
+                - Total Records: {stats['total_count']}
+                - Last Updated: {stats['last_updated']}
+                """)
 
 # Main title
 st.title("🚂 Train Tracking and Analysis System")
@@ -93,18 +93,18 @@ st.markdown("Welcome to the Train Tracking System. Use the sidebar to navigate b
 
 try:
     # Add auto-refresh status
-    if st.session_state.last_update:
-        st.sidebar.text(f"Last updated: {st.session_state.last_update.strftime('%H:%M:%S')}")
+    if st.session_state['last_update']:
+        st.sidebar.text(f"Last updated: {st.session_state['last_update'].strftime('%H:%M:%S')}")
 
     # Load data from CSV URL
-    success, message = st.session_state.data_handler.load_data_from_drive()
+    success, message = st.session_state['data_handler'].load_data_from_drive()
 
     if success:
         # Update last update time
-        st.session_state.last_update = st.session_state.data_handler.last_update
+        st.session_state['last_update'] = st.session_state['data_handler'].last_update
 
         # Get analyzed data
-        status_table = st.session_state.data_handler.get_train_status_table()
+        status_table = st.session_state['data_handler'].get_train_status_table()
 
         # Display current status
         st.header("Current Train Status")
@@ -112,7 +112,7 @@ try:
 
         with col1:
             # Display train position visualization
-            fig = st.session_state.visualizer.create_train_position_map(status_table)
+            fig = st.session_state['visualizer'].create_train_position_map(status_table)
             st.plotly_chart(fig, use_container_width=True)
 
         with col2:
@@ -139,17 +139,17 @@ try:
 
             with col1:
                 # Display delay distribution
-                fig = st.session_state.visualizer.create_delay_histogram(status_table)
+                fig = st.session_state['visualizer'].create_delay_histogram(status_table)
                 st.plotly_chart(fig, use_container_width=True)
 
             with col2:
                 # Display AI insights
-                insights = st.session_state.ai_analyzer.analyze_historical_delays(status_table)
+                insights = st.session_state['ai_analyzer'].analyze_historical_delays(status_table)
                 show_ai_insights(insights)
 
                 # Display prediction for selected station
                 selected_station = st.selectbox("Select station for delay prediction", status_table['station'].unique())
-                prediction = st.session_state.ai_analyzer.get_delay_prediction(status_table, selected_station)
+                prediction = st.session_state['ai_analyzer'].get_delay_prediction(status_table, selected_station)
 
                 st.info(f"Predicted delay at {prediction['station']}: "
                        f"{prediction['predicted_delay']} minutes "
