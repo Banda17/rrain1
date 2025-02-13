@@ -4,6 +4,7 @@ from typing import Dict, List, Tuple, Any
 from datetime import datetime
 from database import get_database_connection, TrainDetails
 import logging
+import time
 
 # Configure logging with more detail
 logging.basicConfig(
@@ -17,12 +18,106 @@ class DataHandler:
         """Initialize data structures"""
         self.data = None
         self.data_cache = {}
-        self.column_data = {}  # Store column-wise data
+        self.processed_data_cache = {}
+        self.column_data = {}
         self.last_update = None
         self.update_interval = 300  # 5 minutes in seconds
         self.db_session = get_database_connection()
-        # Format URL for direct CSV download
         self.spreadsheet_url = "https://docs.google.com/spreadsheets/d/1OuiQ3FEoNAtH10NllgLusxACjn2NU0yZUcHh68hLoI4/export?format=csv"
+        self.performance_metrics = {'load_time': 0, 'process_time': 0}
+
+    @st.cache_data(ttl=300, show_spinner=False)
+    def _fetch_csv_data(self, url: str) -> pd.DataFrame:
+        """Fetch and cache CSV data"""
+        start_time = time.time()
+        df = pd.read_csv(url)
+        self.performance_metrics['load_time'] = time.time() - start_time
+        return df
+
+    def _process_raw_data(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Process raw data with optimized operations"""
+        if df.empty:
+            return df
+
+        start_time = time.time()
+        try:
+            # Process only required columns with optimized operations
+            required_cols = ['Train Name', 'Station', 'Time', 'Status']
+            df = df[required_cols].copy()
+
+            # Vectorized string cleaning
+            df = df.apply(lambda x: x.str.strip() if x.dtype == 'object' else x)
+
+            # Efficient datetime conversion
+            df['Time'] = pd.to_datetime(df['Time'], format='%Y-%m-%d %H:%M:%S', errors='coerce')
+
+            self.performance_metrics['process_time'] = time.time() - start_time
+            return df
+        except Exception as e:
+            logger.error(f"Error processing data: {str(e)}")
+            return pd.DataFrame()
+
+    @st.cache_data(ttl=300, show_spinner=False)
+    def get_train_status_table(self) -> pd.DataFrame:
+        """Get cached status table from database"""
+        try:
+            query = self.db_session.query(TrainDetails).order_by(TrainDetails.time_actual)
+            records = query.all()
+
+            if not records:
+                return pd.DataFrame()
+
+            return pd.DataFrame([{
+                'train_id': record.train_id,
+                'station': record.station,
+                'time_actual': record.time_actual,
+                'time_scheduled': record.time_scheduled,
+                'status': record.status,
+                'delay': record.delay
+            } for record in records])
+        except Exception as e:
+            logger.error(f"Error retrieving train status: {str(e)}")
+            return pd.DataFrame()
+
+    def load_data_from_drive(self, file_id: str = None) -> Tuple[bool, str]:
+        """Load data from Google Sheets URL with optimized caching"""
+        try:
+            # Check cache first
+            if not self.should_update() and self.processed_data_cache:
+                logger.debug("Using processed data cache")
+                self.data = pd.DataFrame(self.processed_data_cache)
+                return True, "Using cached data"
+
+            # Fetch and process data with performance tracking
+            start_time = time.time()
+
+            raw_data = self._fetch_csv_data(self.spreadsheet_url)
+            if raw_data.empty:
+                return False, "No data received from CSV"
+
+            self.data = self._process_raw_data(raw_data)
+
+            # Update caches efficiently
+            self.data_cache = raw_data.to_dict('records')
+            self.processed_data_cache = self.data.to_dict('records')
+            self._update_column_data()
+            self.last_update = datetime.now()
+
+            # Store in database asynchronously
+            st.runtime.async_run(self._store_data_in_db())
+
+            total_time = time.time() - start_time
+            logger.info(f"Total load time: {total_time:.2f}s (Load: {self.performance_metrics['load_time']:.2f}s, Process: {self.performance_metrics['process_time']:.2f}s)")
+
+            return True, f"Data loaded in {total_time:.2f} seconds"
+        except Exception as e:
+            error_msg = f"Error loading data: {str(e)}"
+            logger.error(error_msg)
+            return False, error_msg
+
+    def get_performance_metrics(self) -> Dict[str, float]:
+        """Get current performance metrics"""
+        return self.performance_metrics
 
     def should_update(self) -> bool:
         """Check if data should be updated"""
@@ -30,6 +125,108 @@ class DataHandler:
             return True
         time_diff = (datetime.now() - self.last_update).total_seconds()
         return time_diff >= self.update_interval
+
+    def _process_raw_data(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Process raw data with optimized operations"""
+        if df.empty:
+            return df
+
+        # Process only required columns
+        required_cols = ['Train Name', 'Station', 'Time', 'Status']
+        df = df[required_cols].copy()
+
+        # Clean strings efficiently
+        for col in df.columns:
+            if df[col].dtype == 'object':
+                df[col] = df[col].str.strip()
+
+        # Convert time column once
+        df['Time'] = pd.to_datetime(df['Time'])
+
+        return df
+
+    def load_data_from_drive(self, file_id: str = None) -> Tuple[bool, str]:
+        """Load data from Google Sheets URL with optimized caching"""
+        try:
+            # Check cache first
+            if not self.should_update() and self.processed_data_cache:
+                logger.debug("Using processed data cache")
+                self.data = pd.DataFrame(self.processed_data_cache)
+                return True, "Using cached data"
+
+            # Fetch and cache raw data
+            logger.debug("Fetching new data from CSV")
+            raw_data = self._fetch_csv_data(self.spreadsheet_url)
+
+            if raw_data.empty:
+                return False, "No data received from CSV"
+
+            # Process the data efficiently
+            self.data = self._process_raw_data(raw_data)
+
+            # Update caches
+            self.data_cache = raw_data.to_dict('records')
+            self.processed_data_cache = self.data.to_dict('records')
+            self._update_column_data()
+            self.last_update = datetime.now()
+
+            # Store in database asynchronously
+            st.runtime.async_run(self._store_data_in_db())
+
+            return True, "Data loaded and processed successfully"
+        except Exception as e:
+            error_msg = f"Error loading data: {str(e)}"
+            logger.error(error_msg)
+            return False, error_msg
+
+    @st.cache_data(ttl=300)
+    def get_train_status_table(self) -> pd.DataFrame:
+        """Get cached status table from database"""
+        try:
+            query = self.db_session.query(TrainDetails).order_by(TrainDetails.time_actual)
+            records = query.all()
+
+            if not records:
+                return pd.DataFrame()
+
+            return pd.DataFrame([{
+                'train_id': record.train_id,
+                'station': record.station,
+                'time_actual': record.time_actual,
+                'time_scheduled': record.time_scheduled,
+                'status': record.status,
+                'delay': record.delay
+            } for record in records])
+        except Exception as e:
+            logger.error(f"Error retrieving train status: {str(e)}")
+            return pd.DataFrame()
+
+    async def _store_data_in_db(self):
+        """Asynchronously store data in database"""
+        if self.data is None or self.data.empty:
+            return
+
+        try:
+            for _, row in self.data.iterrows():
+                time_actual = pd.to_datetime(row['Time'])
+                time_scheduled = time_actual  # Simplified for now
+                status, delay = self.get_timing_status(time_actual, time_scheduled)
+
+                train_detail = TrainDetails(
+                    train_id=str(row['Train Name']),
+                    station=str(row['Station']),
+                    time_actual=time_actual,
+                    time_scheduled=time_scheduled,
+                    delay=delay,
+                    status=status
+                )
+                self.db_session.add(train_detail)
+
+            await self.db_session.commit()
+            logger.info("Data stored in database")
+        except Exception as e:
+            logger.error(f"Database storage error: {str(e)}")
+            await self.db_session.rollback()
 
     def _update_column_data(self):
         """Update column-wise data dictionary"""
@@ -54,44 +251,6 @@ class DataHandler:
         except Exception as e:
             logger.error(f"Error updating column data: {str(e)}")
             raise
-
-    def load_data_from_drive(self, file_id: str = None) -> Tuple[bool, str]:
-        """Load data from Google Sheets URL with caching"""
-        try:
-            if not self.should_update() and self.data_cache:
-                logger.debug("Using cached data")
-                logger.debug(f"Cache size: {len(self.data_cache)} records")
-                self.data = pd.DataFrame.from_dict(self.data_cache)
-                return True, "Using cached data"
-
-            logger.debug(f"Attempting to read CSV from URL: {self.spreadsheet_url}")
-
-            # Read CSV directly from URL
-            self.data = pd.read_csv(self.spreadsheet_url)
-            logger.debug(f"Successfully read data. Shape: {self.data.shape}")
-            logger.debug(f"Columns found: {list(self.data.columns)}")
-
-            # Clean the data
-            for col in self.data.columns:
-                self.data[col] = self.data[col].astype(str).apply(lambda x: x.strip() if isinstance(x, str) else x)
-
-            # Update cache and column data
-            self.data_cache = self.data.to_dict('records')
-            logger.debug(f"Data cached with {len(self.data_cache)} records")
-            if len(self.data_cache) > 0:
-                logger.debug(f"Sample record: {self.data_cache[0]}")
-
-            self._update_column_data()
-            self.last_update = datetime.now()
-
-            # Process and store data in database
-            self._store_data_in_db()
-
-            return True, "Data loaded successfully from CSV URL"
-        except Exception as e:
-            error_msg = f"Error loading data from CSV URL: {str(e)}"
-            logger.error(error_msg)
-            return False, error_msg
 
     def get_column_data(self, column_name: str) -> Dict[str, Any]:
         """Get data for a specific column"""
@@ -123,38 +282,6 @@ class DataHandler:
         logger.debug(f"Returning cached data with {len(self.data_cache)} records")
         return self.data_cache
 
-    def _store_data_in_db(self):
-        """Store the loaded data in the database"""
-        if self.data is None or self.data.empty:
-            logger.warning("No data available to store in database")
-            return
-
-        try:
-            for _, row in self.data.iterrows():
-                # Convert time columns to datetime
-                time_actual = pd.to_datetime(row['time_actual'])
-                time_scheduled = pd.to_datetime(row['time_scheduled'])
-
-                # Calculate delay and status
-                status, delay = self.get_timing_status(time_actual, time_scheduled)
-
-                train_detail = TrainDetails(
-                    train_id=str(row['train_id']),
-                    station=str(row['station']),
-                    time_actual=time_actual,
-                    time_scheduled=time_scheduled,
-                    delay=delay,
-                    status=status
-                )
-                self.db_session.add(train_detail)
-
-            self.db_session.commit()
-            logger.info("Successfully stored data in database")
-        except Exception as e:
-            logger.error(f"Error storing data in database: {str(e)}")
-            self.db_session.rollback()
-            raise
-
     def get_timing_status(self, actual_time: datetime, scheduled_time: datetime) -> Tuple[str, int]:
         """Calculate if train is early, late, or on time"""
         try:
@@ -169,25 +296,3 @@ class DataHandler:
         except Exception as e:
             logger.error(f"Error calculating timing status: {str(e)}")
             return "UNKNOWN ❓", 0
-
-    def get_train_status_table(self) -> pd.DataFrame:
-        """Get status table from database"""
-        try:
-            query = self.db_session.query(TrainDetails).order_by(TrainDetails.time_actual)
-            records = query.all()
-
-            if not records:
-                logger.warning("No records found in database")
-                return pd.DataFrame()
-
-            return pd.DataFrame([{
-                'train_id': record.train_id,
-                'station': record.station,
-                'time_actual': record.time_actual,
-                'time_scheduled': record.time_scheduled,
-                'status': record.status,
-                'delay': record.delay
-            } for record in records])
-        except Exception as e:
-            logger.error(f"Error retrieving train status table: {str(e)}")
-            return pd.DataFrame()

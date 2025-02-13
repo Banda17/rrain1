@@ -6,6 +6,7 @@ from visualizer import Visualizer
 from utils import format_time_difference, create_status_badge, show_ai_insights
 from database import init_db
 import time
+from datetime import datetime
 
 # Initialize database
 init_db()
@@ -14,7 +15,8 @@ init_db()
 st.set_page_config(
     page_title="Train Tracking System",
     page_icon="🚂",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="collapsed"  # Optimize initial load
 )
 
 # Initialize session state
@@ -27,84 +29,27 @@ if 'visualizer' not in st.session_state:
 if 'last_update' not in st.session_state:
     st.session_state['last_update'] = None
 
-# Theme toggle in sidebar
-st.sidebar.title("Settings")
-if 'theme' not in st.session_state:
-    st.session_state['theme'] = "light"
+@st.cache_data(ttl=300)
+def load_and_process_data():
+    """Cache data loading and processing"""
+    success, message = st.session_state['data_handler'].load_data_from_drive()
+    if success:
+        status_table = st.session_state['data_handler'].get_train_status_table()
+        cached_data = pd.DataFrame(st.session_state['data_handler'].get_cached_data())
+        return True, status_table, cached_data, message
+    return False, None, None, message
 
-theme = st.sidebar.radio(
-    "Choose Theme",
-    ("Light", "Dark"),
-    index=0 if st.session_state['theme'] == "light" else 1
-)
-
-# Apply theme
-if theme == "Dark":
-    st.session_state['theme'] = "dark"
-    st.markdown("""
-        <style>
-        .stApp {
-            background-color: #1E1E1E;
-            color: #FFFFFF;
-        }
-        .stMarkdown {
-            color: #FFFFFF;
-        }
-        .stDataFrame {
-            background-color: #2D2D2D;
-            color: #FFFFFF;
-        }
-        </style>
-    """, unsafe_allow_html=True)
-else:
-    st.session_state['theme'] = "light"
-    st.markdown("""
-        <style>
-        .stApp {
-            background-color: #FFFFFF;
-            color: #000000;
-        }
-        </style>
-    """, unsafe_allow_html=True)
-
-# Add after the theme toggle in sidebar
-st.sidebar.markdown("---")
-st.sidebar.subheader("Data Statistics")
-
-# Show column statistics in sidebar
-data_handler = st.session_state['data_handler']
-if data_handler:
-    columns = data_handler.get_all_columns()
-    if columns:
-        selected_column = st.sidebar.selectbox("Select Column", columns)
-        if selected_column:
-            stats = data_handler.get_column_statistics(selected_column)
-            if stats:
-                st.sidebar.markdown(f"""
-                **Column Statistics:**
-                - Unique Values: {stats['unique_count']}
-                - Total Records: {stats['total_count']}
-                - Last Updated: {stats['last_updated']}
-                """)
-
-# Main title
-st.title("🚂 Train Tracking and Analysis System")
-st.markdown("Welcome to the Train Tracking System. Use the sidebar to navigate between different pages.")
+# Main title and description
+st.title("🚂 Train Tracking System")
+st.markdown("Real-time train tracking and analysis system")
 
 try:
-    # Add auto-refresh status
-    if st.session_state['last_update']:
-        st.sidebar.text(f"Last updated: {st.session_state['last_update'].strftime('%H:%M:%S')}")
-
-    # Load data from CSV URL
-    success, message = st.session_state['data_handler'].load_data_from_drive()
+    # Load data with caching
+    success, status_table, cached_data, message = load_and_process_data()
 
     if success:
         # Update last update time
         st.session_state['last_update'] = st.session_state['data_handler'].last_update
-
-        # Get analyzed data
-        status_table = st.session_state['data_handler'].get_train_status_table()
 
         # Display current status
         st.header("Current Train Status")
@@ -112,8 +57,9 @@ try:
 
         with col1:
             # Display train position visualization
-            fig = st.session_state['visualizer'].create_train_position_map(status_table)
-            st.plotly_chart(fig, use_container_width=True)
+            if not status_table.empty:
+                fig = st.session_state['visualizer'].create_train_position_map(status_table)
+                st.plotly_chart(fig, use_container_width=True)
 
         with col2:
             # Display latest status
@@ -125,30 +71,37 @@ try:
             else:
                 st.warning("No status data available")
 
-        # Get cached data and display timing analysis
-        cached_data = pd.DataFrame(st.session_state['data_handler'].get_cached_data())
+        # Process and display timing analysis
         if not cached_data.empty:
-            # Set the first row as column headers
-            cached_data.columns = cached_data.iloc[0]
-            cached_data = cached_data.iloc[1:].reset_index(drop=True)
-
-            # Display detailed table
             st.header("Detailed Timing Analysis")
-            if len(cached_data) > 0:
-                # Filter trains that start with numbers (same as data status page)
-                numeric_trains = cached_data[cached_data['Train Name'].str.match(r'^\d.*', na=False)]
 
-                # Select and rename specific columns
-                display_table = numeric_trains[['Train Name', 'Station', 'Time', 'Status']]
+            # Filter and process data efficiently
+            today = datetime(2024, 6, 16)  
+
+            # Convert and filter in one go
+            today_trains = cached_data[
+                (cached_data['Train Name'].str.match(r'^\d.*', na=False)) &
+                (pd.to_datetime(cached_data['Time']).dt.date == today.date())
+            ]
+
+            if not today_trains.empty:
+                # Create display table efficiently
+                display_table = pd.DataFrame({
+                    'Train Name': today_trains['Train Name'],
+                    'Station': today_trains['Station'],
+                    'Scheduled Time': pd.to_datetime(today_trains['Time']).dt.strftime('%H:%M'),
+                    'Running Status': today_trains['Status'],
+                    'Current Location': today_trains['Station']
+                })
 
                 st.dataframe(
                     display_table,
                     use_container_width=True
                 )
             else:
-                st.warning("No data available for analysis")
+                st.info("No trains scheduled for today")
         else:
-            st.warning("No data available in cache")
+            st.warning("No data available for analysis")
     else:
         st.error(f"Error loading data: {message}")
 
