@@ -39,16 +39,26 @@ try:
             # Convert to DataFrame and set first row as headers
             df = pd.DataFrame(cached_data)
             if not df.empty:
-                # Show sample record
-                st.subheader("Sample Record")
-                st.json(df.iloc[0].to_dict())
-
-                # Show all cached data with proper headers
-                st.subheader("All Cached Data")
                 # Set the first row as column headers
                 df.columns = df.iloc[0]
                 df = df.iloc[1:].reset_index(drop=True)
-                st.dataframe(df)
+
+                # Filter trains that start with numbers
+                numeric_trains = df[df['Train Name'].str.match(r'^\d.*', na=False)]
+
+                # Show filtering info
+                st.info(f"Found {len(numeric_trains)} trains with numeric names out of {len(df)} total records")
+
+                if not numeric_trains.empty:
+                    # Show sample record
+                    st.subheader("Sample Numeric Train Record")
+                    st.json(numeric_trains.iloc[0].to_dict())
+
+                    # Show filtered data
+                    st.subheader("Trains with Numeric Names")
+                    st.dataframe(numeric_trains)
+                else:
+                    st.warning("No trains with numeric names found in the data")
         else:
             st.warning("No data in cache")
 
