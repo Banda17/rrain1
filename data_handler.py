@@ -113,8 +113,8 @@ class DataHandler:
             self._update_column_data()
             self.last_update = datetime.now()
 
-            # Store in database asynchronously
-            st.runtime.async_run(self._store_data_in_db())
+            # Store in database synchronously but efficiently
+            self._store_data_in_db()
 
             total_time = time.time() - start_time
             logger.info(f"Total load time: {total_time:.2f}s (Load: {self.performance_metrics['load_time']:.2f}s, Process: {self.performance_metrics['process_time']:.2f}s)")
@@ -124,10 +124,6 @@ class DataHandler:
             error_msg = f"Error loading data: {str(e)}"
             logger.error(error_msg)
             return False, error_msg
-
-    def get_performance_metrics(self) -> Dict[str, float]:
-        """Get current performance metrics"""
-        return self.performance_metrics
 
     def should_update(self) -> bool:
         """Check if data should be updated"""
@@ -158,32 +154,45 @@ class DataHandler:
             logger.error(f"Error updating column data: {str(e)}")
             raise
 
-    async def _store_data_in_db(self):
-        """Asynchronously store data in database"""
+    def _store_data_in_db(self):
+        """Store data in database with efficient batching"""
         if self.data is None or self.data.empty:
             return
 
         try:
+            # Process in batches for better performance
+            batch_size = 100
+            records = []
+
             for _, row in self.data.iterrows():
                 time_actual = pd.to_datetime(row['Time'])
                 time_scheduled = time_actual  # Simplified for now
                 status, delay = self.get_timing_status(time_actual, time_scheduled)
 
-                train_detail = TrainDetails(
+                records.append(TrainDetails(
                     train_id=str(row['Train Name']),
                     station=str(row['Station']),
                     time_actual=time_actual,
                     time_scheduled=time_scheduled,
                     delay=delay,
                     status=status
-                )
-                self.db_session.add(train_detail)
+                ))
 
-            await self.db_session.commit()
-            logger.info("Data stored in database")
+                # Commit in batches
+                if len(records) >= batch_size:
+                    self.db_session.bulk_save_objects(records)
+                    self.db_session.commit()
+                    records = []
+
+            # Commit any remaining records
+            if records:
+                self.db_session.bulk_save_objects(records)
+                self.db_session.commit()
+
+            logger.info("Data stored in database successfully")
         except Exception as e:
             logger.error(f"Database storage error: {str(e)}")
-            await self.db_session.rollback()
+            self.db_session.rollback()
 
     def get_timing_status(self, actual_time: datetime, scheduled_time: datetime) -> Tuple[str, int]:
         """Calculate if train is early, late, or on time"""
@@ -229,3 +238,7 @@ class DataHandler:
             return {}
         logger.debug(f"Returning cached data with {len(self.data_cache)} records")
         return self.data_cache
+
+    def get_performance_metrics(self) -> Dict[str, float]:
+        """Get current performance metrics"""
+        return self.performance_metrics
