@@ -5,6 +5,7 @@ from ai_analyzer import AIAnalyzer
 from visualizer import Visualizer
 from utils import format_time_difference, create_status_badge, show_ai_insights
 from database import init_db
+from train_schedule import TrainSchedule
 import time
 from datetime import datetime
 import logging
@@ -31,6 +32,8 @@ if 'ai_analyzer' not in st.session_state:
     st.session_state['ai_analyzer'] = AIAnalyzer()
 if 'visualizer' not in st.session_state:
     st.session_state['visualizer'] = Visualizer()
+if 'train_schedule' not in st.session_state:
+    st.session_state['train_schedule'] = TrainSchedule()
 if 'last_update' not in st.session_state:
     st.session_state['last_update'] = None
 
@@ -67,7 +70,12 @@ try:
         st.info(f"Found {len(numeric_trains)} trains with numeric names")
 
         # Add empty Sch_Time column
-        numeric_trains['Sch_Time'] = ''
+        numeric_trains['Sch_Time'] = numeric_trains.apply(
+            lambda row: st.session_state['train_schedule'].get_scheduled_time(
+                row['Train Name'], row['Station']
+            ) or '',
+            axis=1
+        )
 
         # Select only required columns including Time and Sch_Time
         selected_columns = ['Train Name', 'Station', 'Time', 'Sch_Time', 'Status']

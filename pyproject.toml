@@ -20,5 +20,6 @@ dependencies = [
     "sqlalchemy>=2.0.38",
     "streamlit>=1.42.0",
     "toml>=0.10.2",
+    "trafilatura>=2.0.0",
     "twilio>=9.4.5",
 ]
