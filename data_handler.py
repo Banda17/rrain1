@@ -19,8 +19,8 @@ class DataHandler:
         try:
             logger.debug(f"Attempting to read CSV from URL")
 
-            # Read CSV directly from URL with first row as headers
-            self.data = pd.read_csv(self.csv_url, header=0)
+            # Read CSV directly from URL
+            self.data = pd.read_csv(self.csv_url)
 
             # Clean the data
             for col in self.data.columns:
