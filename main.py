@@ -66,6 +66,7 @@ if 'visualizer' not in st.session_state:
 
 # Main title
 st.title("🚂 Train Tracking and Analysis System")
+st.markdown("Welcome to the Train Tracking System. Use the sidebar to navigate between different pages.")
 
 try:
     # Load data from CSV URL
