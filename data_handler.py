@@ -17,7 +17,13 @@ class DataHandler:
         self.last_update = None
         self.update_interval = 300  # 5 minutes in seconds
         self.db_session = get_database_connection()
-        self.csv_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRO2ZV-BOcL11_5NhlrOnn5Keph3-cVp7Tyr1t6RxsoDvxZjdOyDsmRkdvesJLbSnZwY8v3CATt1Of9/pub?gid=0&single=true&output=csv"
+        # Sample data for testing
+        self.sample_data = {
+            'train_id': ['T001', 'T002', 'T003'],
+            'station': ['Station A', 'Station B', 'Station C'],
+            'time_actual': ['2024-02-13 10:00:00', '2024-02-13 10:15:00', '2024-02-13 10:30:00'],
+            'time_scheduled': ['2024-02-13 09:55:00', '2024-02-13 10:15:00', '2024-02-13 10:25:00']
+        }
 
     def should_update(self) -> bool:
         """Check if data should be updated"""
@@ -29,24 +35,21 @@ class DataHandler:
     def _update_column_data(self):
         """Update column-wise data dictionary"""
         if self.data is None or self.data.empty:
+            logger.warning("No data available to update column data")
             return
 
         try:
-            # Get column headers from first row
-            headers = self.data.iloc[0]
-            data_rows = self.data.iloc[1:]
-
-            # Initialize column data dictionary
+            logger.debug("Starting column data update")
+            # Get all columns and their data
             self.column_data = {
-                str(header).strip(): {
-                    'values': data_rows[col].tolist(),
-                    'unique_values': data_rows[col].unique().tolist(),
-                    'count': len(data_rows[col]),
+                col: {
+                    'values': self.data[col].tolist(),
+                    'unique_values': self.data[col].unique().tolist(),
+                    'count': len(self.data[col]),
                     'last_updated': datetime.now().isoformat()
                 }
-                for col, header in enumerate(headers)
+                for col in self.data.columns
             }
-
             logger.debug(f"Updated column data with {len(self.column_data)} columns")
         except Exception as e:
             logger.error(f"Error updating column data: {str(e)}")
@@ -60,10 +63,9 @@ class DataHandler:
                 self.data = pd.DataFrame.from_dict(self.data_cache)
                 return True, "Using cached data"
 
-            logger.debug("Attempting to read CSV from URL")
-
-            # Read CSV directly from URL
-            self.data = pd.read_csv(self.csv_url)
+            logger.debug("Loading sample data for testing")
+            # Use sample data for now
+            self.data = pd.DataFrame(self.sample_data)
 
             # Clean the data
             for col in self.data.columns:
@@ -77,9 +79,10 @@ class DataHandler:
             # Process and store data in database
             self._store_data_in_db()
 
-            return True, "Data loaded successfully from CSV URL"
+            logger.info("Successfully loaded and processed data")
+            return True, "Data loaded successfully"
         except Exception as e:
-            error_msg = f"Error loading data from CSV URL: {str(e)}"
+            error_msg = f"Error loading data: {str(e)}"
             logger.error(error_msg)
             return False, error_msg
 
@@ -108,27 +111,34 @@ class DataHandler:
     def _store_data_in_db(self):
         """Store the loaded data in the database"""
         if self.data is None or self.data.empty:
-            raise ValueError("No data available to store")
+            logger.warning("No data available to store in database")
+            return
 
-        for _, row in self.data.iterrows():
-            # Convert time columns to datetime if they're not already
-            time_actual = pd.to_datetime(row['time_actual']) if 'time_actual' in row else datetime.now()
-            time_scheduled = pd.to_datetime(row['time_scheduled']) if 'time_scheduled' in row else datetime.now()
+        try:
+            for _, row in self.data.iterrows():
+                # Convert time columns to datetime
+                time_actual = pd.to_datetime(row['time_actual'])
+                time_scheduled = pd.to_datetime(row['time_scheduled'])
 
-            # Calculate delay and status
-            status, delay = self.get_timing_status(time_actual, time_scheduled)
+                # Calculate delay and status
+                status, delay = self.get_timing_status(time_actual, time_scheduled)
 
-            train_detail = TrainDetails(
-                train_id=str(row.get('train_id', 'Unknown')),
-                station=str(row.get('station', 'Unknown')),
-                time_actual=time_actual,
-                time_scheduled=time_scheduled,
-                delay=delay,
-                status=status
-            )
-            self.db_session.add(train_detail)
+                train_detail = TrainDetails(
+                    train_id=str(row['train_id']),
+                    station=str(row['station']),
+                    time_actual=time_actual,
+                    time_scheduled=time_scheduled,
+                    delay=delay,
+                    status=status
+                )
+                self.db_session.add(train_detail)
 
-        self.db_session.commit()
+            self.db_session.commit()
+            logger.info("Successfully stored data in database")
+        except Exception as e:
+            logger.error(f"Error storing data in database: {str(e)}")
+            self.db_session.rollback()
+            raise
 
     def get_timing_status(self, actual_time: datetime, scheduled_time: datetime) -> Tuple[str, int]:
         """Calculate if train is early, late, or on time"""
@@ -141,25 +151,31 @@ class DataHandler:
                 return "LATE ⚠️", diff_minutes
             else:
                 return "ON TIME ✅", diff_minutes
-        except Exception:
+        except Exception as e:
+            logger.error(f"Error calculating timing status: {str(e)}")
             return "UNKNOWN ❓", 0
 
     def get_train_status_table(self) -> pd.DataFrame:
         """Get status table from database"""
-        query = self.db_session.query(TrainDetails).order_by(TrainDetails.time_actual)
-        records = query.all()
+        try:
+            query = self.db_session.query(TrainDetails).order_by(TrainDetails.time_actual)
+            records = query.all()
 
-        if not records:
+            if not records:
+                logger.warning("No records found in database")
+                return pd.DataFrame()
+
+            return pd.DataFrame([{
+                'train_id': record.train_id,
+                'station': record.station,
+                'time_actual': record.time_actual,
+                'time_scheduled': record.time_scheduled,
+                'status': record.status,
+                'delay': record.delay
+            } for record in records])
+        except Exception as e:
+            logger.error(f"Error retrieving train status table: {str(e)}")
             return pd.DataFrame()
-
-        return pd.DataFrame([{
-            'train_id': record.train_id,
-            'station': record.station,
-            'time_actual': record.time_actual,
-            'time_scheduled': record.time_scheduled,
-            'status': record.status,
-            'delay': record.delay
-        } for record in records])
 
     def get_cached_data(self) -> Dict:
         """Get the cached data dictionary"""
