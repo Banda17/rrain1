@@ -17,12 +17,13 @@ class TrainSchedule:
                 self.available_stations = list(self.schedule_data.keys())
                 logger.info(f"Available stations in schedule: {self.available_stations}")
 
-                # Create station code mapping (you may need to update this based on your data)
+                # Create station code mapping
                 self.station_mapping = {
-                    'CCT': 'VNEC',  # Example mapping
+                    'CCT': 'VNEC',  # Map CCT to VNEC
                     'CSMT': 'VNEC',
                     'DR': 'MBD',
-                    'BSR': 'GWM'
+                    'BSR': 'GWM',
+                    'BVI': 'PAVP'
                 }
                 logger.info(f"Initialized station mapping: {self.station_mapping}")
         except Exception as e:
@@ -64,21 +65,17 @@ class TrainSchedule:
             station_data = self.schedule_data[station_code]
             logger.debug(f"Found station data for {station_code}")
 
-            # Log available times for debugging
+            # First try to get arrival time
             arr_times = station_data.get("Arr", {}).get("times", {})
-            dep_times = station_data.get("Dep", {}).get("times", {})
-            logger.debug(f"First few arrival times: {list(arr_times.keys())[:5]}")
-            logger.debug(f"First few departure times: {list(dep_times.keys())[:5]}")
+            if train_number in arr_times and arr_times[train_number].strip():
+                logger.debug(f"Found arrival time for train {train_number}: {arr_times[train_number]}")
+                return arr_times[train_number]
 
-            # Check both arrival and departure times
-            for direction in ["Arr", "Dep"]:
-                if direction in station_data:
-                    times = station_data[direction].get("times", {})
-                    if train_number in times:
-                        time = times[train_number]
-                        logger.debug(f"Found {direction} time for train {train_number}: {time}")
-                        if time and time.strip():  # Only return if time is not empty
-                            return time  # Return just the time
+            # If no arrival time, try departure time
+            dep_times = station_data.get("Dep", {}).get("times", {})
+            if train_number in dep_times and dep_times[train_number].strip():
+                logger.debug(f"Found departure time for train {train_number}: {dep_times[train_number]}")
+                return dep_times[train_number]
 
             logger.debug(f"No schedule found for train {train_number} at station {station_code}")
             return None
