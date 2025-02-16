@@ -25,8 +25,10 @@ class TrainScheduleTree:
             else:
                 self._insert_recursive(self.root, train_number, schedules)
             self._size += 1
+            logger.debug(f"Inserted train {train_number} into tree")
         except Exception as e:
             logger.error(f"Error inserting train {train_number}: {str(e)}")
+            raise
 
     def _insert_recursive(self, node: TrainNode, train_number: str, schedules: Dict):
         """Recursively insert a node into the binary tree"""
@@ -41,8 +43,53 @@ class TrainScheduleTree:
                     node.right = TrainNode(train_number, schedules)
                 else:
                     self._insert_recursive(node.right, train_number, schedules)
-        except ValueError:
-            logger.error(f"Invalid train number format: {train_number}")
+        except ValueError as e:
+            logger.error(f"Invalid train number format: {train_number} - {str(e)}")
+            raise
+
+    @staticmethod
+    def build_from_json(json_file: str) -> 'TrainScheduleTree':
+        """Build train schedule tree from JSON file"""
+        tree = TrainScheduleTree()
+        try:
+            logger.info(f"Loading train schedules from {json_file}")
+            with open(json_file, 'r') as f:
+                data = json.load(f)
+                logger.debug("Successfully parsed JSON file")
+
+            # Process each station's data
+            train_schedules: Dict = {}
+            for station, station_data in data.items():
+                if not isinstance(station_data, dict):
+                    logger.warning(f"Invalid station data format for {station}")
+                    continue
+
+                arr_times = station_data.get('Arr', {}).get('times', {})
+                dep_times = station_data.get('Dep', {}).get('times', {})
+
+                # Combine arrival and departure times for each train
+                for train_number in set(list(arr_times.keys()) + list(dep_times.keys())):
+                    if train_number and train_number.strip().isdigit():
+                        if train_number not in train_schedules:
+                            train_schedules[train_number] = {}
+                        train_schedules[train_number][station] = {
+                            'arrival': arr_times.get(train_number, ''),
+                            'departure': dep_times.get(train_number, '')
+                        }
+
+            # Insert each train schedule into the tree
+            for train_number, schedules in train_schedules.items():
+                tree.insert(train_number, schedules)
+
+            logger.info(f"Built train schedule tree with {tree._size} trains")
+            return tree
+
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON parsing error in {json_file}: {str(e)}")
+            raise
+        except Exception as e:
+            logger.error(f"Error building train schedule tree: {str(e)}")
+            raise
 
     def find(self, train_number: str) -> Optional[Dict]:
         """Find train schedules by train number"""
@@ -79,42 +126,3 @@ class TrainScheduleTree:
                 'right': build_structure(node.right)
             }
         return build_structure(self.root) or {}
-
-    @staticmethod
-    def build_from_json(json_file: str) -> 'TrainScheduleTree':
-        """Build train schedule tree from JSON file"""
-        tree = TrainScheduleTree()
-        try:
-            with open(json_file, 'r') as f:
-                data = json.load(f)
-
-            # Process each station's data
-            train_schedules: Dict = {}
-            for station, station_data in data.items():
-                # Get arrival and departure times
-                arr_times = station_data.get('Arr', {}).get('times', {})
-                dep_times = station_data.get('Dep', {}).get('times', {})
-
-                # Combine arrival and departure times for each train
-                for train_number in set(list(arr_times.keys()) + list(dep_times.keys())):
-                    if train_number and train_number.strip().isdigit():
-                        if train_number not in train_schedules:
-                            train_schedules[train_number] = {}
-                        train_schedules[train_number][station] = {
-                            'arrival': arr_times.get(train_number, ''),
-                            'departure': dep_times.get(train_number, '')
-                        }
-
-            # Insert each train schedule into the tree
-            for train_number, schedules in train_schedules.items():
-                tree.insert(train_number, schedules)
-
-            logger.info(f"Built train schedule tree with {tree._size} trains")
-            return tree
-
-        except json.JSONDecodeError as e:
-            logger.error(f"JSON parsing error in {json_file}: {str(e)}")
-            raise
-        except Exception as e:
-            logger.error(f"Error building train schedule tree: {str(e)}")
-            raise
