@@ -78,7 +78,7 @@ class TrainSchedule:
                         time = times[train_number]
                         logger.debug(f"Found {direction} time for train {train_number}: {time}")
                         if time and time.strip():  # Only return if time is not empty
-                            return time  # Return just the time without direction
+                            return time  # Return just the time
 
             logger.debug(f"No schedule found for train {train_number} at station {station_code}")
             return None

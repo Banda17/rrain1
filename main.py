@@ -71,7 +71,7 @@ try:
 
         # Create new DataFrame with only required data
         columns_needed = ['Train Name', 'Station', 'Time', 'Status']
-        filtered_df = pd.DataFrame(df.loc[numeric_mask, columns_needed])
+        filtered_df = df.loc[numeric_mask, columns_needed].copy()  # Create a copy to avoid SettingWithCopyWarning
         logger.debug(f"Filtered DataFrame shape: {filtered_df.shape}")
 
         # Add scheduled time column
