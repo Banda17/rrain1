@@ -133,19 +133,7 @@ with col2:
     try:
         # Load and display the system map
         map_image = Image.open('Vijayawada_Division_System_map_page-0001 (2).jpg')
-        st.image(map_image, use_column_width=True, caption="Vijayawada Division System Map")
-
-        # Add station overlay information
-        st.markdown("### Major Stations")
-        for station, code in [
-            ("Secunderabad", "VNEC"),
-            ("Gala", "GALA"),
-            ("Malakpet", "MBD"),
-            ("Gandhigram", "GWM"),
-            ("Pavalavagu", "PAVP"),
-            ("Vijayawada", "BZA")
-        ]:
-            st.markdown(f"• {station} ({code})")
+        st.image(map_image, use_container_width=True, caption="Vijayawada Division System Map")
 
     except Exception as e:
         logger.error(f"Error loading map: {str(e)}")
