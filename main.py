@@ -10,6 +10,7 @@ from train_schedule import TrainSchedule
 from datetime import datetime
 import logging
 from PIL import Image
+import numpy as np
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -37,6 +38,10 @@ if 'train_schedule' not in st.session_state:
     st.session_state['train_schedule'] = TrainSchedule()
 if 'last_update' not in st.session_state:
     st.session_state['last_update'] = None
+if 'selected_train' not in st.session_state:
+    st.session_state['selected_train'] = None
+if 'zoom_level' not in st.session_state:
+    st.session_state['zoom_level'] = 1.0
 
 # Station coordinates (normalized to image coordinates)
 STATION_LOCATIONS = {
@@ -71,33 +76,25 @@ with col1:
         success, status_table, cached_data, message = load_and_process_data()
 
         if success and cached_data is not None and not cached_data.empty:
-            # Log the columns for debugging
-            logger.debug(f"DataFrame columns: {cached_data.columns}")
-
             # Initialize DataFrame with first row as header
             df = pd.DataFrame(cached_data)
             df.columns = df.iloc[0]
             df = df.iloc[1:].reset_index(drop=True)
-            logger.debug(f"Initial DataFrame shape: {df.shape}")
 
             # Create mask for numeric train names
             numeric_mask = df['Train Name'].str.match(r'^\d.*', na=False)
-            logger.debug(f"Number of trains with numeric names: {numeric_mask.sum()}")
 
             # Create new DataFrame with only required data
             columns_needed = ['Train Name', 'Station', 'Time', 'Status']
             filtered_df = df.loc[numeric_mask, columns_needed].copy()
-            logger.debug(f"Filtered DataFrame shape: {filtered_df.shape}")
 
             # Add scheduled time column
             def get_scheduled_time_with_logging(row):
                 train_name = str(row['Train Name'])
                 station = str(row['Station'])
-                logger.debug(f"Getting schedule for train {train_name} at station {station}")
                 scheduled_time = st.session_state['train_schedule'].get_scheduled_time(
                     train_name, station
                 )
-                logger.debug(f"Got scheduled time: {scheduled_time}")
                 return scheduled_time if scheduled_time else 'Not Available'
 
             # Add Sch_Time column
@@ -113,12 +110,22 @@ with col1:
             # Show filtering info
             st.info(f"Found {len(filtered_df)} trains with numeric names")
 
-            # Display the filtered data
-            st.dataframe(
+            # Make the dataframe interactive
+            selected_row = st.data_editor(
                 filtered_df,
                 use_container_width=True,
-                height=400
+                height=400,
+                key="train_selector"
             )
+
+            # Update selected train in session state when a row is clicked
+            if len(selected_row) > 0:
+                selected_index = selected_row.index[0]
+                st.session_state['selected_train'] = {
+                    'train': selected_row.iloc[selected_index]['Train Name'],
+                    'station': selected_row.iloc[selected_index]['Station']
+                }
+
         else:
             st.error(f"Error loading data: {message}")
 
@@ -131,9 +138,45 @@ with col2:
     st.title("🗺️ Division Map")
 
     try:
-        # Load and display the system map
+        # Add zoom control
+        zoom_level = st.slider("Zoom Level", min_value=1.0, max_value=3.0, value=st.session_state['zoom_level'], step=0.1)
+        st.session_state['zoom_level'] = zoom_level
+
+        # Load the map image
         map_image = Image.open('Vijayawada_Division_System_map_page-0001 (2).jpg')
-        st.image(map_image, use_container_width=True, caption="Vijayawada Division System Map")
+
+        # Create a copy of the image for modification
+        display_image = map_image.copy()
+
+        # If a train is selected, highlight its station
+        if st.session_state['selected_train']:
+            station_code = st.session_state['selected_train']['station']
+            if station_code in STATION_LOCATIONS:
+                # Get image dimensions
+                width, height = display_image.size
+
+                # Calculate station position
+                station_pos = STATION_LOCATIONS[station_code]
+                x = int(station_pos['x'] * width)
+                y = int(station_pos['y'] * height)
+
+                # Draw highlight circle
+                from PIL import ImageDraw
+                draw = ImageDraw.Draw(display_image)
+                circle_radius = 20
+                draw.ellipse([x-circle_radius, y-circle_radius, x+circle_radius, y+circle_radius], 
+                           outline='red', width=3)
+
+                # Add station label
+                st.caption(f"Currently showing: {station_code}")
+
+        # Apply zoom
+        if zoom_level != 1.0:
+            new_size = tuple(int(dim * zoom_level) for dim in display_image.size)
+            display_image = display_image.resize(new_size, Image.Resampling.LANCZOS)
+
+        # Display the image
+        st.image(display_image, use_container_width=True, caption="Vijayawada Division System Map")
 
     except Exception as e:
         logger.error(f"Error loading map: {str(e)}")
