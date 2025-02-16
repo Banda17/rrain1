@@ -55,15 +55,10 @@ class DataHandler:
         try:
             @st.cache_data(ttl=300, show_spinner=False)
             def fetch_data(url):
-                # Define expected column names
-                columns = ['Train Name', 'Station', 'Time', 'Status', 'Platform', 'Remarks']
-                df = pd.read_csv(url, names=columns, skiprows=1)  # Skip header row and use our column names
-                return df
+                return pd.read_csv(url)
 
             df = fetch_data(self.spreadsheet_url)
             self.performance_metrics['load_time'] = time.time() - start_time
-            logger.debug(f"Loaded DataFrame with columns: {df.columns.tolist()}")
-            logger.debug(f"First few rows of data:\n{df.head()}")
             return df
         except Exception as e:
             logger.error(f"Error fetching CSV data: {str(e)}")
@@ -87,11 +82,6 @@ class DataHandler:
             df['Time'] = pd.to_datetime(df['Time'], format='%Y-%m-%d %H:%M:%S', errors='coerce')
 
             self.performance_metrics['process_time'] = time.time() - start_time
-
-            # Log the processed data structure
-            logger.debug(f"Processed DataFrame columns: {df.columns.tolist()}")
-            logger.debug(f"Processed DataFrame head:\n{df.head()}")
-
             return df
         except Exception as e:
             logger.error(f"Error processing data: {str(e)}")
