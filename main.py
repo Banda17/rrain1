@@ -1,12 +1,12 @@
 import streamlit as st
 import pandas as pd
+import time
 from data_handler import DataHandler
 from ai_analyzer import AIAnalyzer
 from visualizer import Visualizer
 from utils import format_time_difference, create_status_badge, show_ai_insights
 from database import init_db
 from train_schedule import TrainSchedule
-import time
 from datetime import datetime
 import logging
 
@@ -59,20 +59,25 @@ try:
         # Log the columns for debugging
         logger.debug(f"DataFrame columns: {cached_data.columns}")
 
-        # Reset the index and use first row as header
-        cached_data.columns = cached_data.iloc[0]
-        cached_data = cached_data.iloc[1:].reset_index(drop=True)
+        # Initialize DataFrame with first row as header
+        df = pd.DataFrame(cached_data)
+        df.columns = df.iloc[0]
+        df = df.iloc[1:].reset_index(drop=True)
+        logger.debug(f"Initial DataFrame shape: {df.shape}")
 
-        # Filter trains that start with numbers
-        numeric_trains = cached_data[cached_data['Train Name'].str.match(r'^\d.*', na=False)]
+        # Create mask for numeric train names
+        numeric_mask = df['Train Name'].str.match(r'^\d.*', na=False)
+        logger.debug(f"Number of trains with numeric names: {numeric_mask.sum()}")
 
-        # Show filtering info
-        st.info(f"Found {len(numeric_trains)} trains with numeric names")
+        # Create new DataFrame with only required data
+        columns_needed = ['Train Name', 'Station', 'Time', 'Status']
+        filtered_df = pd.DataFrame(df.loc[numeric_mask, columns_needed])
+        logger.debug(f"Filtered DataFrame shape: {filtered_df.shape}")
 
-        # Add Sch_Time column with debug logging
+        # Add scheduled time column
         def get_scheduled_time_with_logging(row):
-            train_name = row['Train Name']
-            station = row['Station']
+            train_name = str(row['Train Name'])
+            station = str(row['Station'])
             logger.debug(f"Getting schedule for train {train_name} at station {station}")
             scheduled_time = st.session_state['train_schedule'].get_scheduled_time(
                 train_name, station
@@ -80,18 +85,18 @@ try:
             logger.debug(f"Got scheduled time: {scheduled_time}")
             return scheduled_time or ''
 
-        numeric_trains['Sch_Time'] = numeric_trains.apply(
+        # Add Sch_Time column
+        filtered_df.loc[:, 'Sch_Time'] = filtered_df.apply(
             get_scheduled_time_with_logging,
             axis=1
         )
 
-        # Select only required columns including Time and Sch_Time
-        selected_columns = ['Train Name', 'Station', 'Time', 'Sch_Time', 'Status']
-        display_data = numeric_trains[selected_columns]
+        # Show filtering info
+        st.info(f"Found {len(filtered_df)} trains with numeric names")
 
         # Display the filtered data
         st.dataframe(
-            display_data,
+            filtered_df,
             use_container_width=True,
             height=400
         )
