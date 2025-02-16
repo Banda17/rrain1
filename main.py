@@ -10,6 +10,7 @@ from train_schedule import TrainSchedule
 from datetime import datetime
 import logging
 from map_viewer import MapViewer
+from streamlit_drawable_canvas import st_canvas
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -25,6 +26,26 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed"
 )
+
+# Custom CSS for background image
+st.markdown("""
+    <style>
+        .canvas {
+            position: relative;
+            width: 100%;
+            height: 600px;
+            background-image: url('Vijayawada_Division_System_map_page-0001 (2).jpg');
+            background-size: cover;
+        }
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+""", unsafe_allow_html=True)
 
 # Initialize session state
 if 'data_handler' not in st.session_state:
@@ -124,6 +145,36 @@ with col1:
 
 with col2:
     st.title("🗺️ Division Map")
+
+    # Interactive canvas with background image
+    st.markdown('<div class="canvas"><div class="overlay">', unsafe_allow_html=True)
+    map_container = st.empty()
+
+    # Add interactive canvas
+    canvas_result = st_canvas(
+        fill_color="rgba(255, 165, 0, 0.3)",
+        stroke_width=2,
+        stroke_color="#ff6347",
+        background_color="#eee",
+        update_streamlit=True,
+        height=600,
+        width=800,
+        drawing_mode="circle",
+        initial_drawing=None,
+        key="canvas"
+    )
+
+    # Process the canvas result and update the map accordingly
+    if canvas_result.json_data is not None:
+        objects = canvas_result.json_data["objects"]
+        for obj in objects:
+            if obj["type"] == "circle":
+                x, y = obj["left"], obj["top"]
+                # Process the coordinates and display them
+                st.write(f"Point added at coordinates: ({x}, {y})")
+
+    st.markdown('</div></div>', unsafe_allow_html=True)
+
     # Render the map using the MapViewer component
     st.session_state['map_viewer'].render(st.session_state.get('selected_train'))
 
