@@ -9,8 +9,7 @@ from database import init_db
 from train_schedule import TrainSchedule
 from datetime import datetime
 import logging
-from PIL import Image
-import numpy as np
+from map_viewer import MapViewer
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -42,16 +41,8 @@ if 'selected_train' not in st.session_state:
     st.session_state['selected_train'] = None
 if 'zoom_level' not in st.session_state:
     st.session_state['zoom_level'] = 1.0
-
-# Station coordinates (normalized to image coordinates)
-STATION_LOCATIONS = {
-    'VNEC': {'x': 0.7, 'y': 0.3},  # Secunderabad
-    'GALA': {'x': 0.65, 'y': 0.35}, # Gala
-    'MBD': {'x': 0.68, 'y': 0.32},  # Malakpet
-    'GWM': {'x': 0.72, 'y': 0.28},  # Gandhigram
-    'PAVP': {'x': 0.75, 'y': 0.25}, # Pavalavagu
-    'BZA': {'x': 0.5, 'y': 0.5},    # Vijayawada
-}
+if 'map_viewer' not in st.session_state:
+    st.session_state['map_viewer'] = MapViewer()
 
 @st.cache_data(ttl=300)
 def load_and_process_data():
@@ -136,51 +127,8 @@ with col1:
 
 with col2:
     st.title("🗺️ Division Map")
-
-    try:
-        # Add zoom control
-        zoom_level = st.slider("Zoom Level", min_value=1.0, max_value=3.0, value=st.session_state['zoom_level'], step=0.1)
-        st.session_state['zoom_level'] = zoom_level
-
-        # Load the map image
-        map_image = Image.open('Vijayawada_Division_System_map_page-0001 (2).jpg')
-
-        # Create a copy of the image for modification
-        display_image = map_image.copy()
-
-        # If a train is selected, highlight its station
-        if st.session_state['selected_train']:
-            station_code = st.session_state['selected_train']['station']
-            if station_code in STATION_LOCATIONS:
-                # Get image dimensions
-                width, height = display_image.size
-
-                # Calculate station position
-                station_pos = STATION_LOCATIONS[station_code]
-                x = int(station_pos['x'] * width)
-                y = int(station_pos['y'] * height)
-
-                # Draw highlight circle
-                from PIL import ImageDraw
-                draw = ImageDraw.Draw(display_image)
-                circle_radius = 20
-                draw.ellipse([x-circle_radius, y-circle_radius, x+circle_radius, y+circle_radius], 
-                           outline='red', width=3)
-
-                # Add station label
-                st.caption(f"Currently showing: {station_code}")
-
-        # Apply zoom
-        if zoom_level != 1.0:
-            new_size = tuple(int(dim * zoom_level) for dim in display_image.size)
-            display_image = display_image.resize(new_size, Image.Resampling.LANCZOS)
-
-        # Display the image
-        st.image(display_image, use_container_width=True, caption="Vijayawada Division System Map")
-
-    except Exception as e:
-        logger.error(f"Error loading map: {str(e)}")
-        st.error("Error loading division map")
+    # Render the map using the MapViewer component
+    st.session_state['map_viewer'].render(st.session_state.get('selected_train'))
 
 # Footer
 st.markdown("---")
