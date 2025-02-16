@@ -83,13 +83,17 @@ try:
                 train_name, station
             )
             logger.debug(f"Got scheduled time: {scheduled_time}")
-            return scheduled_time or ''
+            return scheduled_time if scheduled_time else 'Not Available'
 
         # Add Sch_Time column
-        filtered_df.loc[:, 'Sch_Time'] = filtered_df.apply(
+        filtered_df['Sch_Time'] = filtered_df.apply(
             get_scheduled_time_with_logging,
             axis=1
         )
+
+        # Reorder columns to show times side by side
+        column_order = ['Train Name', 'Station', 'Sch_Time', 'Time', 'Status']
+        filtered_df = filtered_df[column_order]
 
         # Show filtering info
         st.info(f"Found {len(filtered_df)} trains with numeric names")

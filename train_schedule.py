@@ -32,10 +32,7 @@ class TrainSchedule:
             self.station_mapping = {}
 
     def get_scheduled_time(self, train_name: str, station: str) -> Optional[str]:
-        """
-        Get scheduled time for a train at a station
-        Returns None if no schedule is found
-        """
+        """Get scheduled time for a train at a station."""
         try:
             logger.debug(f"Looking up schedule for train: {train_name} at station: {station}")
 
@@ -81,7 +78,7 @@ class TrainSchedule:
                         time = times[train_number]
                         logger.debug(f"Found {direction} time for train {train_number}: {time}")
                         if time and time.strip():  # Only return if time is not empty
-                            return f"{time} ({direction})"
+                            return time  # Return just the time without direction
 
             logger.debug(f"No schedule found for train {train_number} at station {station_code}")
             return None
