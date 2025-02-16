@@ -39,8 +39,6 @@ if 'last_update' not in st.session_state:
     st.session_state['last_update'] = None
 if 'selected_train' not in st.session_state:
     st.session_state['selected_train'] = None
-if 'zoom_level' not in st.session_state:
-    st.session_state['zoom_level'] = 1.0
 if 'map_viewer' not in st.session_state:
     st.session_state['map_viewer'] = MapViewer()
 
@@ -59,7 +57,6 @@ def load_and_process_data():
 col1, col2 = st.columns([3, 2])
 
 with col1:
-    # Main title
     st.title("🚂 Train List")
 
     try:

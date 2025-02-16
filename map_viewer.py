@@ -45,27 +45,8 @@ class MapViewer:
 
         return display_image
 
-    def apply_zoom(self, image: Image.Image, zoom_level: float) -> Image.Image:
-        """Apply zoom to the map image"""
-        if zoom_level == 1.0:
-            return image
-
-        width, height = image.size
-        new_size = (int(width * zoom_level), int(height * zoom_level))
-        return image.resize(new_size, Image.Resampling.LANCZOS)
-
     def render(self, selected_train: Optional[Dict] = None):
         """Render the map with all features"""
-        # Add zoom control
-        zoom_level = st.slider(
-            "Zoom Level",
-            min_value=1.0,
-            max_value=3.0,
-            value=st.session_state.get('zoom_level', 1.0),
-            step=0.1
-        )
-        st.session_state['zoom_level'] = zoom_level
-
         # Load and process map
         base_map = self.load_map()
         if base_map is None:
@@ -76,9 +57,6 @@ class MapViewer:
         if selected_train and 'station' in selected_train:
             display_image = self.highlight_station(display_image, selected_train['station'])
             st.caption(f"Currently showing: {selected_train['station']}")
-
-        # Apply zoom
-        display_image = self.apply_zoom(display_image, zoom_level)
 
         # Display the map
         st.image(
