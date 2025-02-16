@@ -244,28 +244,3 @@ class DataHandler:
     def get_performance_metrics(self) -> Dict[str, float]:
         """Get current performance metrics"""
         return self.performance_metrics
-
-    def get_station_data(self, station_code: str) -> pd.DataFrame:
-        """Get all trains scheduled at a specific station"""
-        try:
-            if self.data is None or self.data.empty:
-                logger.warning(f"No data available for station {station_code}")
-                return pd.DataFrame()
-
-            # Filter data for the specified station
-            station_data = self.data[self.data['Station'].str.contains(station_code, case=False, na=False)]
-
-            if station_data.empty:
-                logger.debug(f"No trains found for station {station_code}")
-                return pd.DataFrame()
-
-            # Format the data for display
-            result = station_data[['Train Name', 'Time', 'Status']].copy()
-            result = result.sort_values('Time')
-
-            logger.debug(f"Found {len(result)} trains for station {station_code}")
-            return result
-
-        except Exception as e:
-            logger.error(f"Error getting station data for {station_code}: {str(e)}")
-            return pd.DataFrame()
