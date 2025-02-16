@@ -18,7 +18,6 @@ dependencies = [
     "psycopg2-binary>=2.9.10",
     "scikit-learn>=1.6.1",
     "sqlalchemy>=2.0.38",
-    "streamlit-drawable-canvas>=0.9.3",
     "streamlit>=1.42.0",
     "toml>=0.10.2",
     "trafilatura>=2.0.0",
