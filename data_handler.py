@@ -55,31 +55,18 @@ class DataHandler:
         try:
             @st.cache_data(ttl=300, show_spinner=False)
             def fetch_data(url):
-                # First load raw data to inspect structure
-                raw_df = pd.read_csv(url)
-                logger.debug(f"Raw CSV data shape: {raw_df.shape}")
-                logger.debug(f"Raw CSV columns: {raw_df.columns.tolist()}")
-                logger.debug(f"First few rows of raw data:\n{raw_df.head()}")
-
-                # Clean and rename columns
-                df = raw_df.copy()
-                df.columns = ['Train Name', 'Station', 'Time', 'Status', 'Platform', 'Remarks']
-
-                # Clean up the data
-                df = df.dropna(how='all')  # Remove completely empty rows
-                df = df.fillna('')  # Replace remaining NaN with empty string
-
-                logger.debug(f"Processed DataFrame shape: {df.shape}")
-                logger.debug(f"Processed columns: {df.columns.tolist()}")
-                logger.debug(f"First few rows after processing:\n{df.head()}")
-
+                # Define expected column names
+                columns = ['Train Name', 'Station', 'Time', 'Status', 'Platform', 'Remarks']
+                df = pd.read_csv(url, names=columns, skiprows=1)  # Skip header row and use our column names
                 return df
 
             df = fetch_data(self.spreadsheet_url)
             self.performance_metrics['load_time'] = time.time() - start_time
+            logger.debug(f"Loaded DataFrame with columns: {df.columns.tolist()}")
+            logger.debug(f"First few rows of data:\n{df.head()}")
             return df
         except Exception as e:
-            logger.error(f"Error fetching CSV data: {str(e)}", exc_info=True)
+            logger.error(f"Error fetching CSV data: {str(e)}")
             return pd.DataFrame()
 
     def _process_raw_data(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -89,24 +76,25 @@ class DataHandler:
 
         start_time = time.time()
         try:
-            # Process only required columns
+            # Process only required columns with optimized operations
             required_cols = ['Train Name', 'Station', 'Time', 'Status']
             df = df[required_cols].copy()
 
-            # Clean string data
+            # Vectorized string cleaning
             df = df.apply(lambda x: x.str.strip() if x.dtype == 'object' else x)
 
-            # Handle datetime conversion
+            # Efficient datetime conversion
             df['Time'] = pd.to_datetime(df['Time'], format='%Y-%m-%d %H:%M:%S', errors='coerce')
 
-            # Log processed data
-            logger.debug(f"Processed data shape: {df.shape}")
-            logger.debug(f"Sample processed data:\n{df.head()}")
-
             self.performance_metrics['process_time'] = time.time() - start_time
+
+            # Log the processed data structure
+            logger.debug(f"Processed DataFrame columns: {df.columns.tolist()}")
+            logger.debug(f"Processed DataFrame head:\n{df.head()}")
+
             return df
         except Exception as e:
-            logger.error(f"Error processing data: {str(e)}", exc_info=True)
+            logger.error(f"Error processing data: {str(e)}")
             return pd.DataFrame()
 
     def get_train_status_table(self) -> pd.DataFrame:
