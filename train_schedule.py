@@ -10,6 +10,7 @@ class TrainSchedule:
         """Initialize train schedule data structure"""
         try:
             self.schedule_tree = TrainScheduleTree.build_from_json('bhanu.json')
+            logger.info("Train schedule tree initialized successfully")
 
             # Create station code mapping
             self.station_mapping = {
@@ -19,7 +20,11 @@ class TrainSchedule:
                 'BSR': 'GWM',
                 'BVI': 'PAVP'
             }
-            logger.info("Train schedule initialized successfully")
+            logger.info(f"Station mapping initialized with {len(self.station_mapping)} entries")
+
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON parsing error in train schedule: {str(e)}")
+            raise
         except Exception as e:
             logger.error(f"Error initializing train schedule: {str(e)}")
             raise
@@ -32,30 +37,29 @@ class TrainSchedule:
             # Extract train number from train name using numeric part
             train_number = ''.join(filter(str.isdigit, train_name))
             if not train_number:
-                logger.debug(f"No train number found in train name: {train_name}")
+                logger.debug(f"No valid train number found in train name: {train_name}")
                 return None
 
-            # Extract station code from the full station name
+            # Extract and map station code
             station_parts = station.strip().split()
             original_station_code = station_parts[0] if station_parts else ""
-
-            # Map station code using the mapping dictionary
             station_code = self.station_mapping.get(original_station_code, original_station_code)
-            logger.debug(f"Original station code: {original_station_code}, Mapped to: {station_code}")
+
+            logger.debug(f"Mapped station code: {original_station_code} -> {station_code}")
 
             # Look up schedule in binary tree
             schedule = self.schedule_tree.find(train_number)
             if schedule and station_code in schedule:
                 station_schedule = schedule[station_code]
                 # Return arrival time if available, otherwise departure time
-                time = station_schedule['arrival'] or station_schedule['departure']
+                time = station_schedule.get('arrival', '') or station_schedule.get('departure', '')
                 if time and time.strip():
-                    logger.debug(f"Found time for train {train_number} at station {station_code}: {time}")
+                    logger.debug(f"Found schedule: Train {train_number} at {station_code} -> {time}")
                     return time
 
             logger.debug(f"No schedule found for train {train_number} at station {station_code}")
             return None
 
         except Exception as e:
-            logger.error(f"Error getting scheduled time for train {train_name} at station {station}: {str(e)}")
+            logger.error(f"Error getting schedule for train {train_name} at {station}: {str(e)}")
             return None
