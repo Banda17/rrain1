@@ -56,14 +56,10 @@ try:
     success, status_table, cached_data, message = load_and_process_data()
 
     if success and cached_data is not None and not cached_data.empty:
-        # Log the columns for debugging
-        logger.debug(f"DataFrame columns: {cached_data.columns}")
-
-        # Initialize DataFrame with first row as header
+        # Create DataFrame from cached data
         df = pd.DataFrame(cached_data)
-        df.columns = df.iloc[0]
-        df = df.iloc[1:].reset_index(drop=True)
         logger.debug(f"Initial DataFrame shape: {df.shape}")
+        logger.debug(f"DataFrame columns: {df.columns}")
 
         # Create mask for numeric train names
         numeric_mask = df['Train Name'].str.match(r'^\d.*', na=False)
@@ -71,7 +67,7 @@ try:
 
         # Create new DataFrame with only required data
         columns_needed = ['Train Name', 'Station', 'Time', 'Status']
-        filtered_df = pd.DataFrame(df.loc[numeric_mask, columns_needed])
+        filtered_df = df.loc[numeric_mask, columns_needed].copy()
         logger.debug(f"Filtered DataFrame shape: {filtered_df.shape}")
 
         # Add scheduled time column
