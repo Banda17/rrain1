@@ -21,18 +21,7 @@ class TrainSchedule:
                     logger.info(f"Sample train numbers: {list(sample_times.keys())[:5]}")
         except Exception as e:
             logger.error(f"Error loading schedule data: {str(e)}")
-            # Initialize with empty structure if file can't be loaded
-            self.schedule_data = {
-                "VNEC": {
-                    "Arr": {"times": {}},
-                    "Dep": {"times": {}}
-                }
-            }
-
-    def set_schedule_data(self, data: Dict):
-        """Set the schedule data"""
-        self.schedule_data = data
-        logger.info("Schedule data updated")
+            self.schedule_data = {}
 
     def get_scheduled_time(self, train_name: str, station: str) -> Optional[str]:
         """
@@ -51,7 +40,7 @@ class TrainSchedule:
             train_number = train_number_match.group()
             logger.debug(f"Extracted train number: {train_number}")
 
-            # Extract station code (e.g., VNEC) from the station name if needed
+            # Extract station code (e.g., VNEC) from the station name
             station_code = station.split()[0] if station else ""
             logger.debug(f"Station code: {station_code}")
 
@@ -60,13 +49,14 @@ class TrainSchedule:
                 logger.debug(f"Found station data for {station_code}")
 
                 # Check both arrival and departure times
-                for direction in ["Arr", "Dep"]:  
+                for direction in ["Arr", "Dep"]:
                     if direction in station_data:
                         times = station_data[direction].get("times", {})
                         if train_number in times:
                             time = times[train_number]
-                            logger.debug(f"Found schedule time for train {train_number}: {time}")
-                            return time if time else None  
+                            logger.debug(f"Found {direction} time for train {train_number}: {time}")
+                            if time:  # Only return if time is not empty
+                                return f"{time} ({direction})"
 
             logger.debug(f"No schedule found for train {train_number} at station {station_code}")
             return None
