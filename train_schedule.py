@@ -13,15 +13,23 @@ class TrainSchedule:
             with open('bhanu.json', 'r') as f:
                 self.schedule_data = json.load(f)
                 logger.info("Loaded schedule data from bhanu.json")
-                # Log a sample of available stations and train numbers
-                sample_station = next(iter(self.schedule_data))
-                if sample_station:
-                    sample_times = self.schedule_data[sample_station]["Arr"]["times"]
-                    logger.info(f"Sample station {sample_station} has {len(sample_times)} train schedules")
-                    logger.info(f"Sample train numbers: {list(sample_times.keys())[:5]}")
+                # Log all available stations
+                self.available_stations = list(self.schedule_data.keys())
+                logger.info(f"Available stations in schedule: {self.available_stations}")
+
+                # Create station code mapping (you may need to update this based on your data)
+                self.station_mapping = {
+                    'CCT': 'VNEC',  # Example mapping
+                    'CSMT': 'VNEC',
+                    'DR': 'MBD',
+                    'BSR': 'GWM'
+                }
+                logger.info(f"Initialized station mapping: {self.station_mapping}")
         except Exception as e:
             logger.error(f"Error loading schedule data: {str(e)}")
             self.schedule_data = {}
+            self.available_stations = []
+            self.station_mapping = {}
 
     def get_scheduled_time(self, train_name: str, station: str) -> Optional[str]:
         """
@@ -32,7 +40,7 @@ class TrainSchedule:
             logger.debug(f"Looking up schedule for train: {train_name} at station: {station}")
 
             # Extract train number from train name using regex
-            train_number_match = re.search(r'^\d+', train_name)
+            train_number_match = re.search(r'\d+', train_name)
             if not train_number_match:
                 logger.debug(f"No train number found in train name: {train_name}")
                 return None
@@ -40,26 +48,44 @@ class TrainSchedule:
             train_number = train_number_match.group()
             logger.debug(f"Extracted train number: {train_number}")
 
-            # Extract station code (e.g., VNEC) from the station name
-            station_code = station.split()[0] if station else ""
-            logger.debug(f"Station code: {station_code}")
+            # Extract station code from the full station name
+            station_parts = station.strip().split()
+            original_station_code = station_parts[0] if station_parts else ""
 
-            if station_code in self.schedule_data:
-                station_data = self.schedule_data[station_code]
-                logger.debug(f"Found station data for {station_code}")
+            # Map station code using the mapping dictionary
+            station_code = self.station_mapping.get(original_station_code, original_station_code)
+            logger.debug(f"Original station code: {original_station_code}, Mapped to: {station_code}")
 
-                # Check both arrival and departure times
-                for direction in ["Arr", "Dep"]:
-                    if direction in station_data:
-                        times = station_data[direction].get("times", {})
-                        if train_number in times:
-                            time = times[train_number]
-                            logger.debug(f"Found {direction} time for train {train_number}: {time}")
-                            if time:  # Only return if time is not empty
-                                return f"{time} ({direction})"
+            if not station_code:
+                logger.debug("No station code found")
+                return None
+
+            if station_code not in self.schedule_data:
+                logger.debug(f"Station code {station_code} not found in schedule data. Available stations: {self.available_stations}")
+                return None
+
+            station_data = self.schedule_data[station_code]
+            logger.debug(f"Found station data for {station_code}")
+
+            # Log available times for debugging
+            arr_times = station_data.get("Arr", {}).get("times", {})
+            dep_times = station_data.get("Dep", {}).get("times", {})
+            logger.debug(f"First few arrival times: {list(arr_times.keys())[:5]}")
+            logger.debug(f"First few departure times: {list(dep_times.keys())[:5]}")
+
+            # Check both arrival and departure times
+            for direction in ["Arr", "Dep"]:
+                if direction in station_data:
+                    times = station_data[direction].get("times", {})
+                    if train_number in times:
+                        time = times[train_number]
+                        logger.debug(f"Found {direction} time for train {train_number}: {time}")
+                        if time and time.strip():  # Only return if time is not empty
+                            return f"{time} ({direction})"
 
             logger.debug(f"No schedule found for train {train_number} at station {station_code}")
             return None
+
         except Exception as e:
-            logger.error(f"Error getting scheduled time for train {train_name}: {str(e)}")
+            logger.error(f"Error getting scheduled time for train {train_name} at station {station}: {str(e)}")
             return None
