@@ -57,11 +57,20 @@ def calculate_delay(actual_time, scheduled_time):
 def get_delay_color(delay):
     """Return background color based on delay"""
     if delay <= -5:  # Early
-        return "background-color: #c8e6c9"  # Light green
+        return ["background-color: #c8e6c9"] * 7  # Light green for all columns
     elif delay > 5:  # Late
-        return "background-color: #ffcdd2"  # Light red
+        return ["background-color: #ffcdd2"] * 7  # Light red for all columns
     else:  # On time
-        return "background-color: white"
+        return ["background-color: white"] * 7
+
+def format_delay(delay):
+    """Format delay with icon and color"""
+    if delay <= -5:
+        return f"⏰ {abs(delay)} mins early"
+    elif delay > 5:
+        return f"⚠️ {delay} mins late"
+    else:
+        return f"✅ On time ({delay} mins)"
 
 @st.cache_data(ttl=300)
 def load_and_process_data():
@@ -120,11 +129,14 @@ try:
             axis=1
         )
 
+        # Format delay text
+        filtered_df['Delay_Text'] = filtered_df['Delay'].apply(format_delay)
+
         # Add checkbox column
         filtered_df['Select'] = False
 
         # Reorder columns to show checkbox first
-        column_order = ['Select', 'Train Name', 'Station', 'Sch_Time', 'Time', 'Delay', 'Status']
+        column_order = ['Select', 'Train Name', 'Station', 'Sch_Time', 'Time', 'Delay_Text', 'Status']
         filtered_df = filtered_df[column_order]
 
         # Show filtering info
@@ -153,10 +165,9 @@ try:
                 "Actual Time",
                 help="Actual arrival/departure time"
             ),
-            "Delay": st.column_config.NumberColumn(
-                "Delay (mins)",
-                help="Delay in minutes (negative = early)",
-                format="%d min"
+            "Delay_Text": st.column_config.TextColumn(
+                "Delay Status",
+                help="Time difference between scheduled and actual arrival"
             ),
             "Status": st.column_config.TextColumn(
                 "Status",
@@ -172,10 +183,10 @@ try:
             key="train_selector",
             column_order=column_order,
             column_config=column_config,
-            disabled=["Train Name", "Station", "Sch_Time", "Time", "Delay", "Status"],
+            disabled=["Train Name", "Station", "Sch_Time", "Time", "Delay_Text", "Status"],
             hide_index=True,
-            # Apply conditional styling
-            style=filtered_df.apply(lambda x: [get_delay_color(x['Delay'])] * len(x))
+            # Apply conditional styling based on delay
+            style=filtered_df.apply(lambda x: get_delay_color(x['Delay']), axis=1)
         )
 
         # Handle train selection
@@ -191,6 +202,9 @@ try:
                 # Get the first selected train
                 first_selected = selected_trains.iloc[0]
 
+                # Get delay for the selected train
+                delay = calculate_delay(first_selected['Time'], first_selected['Sch_Time'])
+
                 # Create new selection
                 new_selection = {
                     'train': first_selected['Train Name'],
@@ -202,12 +216,15 @@ try:
                     st.session_state['selected_train'] = new_selection
                     st.session_state['previous_selection'] = new_selection
 
-                    # Display detailed info for selected train
-                    st.write({
+                    # Display detailed info for selected train with formatted delay
+                    st.write("**Selected Train Details:**")
+                    st.info({
+                        'Train Number': first_selected['Train Name'],
+                        'Station': first_selected['Station'],
                         'Scheduled Time': first_selected['Sch_Time'],
                         'Actual Time': first_selected['Time'],
-                        'Delay': f"{first_selected['Delay']} minutes",
-                        'Current Status': first_selected['Status']
+                        'Delay Status': format_delay(delay),
+                        'Status': first_selected['Status']
                     })
 
     else:
