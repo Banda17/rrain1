@@ -80,6 +80,10 @@ try:
         columns_needed = ['Train Name', 'Station', 'Time', 'Status']
         filtered_df = df.loc[numeric_mask, columns_needed].copy()
 
+        # Convert Time column to datetime and format to show only time
+        filtered_df['Time'] = pd.to_datetime(filtered_df['Time'])
+        filtered_df['Time_Display'] = filtered_df['Time'].dt.strftime('%H:%M')
+
         # Add scheduled time column
         def get_scheduled_time_with_logging(row):
             train_name = str(row['Train Name'])
@@ -87,7 +91,13 @@ try:
             scheduled_time = st.session_state['train_schedule'].get_scheduled_time(
                 train_name, station
             )
-            return scheduled_time if scheduled_time else 'Not Available'
+            # Format scheduled time to show only time part if available
+            if scheduled_time and scheduled_time.strip():
+                try:
+                    return datetime.strptime(scheduled_time, '%H:%M').strftime('%H:%M')
+                except ValueError:
+                    return scheduled_time
+            return 'Not Available'
 
         # Add Sch_Time column
         filtered_df['Sch_Time'] = filtered_df.apply(
@@ -98,16 +108,17 @@ try:
         # Add checkbox column
         filtered_df['Select'] = False
 
-        # Reorder columns to show checkbox first
-        column_order = ['Select', 'Train Name', 'Station', 'Sch_Time', 'Time', 'Status']
-        filtered_df = filtered_df[column_order]
+        # Reorder columns to show checkbox first, use Time_Display instead of Time
+        column_order = ['Select', 'Train Name', 'Station', 'Sch_Time', 'Time_Display', 'Status']
+        display_df = filtered_df[column_order].copy()
+        display_df = display_df.rename(columns={'Time_Display': 'Time'})
 
         # Show filtering info
-        st.info(f"Found {len(filtered_df)} trains with numeric names")
+        st.info(f"Found {len(display_df)} trains with numeric names")
 
         # Make the dataframe interactive
         edited_df = st.data_editor(
-            filtered_df,
+            display_df,
             use_container_width=True,
             height=400,
             key="train_selector",
@@ -118,6 +129,14 @@ try:
                     "Select",
                     help="Select to highlight on map",
                     default=False,
+                ),
+                "Time": st.column_config.TextColumn(
+                    "Time",
+                    help="Current time in 24-hour format"
+                ),
+                "Sch_Time": st.column_config.TextColumn(
+                    "Scheduled Time",
+                    help="Scheduled time in 24-hour format"
                 )
             }
         )
