@@ -98,21 +98,26 @@ with col1:
             # Show filtering info
             st.info(f"Found {len(filtered_df)} trains with numeric names")
 
-            # Make the dataframe interactive
-            selected_row = st.data_editor(
-                filtered_df,
-                use_container_width=True,
-                height=400,
-                key="train_selector"
-            )
+            # Create container for train list
+            train_container = st.container()
 
-            # Update selected train in session state when a row is clicked
-            if len(selected_row) > 0:
-                selected_index = selected_row.index[0]
-                st.session_state['selected_train'] = {
-                    'train': selected_row.iloc[selected_index]['Train Name'],
-                    'station': selected_row.iloc[selected_index]['Station']
-                }
+            # Add checkbox for each train
+            for index, row in filtered_df.iterrows():
+                train_id = f"{row['Train Name']}_{row['Station']}"
+                if train_container.checkbox(
+                    f"Train {row['Train Name']} at {row['Station']} - {row['Status']}",
+                    key=train_id
+                ):
+                    st.session_state['selected_train'] = {
+                        'train': row['Train Name'],
+                        'station': row['Station']
+                    }
+                    # Display detailed info when selected
+                    st.write({
+                        'Scheduled Time': row['Sch_Time'],
+                        'Actual Time': row['Time'],
+                        'Current Status': row['Status']
+                    })
 
         else:
             st.error(f"Error loading data: {message}")
