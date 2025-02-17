@@ -53,99 +53,96 @@ def load_and_process_data():
             return True, status_table, pd.DataFrame(cached_data), message
     return False, None, None, message
 
-# Create two columns for layout
-col1, col2 = st.columns([3, 2])
+# Map Section
+st.title("🗺️ Division Map")
+# Render the map using the MapViewer component
+st.session_state['map_viewer'].render(st.session_state.get('selected_train'))
 
-with col1:
-    st.title("🚂 Train List")
+# Train List Section
+st.title("🚂 Train List")
 
-    try:
-        # Load data with caching
-        success, status_table, cached_data, message = load_and_process_data()
+try:
+    # Load data with caching
+    success, status_table, cached_data, message = load_and_process_data()
 
-        if success and cached_data is not None and not cached_data.empty:
-            # Initialize DataFrame with first row as header
-            df = pd.DataFrame(cached_data)
-            df.columns = df.iloc[0]
-            df = df.iloc[1:].reset_index(drop=True)
+    if success and cached_data is not None and not cached_data.empty:
+        # Initialize DataFrame with first row as header
+        df = pd.DataFrame(cached_data)
+        df.columns = df.iloc[0]
+        df = df.iloc[1:].reset_index(drop=True)
 
-            # Create mask for numeric train names
-            numeric_mask = df['Train Name'].str.match(r'^\d.*', na=False)
+        # Create mask for numeric train names
+        numeric_mask = df['Train Name'].str.match(r'^\d.*', na=False)
 
-            # Create new DataFrame with only required data
-            columns_needed = ['Train Name', 'Station', 'Time', 'Status']
-            filtered_df = df.loc[numeric_mask, columns_needed].copy()
+        # Create new DataFrame with only required data
+        columns_needed = ['Train Name', 'Station', 'Time', 'Status']
+        filtered_df = df.loc[numeric_mask, columns_needed].copy()
 
-            # Add scheduled time column
-            def get_scheduled_time_with_logging(row):
-                train_name = str(row['Train Name'])
-                station = str(row['Station'])
-                scheduled_time = st.session_state['train_schedule'].get_scheduled_time(
-                    train_name, station
+        # Add scheduled time column
+        def get_scheduled_time_with_logging(row):
+            train_name = str(row['Train Name'])
+            station = str(row['Station'])
+            scheduled_time = st.session_state['train_schedule'].get_scheduled_time(
+                train_name, station
+            )
+            return scheduled_time if scheduled_time else 'Not Available'
+
+        # Add Sch_Time column
+        filtered_df['Sch_Time'] = filtered_df.apply(
+            get_scheduled_time_with_logging,
+            axis=1
+        )
+
+        # Add checkbox column
+        filtered_df['Select'] = False
+
+        # Reorder columns to show checkbox first
+        column_order = ['Select', 'Train Name', 'Station', 'Sch_Time', 'Time', 'Status']
+        filtered_df = filtered_df[column_order]
+
+        # Show filtering info
+        st.info(f"Found {len(filtered_df)} trains with numeric names")
+
+        # Make the dataframe interactive
+        selected_row = st.data_editor(
+            filtered_df,
+            use_container_width=True,
+            height=400,
+            key="train_selector",
+            column_order=column_order,
+            disabled=["Train Name", "Station", "Sch_Time", "Time", "Status"],
+            column_config={
+                "Select": st.column_config.CheckboxColumn(
+                    "Select",
+                    help="Select to highlight on map",
+                    default=False,
                 )
-                return scheduled_time if scheduled_time else 'Not Available'
+            }
+        )
 
-            # Add Sch_Time column
-            filtered_df['Sch_Time'] = filtered_df.apply(
-                get_scheduled_time_with_logging,
-                axis=1
-            )
-
-            # Add checkbox column
-            filtered_df['Select'] = False
-
-            # Reorder columns to show checkbox first
-            column_order = ['Select', 'Train Name', 'Station', 'Sch_Time', 'Time', 'Status']
-            filtered_df = filtered_df[column_order]
-
-            # Show filtering info
-            st.info(f"Found {len(filtered_df)} trains with numeric names")
-
-            # Make the dataframe interactive
-            selected_row = st.data_editor(
-                filtered_df,
-                use_container_width=True,
-                height=400,
-                key="train_selector",
-                column_order=column_order,
-                disabled=["Train Name", "Station", "Sch_Time", "Time", "Status"],
-                column_config={
-                    "Select": st.column_config.CheckboxColumn(
-                        "Select",
-                        help="Select to highlight on map",
-                        default=False,
-                    )
+        # Update selected train in session state when a checkbox is checked
+        if len(selected_row) > 0:
+            selected_trains = selected_row[selected_row['Select']]
+            if not selected_trains.empty:
+                selected_index = selected_trains.index[0]
+                st.session_state['selected_train'] = {
+                    'train': selected_trains.iloc[0]['Train Name'],
+                    'station': selected_trains.iloc[0]['Station']
                 }
-            )
+                # Display detailed info for selected train
+                st.write({
+                    'Scheduled Time': selected_trains.iloc[0]['Sch_Time'],
+                    'Actual Time': selected_trains.iloc[0]['Time'],
+                    'Current Status': selected_trains.iloc[0]['Status']
+                })
 
-            # Update selected train in session state when a checkbox is checked
-            if len(selected_row) > 0:
-                selected_trains = selected_row[selected_row['Select']]
-                if not selected_trains.empty:
-                    selected_index = selected_trains.index[0]
-                    st.session_state['selected_train'] = {
-                        'train': selected_trains.iloc[0]['Train Name'],
-                        'station': selected_trains.iloc[0]['Station']
-                    }
-                    # Display detailed info for selected train
-                    st.write({
-                        'Scheduled Time': selected_trains.iloc[0]['Sch_Time'],
-                        'Actual Time': selected_trains.iloc[0]['Time'],
-                        'Current Status': selected_trains.iloc[0]['Status']
-                    })
+    else:
+        st.error(f"Error loading data: {message}")
 
-        else:
-            st.error(f"Error loading data: {message}")
-
-    except Exception as e:
-        logger.error(f"Error occurred: {str(e)}", exc_info=True)
-        st.error(f"An error occurred: {str(e)}")
-        st.exception(e)
-
-with col2:
-    st.title("🗺️ Division Map")
-    # Render the map using the MapViewer component
-    st.session_state['map_viewer'].render(st.session_state.get('selected_train'))
+except Exception as e:
+    logger.error(f"Error occurred: {str(e)}", exc_info=True)
+    st.error(f"An error occurred: {str(e)}")
+    st.exception(e)
 
 # Footer
 st.markdown("---")
