@@ -21,19 +21,6 @@ class MapViewer:
         self.default_zoom = 1.5
         self.max_zoom = 4.0
 
-    def calculate_optimal_zoom(self, station_code: str) -> float:
-        """Calculate optimal zoom level for a selected station"""
-        if station_code not in self.station_locations:
-            return self.default_zoom
-
-        pos = self.station_locations[station_code]
-        dx = abs(pos['x'] - 0.5)
-        dy = abs(pos['y'] - 0.5)
-        distance = max(dx, dy)
-        zoom = min(self.max_zoom, max(2.0, 3.0 - distance * 2))
-
-        return zoom
-
     def load_map(self) -> Optional[Image.Image]:
         """Load and safely resize the base map image"""
         try:
@@ -59,8 +46,6 @@ class MapViewer:
         try:
             # Open image and ensure it's in RGBA mode
             gps_pin = Image.open(self.gps_pin_path).convert('RGBA')
-
-            # Resize maintaining transparency
             resized_pin = gps_pin.resize((size, size), Image.Resampling.LANCZOS)
             return resized_pin
 
@@ -121,30 +106,27 @@ class MapViewer:
         """Render the map with all features"""
         st.write("## Interactive Map Controls")
 
-        initial_zoom = self.default_zoom
-        if selected_train and selected_train.get('station') in self.station_locations:
-            initial_zoom = self.calculate_optimal_zoom(selected_train['station'])
+        zoom_level = st.slider(
+            "Zoom Level",
+            min_value=1.0,
+            max_value=self.max_zoom,
+            value=self.default_zoom,
+            step=0.1,
+            help="Drag to zoom in/out of the map"
+        )
 
-        col1, col2 = st.columns([2, 1])
+        show_coords = st.checkbox(
+            "Show Coordinates",
+            value=False,
+            help="Display station coordinates on the map"
+        )
 
-        with col1:
-            zoom_level = st.slider(
-                "Zoom Level",
-                min_value=1.0,
-                max_value=self.max_zoom,
-                value=initial_zoom,
-                step=0.1,
-                help="Drag to zoom in/out of the map"
-            )
+        # Cache the base map loading
+        @st.cache_data(ttl=3600)
+        def get_base_map():
+            return self.load_map()
 
-        with col2:
-            show_coords = st.checkbox(
-                "Show Coordinates",
-                value=False,
-                help="Display station coordinates on the map"
-            )
-
-        base_map = self.load_map()
+        base_map = get_base_map()
         if base_map is None:
             return
 
@@ -173,7 +155,7 @@ class MapViewer:
                 caption="Vijayawada Division System Map (Use slider to zoom)"
             )
 
-            if selected_train:
+            if selected_train and selected_train.get('station') in self.station_locations:
                 station = selected_train.get('station', '')
                 if station in self.station_locations:
                     with st.expander("🚂 Train Information", expanded=True):
@@ -182,6 +164,4 @@ class MapViewer:
                         - Train Number: {selected_train.get('train', '')}
                         - Station: {station}
                         - Position: {'(' + f"{self.station_locations[station]['x']:.2f}, {self.station_locations[station]['y']:.2f}" + ')' if show_coords else ''}
-
-                        Hover over the marker on the map to see the location!
                         """)
