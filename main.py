@@ -1,13 +1,13 @@
 import streamlit as st
 import pandas as pd
 import time
+from datetime import datetime, timedelta
 from data_handler import DataHandler
 from ai_analyzer import AIAnalyzer
 from visualizer import Visualizer
 from utils import format_time_difference, create_status_badge, show_ai_insights
 from database import init_db
 from train_schedule import TrainSchedule
-from datetime import datetime
 import logging
 from map_viewer import MapViewer
 
@@ -44,6 +44,33 @@ if 'map_viewer' not in st.session_state:
 if 'previous_selection' not in st.session_state:
     st.session_state['previous_selection'] = None
 
+def parse_time(time_str: str) -> datetime:
+    """Parse time string in HH:MM format to datetime object"""
+    try:
+        # Extract only the time part (HH:MM) from the string
+        time_part = time_str.split()[0] if time_str else ''
+        if not time_part:
+            return None
+        return datetime.strptime(time_part, '%H:%M')
+    except Exception as e:
+        logger.error(f"Error parsing time {time_str}: {str(e)}")
+        return None
+
+def calculate_time_difference(scheduled: str, actual: str) -> int:
+    """Calculate time difference in minutes between scheduled and actual times"""
+    try:
+        sch_time = parse_time(scheduled)
+        act_time = parse_time(actual)
+
+        if sch_time and act_time:
+            # Convert both times to same date for comparison
+            diff = (act_time - sch_time).total_seconds() / 60
+            return int(diff)
+        return None
+    except Exception as e:
+        logger.error(f"Error calculating time difference: {str(e)}")
+        return None
+
 @st.cache_data(ttl=300)
 def load_and_process_data():
     """Cache data loading and processing"""
@@ -57,7 +84,6 @@ def load_and_process_data():
 
 # Map Section
 st.title("🗺️ Division Map")
-# Render the map using the MapViewer component
 st.session_state['map_viewer'].render(st.session_state.get('selected_train'))
 
 # Train List Section
@@ -116,11 +142,17 @@ try:
             axis=1
         )
 
+        # Calculate time difference
+        filtered_df['Delay'] = filtered_df.apply(
+            lambda row: calculate_time_difference(row['Sch_Time'], row['Time_Display']), 
+            axis=1
+        )
+
         # Add checkbox column
         filtered_df['Select'] = False
 
         # Both Time columns will show HH:MM format
-        column_order = ['Select', 'Train Name', 'Station', 'Sch_Time', 'Time_Display', 'Time', 'Status']
+        column_order = ['Select', 'Train Name', 'Station', 'Sch_Time', 'Time_Display', 'Time', 'Status', 'Delay']
         display_df = filtered_df[column_order].copy()
         display_df['Time'] = display_df['Time'].apply(extract_time)  # Format Time column to show only HH:MM
         display_df = display_df.rename(columns={'Time_Display': 'Current Time'})
@@ -135,7 +167,7 @@ try:
             height=400,
             key="train_selector",
             column_order=column_order,
-            disabled=["Train Name", "Station", "Sch_Time", "Current Time", "Time", "Status"],
+            disabled=["Train Name", "Station", "Sch_Time", "Current Time", "Time", "Status", "Delay"],
             column_config={
                 "Select": st.column_config.CheckboxColumn(
                     "Select",
@@ -153,6 +185,11 @@ try:
                 "Sch_Time": st.column_config.TextColumn(
                     "Scheduled Time",
                     help="Scheduled time in 24-hour format"
+                ),
+                "Delay": st.column_config.NumberColumn(
+                    "Delay (mins)",
+                    help="Time difference between scheduled and actual time in minutes",
+                    format="%d"
                 )
             }
         )
@@ -185,7 +222,8 @@ try:
                     st.write({
                         'Scheduled Time': first_selected['Sch_Time'],
                         'Actual Time': first_selected['Current Time'],
-                        'Current Status': first_selected['Status']
+                        'Current Status': first_selected['Status'],
+                        'Delay': f"{first_selected['Delay']} minutes" if pd.notna(first_selected['Delay']) else 'N/A'
                     })
 
     else:
