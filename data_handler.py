@@ -55,37 +55,85 @@ class DataHandler:
         try:
             @st.cache_data(ttl=300, show_spinner=False)
             def fetch_data(url):
-                return pd.read_csv(url)
+                df = pd.read_csv(url)
+                # Ensure required columns exist
+                required_cols = ['Train Name', 'Station', 'Time', 'Status']
+
+                # If columns don't exist, try to map them from available columns
+                available_cols = df.columns.tolist()
+                if not all(col in available_cols for col in required_cols):
+                    # Map common variations of column names
+                    column_mappings = {
+                        'Train Name': ['Train_Name', 'TrainName', 'Train_ID', 'Train'],
+                        'Station': ['Station_Name', 'StationName', 'Stop'],
+                        'Time': ['Arrival_Time', 'Departure_Time', 'Schedule_Time'],
+                        'Status': ['Train_Status', 'CurrentStatus', 'State']
+                    }
+
+                    # Try to find matching columns
+                    for required_col, variants in column_mappings.items():
+                        for variant in variants:
+                            if variant in available_cols:
+                                df = df.rename(columns={variant: required_col})
+                                break
+
+                # Verify required columns exist after mapping
+                missing_cols = [col for col in required_cols if col not in df.columns]
+                if missing_cols:
+                    logger.error(f"Missing required columns after mapping: {missing_cols}")
+                    return pd.DataFrame(columns=required_cols)
+
+                return df[required_cols]
 
             df = fetch_data(self.spreadsheet_url)
             self.performance_metrics['load_time'] = time.time() - start_time
             return df
         except Exception as e:
             logger.error(f"Error fetching CSV data: {str(e)}")
-            return pd.DataFrame()
+            return pd.DataFrame(columns=['Train Name', 'Station', 'Time', 'Status'])
 
     def _process_raw_data(self, df: pd.DataFrame) -> pd.DataFrame:
         """Process raw data with optimized operations"""
         if df.empty:
+            logger.warning("Received empty DataFrame for processing")
             return df
 
         start_time = time.time()
         try:
             # Process only required columns with optimized operations
             required_cols = ['Train Name', 'Station', 'Time', 'Status']
-            df = df[required_cols].copy()
+            if not all(col in df.columns for col in required_cols):
+                logger.error(f"Missing required columns in DataFrame: {[col for col in required_cols if col not in df.columns]}")
+                return pd.DataFrame(columns=required_cols)
 
-            # Vectorized string cleaning
-            df = df.apply(lambda x: x.str.strip() if x.dtype == 'object' else x)
+            # Create a copy of the DataFrame with required columns
+            processed_df = df[required_cols].copy()
 
-            # Efficient datetime conversion
-            df['Time'] = pd.to_datetime(df['Time'], format='%Y-%m-%d %H:%M:%S', errors='coerce')
+            # Clean string columns
+            for col in processed_df.columns:
+                if processed_df[col].dtype == 'object':
+                    processed_df[col] = processed_df[col].fillna('Not Available')
+                    processed_df[col] = processed_df[col].astype(str).str.strip()
+
+            # Handle time column
+            processed_df['Time'] = pd.to_datetime(processed_df['Time'], 
+                                                format='%Y-%m-%d %H:%M:%S', 
+                                                errors='coerce')
+            processed_df['Time'] = processed_df['Time'].fillna(pd.NaT)
+
+            # Fill missing values
+            processed_df = processed_df.fillna({
+                'Train Name': 'Unknown',
+                'Station': 'Unknown',
+                'Status': 'Not Available'
+            })
 
             self.performance_metrics['process_time'] = time.time() - start_time
-            return df
+            return processed_df
+
         except Exception as e:
-            logger.error(f"Error processing data: {str(e)}")
-            return pd.DataFrame()
+            logger.error(f"Error processing data: {str(e)}", exc_info=True)
+            return pd.DataFrame(columns=required_cols)
 
     def get_train_status_table(self) -> pd.DataFrame:
         """Get status table from database with caching"""

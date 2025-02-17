@@ -10,6 +10,7 @@ from database import init_db
 from train_schedule import TrainSchedule
 import logging
 from map_viewer import MapViewer
+from typing import Optional
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -44,29 +45,37 @@ if 'selected_train_details' not in st.session_state:
 if 'map_viewer' not in st.session_state:
     st.session_state['map_viewer'] = MapViewer()
 
-def parse_time(time_str: str) -> datetime:
+def parse_time(time_str: str) -> Optional[datetime]:
     """Parse time string in HH:MM format to datetime object"""
     try:
+        logger.debug(f"Parsing time: {time_str}")
+        # Return None for "Not Available" or empty strings
+        if not time_str or time_str == "Not Available":
+            return None
+
         # Extract only the time part (HH:MM) from the string
         time_part = time_str.split()[0] if time_str else ''
         if not time_part:
             return None
+
+        # Parse the time string
         return datetime.strptime(time_part, '%H:%M')
     except Exception as e:
         logger.error(f"Error parsing time {time_str}: {str(e)}")
         return None
 
-def calculate_time_difference(scheduled: str, actual: str) -> int:
+def calculate_time_difference(scheduled: str, actual: str) -> Optional[int]:
     """Calculate time difference in minutes between scheduled and actual times"""
     try:
         sch_time = parse_time(scheduled)
         act_time = parse_time(actual)
 
-        if sch_time and act_time:
-            # Convert both times to same date for comparison
-            diff = (act_time - sch_time).total_seconds() / 60
-            return int(diff)
-        return None
+        if sch_time is None or act_time is None:
+            return None
+
+        # Convert both times to same date for comparison
+        diff = (act_time - sch_time).total_seconds() / 60
+        return int(diff)
     except Exception as e:
         logger.error(f"Error calculating time difference: {str(e)}")
         return None
@@ -145,12 +154,20 @@ try:
             axis=1
         )
 
-        # Format delay values with indicators
-        filtered_df['Delay'] = filtered_df['Delay'].apply(
-            lambda x: f"⚠️ +{x}" if pd.notna(x) and x > 5 else
-                     f"⏰ {x}" if pd.notna(x) and x < -5 else
-                     f"✅ {x}" if pd.notna(x) else "N/A"
-        )
+        def format_delay(delay: Optional[int]) -> str:
+            """Format delay value with color and emoji indicators"""
+            if delay is None:
+                return '<div style="background-color: #f5f5f5; padding: 4px; border-radius: 4px;">❓ N/A</div>'
+            elif delay > 5:
+                return f'<div style="background-color: #ffebee; padding: 4px; border-radius: 4px;">⚠️ Late (+{delay} mins)</div>'
+            elif delay < -5:
+                return f'<div style="background-color: #e8f5e9; padding: 4px; border-radius: 4px;">✅ Early ({delay} mins)</div>'
+            else:
+                return f'<div style="background-color: #e3f2fd; padding: 4px; border-radius: 4px;">🎯 On Time ({delay} mins)</div>'
+
+        # Update the delay column formatting
+        filtered_df['Delay'] = filtered_df['Delay'].apply(format_delay)
+
 
         # Add checkbox column
         filtered_df['Select'] = False
@@ -185,9 +202,11 @@ try:
                     "Scheduled Time",
                     help="Scheduled time in 24-hour format"
                 ),
-                "Delay": st.column_config.TextColumn(
-                    "Delay (mins)",
-                    help="Time difference between scheduled and actual time in minutes"
+                "Delay": st.column_config.Column(
+                    "Status",
+                    help="Train delay status with indicators",
+                    width="medium",
+                    required=True
                 )
             }
         )
@@ -228,12 +247,28 @@ try:
         # Display the selected train details if available
         if st.session_state['selected_train_details']:
             selected_details = st.session_state['selected_train_details']
-            st.markdown(f"<p>{selected_details['Delay']}</p>", unsafe_allow_html=True)
-            st.write({
-                'Scheduled Time': selected_details['Scheduled Time'],
-                'Actual Time': selected_details['Actual Time'],
-                'Current Status': selected_details['Current Status'],
-            })
+
+            # Format delay status with matching style
+            delay = selected_details['Delay']
+            delay_value = int(''.join(filter(str.isdigit, delay))) if any(c.isdigit() for c in delay) else 0
+
+            if delay_value > 5:
+                status_html = f'<div style="background-color: #ffebee; padding: 8px; border-radius: 4px; margin: 4px 0;">⚠️ Train is running late (+{delay_value} mins)</div>'
+            elif delay_value < -5:
+                status_html = f'<div style="background-color: #e8f5e9; padding: 8px; border-radius: 4px; margin: 4px 0;">✅ Train is early ({delay_value} mins)</div>'
+            else:
+                status_html = f'<div style="background-color: #e3f2fd; padding: 8px; border-radius: 4px; margin: 4px 0;">🎯 Train is on time ({delay_value} mins)</div>'
+
+            st.markdown(status_html, unsafe_allow_html=True)
+
+            # Display other details in a clean format
+            st.write("**Train Details:**")
+            details_md = f"""
+            - 🕒 Scheduled Time: {selected_details['Scheduled Time']}
+            - ⏰ Actual Time: {selected_details['Actual Time']}
+            - 📍 Current Status: {selected_details['Current Status']}
+            """
+            st.markdown(details_md)
 
     else:
         st.error(f"Error loading data: {message}")
