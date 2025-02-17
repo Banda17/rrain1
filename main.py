@@ -144,8 +144,15 @@ try:
 
         # Calculate time difference
         filtered_df['Delay'] = filtered_df.apply(
-            lambda row: calculate_time_difference(row['Sch_Time'], row['Time_Display']), 
+            lambda row: calculate_time_difference(row['Sch_Time'], row['Time_Display']),
             axis=1
+        )
+
+        # Format delay values with indicators
+        filtered_df['Delay'] = filtered_df['Delay'].apply(
+            lambda x: f"⚠️ +{x}" if pd.notna(x) and x > 5 else
+                     f"⏰ {x}" if pd.notna(x) and x < -5 else
+                     f"✅ {x}" if pd.notna(x) else "N/A"
         )
 
         # Add checkbox column
@@ -186,12 +193,9 @@ try:
                     "Scheduled Time",
                     help="Scheduled time in 24-hour format"
                 ),
-                "Delay": st.column_config.Column(
+                "Delay": st.column_config.TextColumn(
                     "Delay (mins)",
-                    help="Time difference between scheduled and actual time in minutes. Red indicates late, green indicates early.",
-                    format=lambda x: f"⚠️ +{x}" if pd.notna(x) and x > 5 else
-                                   f"⏰ {x}" if pd.notna(x) and x < -5 else
-                                   f"{x}" if pd.notna(x) else "N/A"
+                    help="Time difference between scheduled and actual time in minutes. Red indicates late, green indicates early."
                 )
             }
         )
@@ -221,11 +225,12 @@ try:
                     st.session_state['previous_selection'] = new_selection
 
                     # Display detailed info for selected train
+                    delay_text = first_selected['Delay'] 
+                    st.markdown(f"<p>{delay_text}</p>", unsafe_allow_html=True)
                     st.write({
                         'Scheduled Time': first_selected['Sch_Time'],
                         'Actual Time': first_selected['Current Time'],
                         'Current Status': first_selected['Status'],
-                        'Delay': f"{first_selected['Delay']} minutes" if pd.notna(first_selected['Delay']) else 'N/A'
                     })
 
     else:
