@@ -94,8 +94,11 @@ try:
             # Format scheduled time to show only time part if available
             if scheduled_time and scheduled_time.strip():
                 try:
-                    return datetime.strptime(scheduled_time, '%H:%M').strftime('%H:%M')
-                except ValueError:
+                    # Split the time string and take only the time part before the space
+                    time_part = scheduled_time.split()[0]
+                    return time_part
+                except Exception as e:
+                    logger.error(f"Error parsing scheduled time {scheduled_time}: {str(e)}")
                     return scheduled_time
             return 'Not Available'
 
