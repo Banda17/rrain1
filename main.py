@@ -47,15 +47,31 @@ if 'previous_selection' not in st.session_state:
 def calculate_delay(actual_time, scheduled_time):
     """Calculate delay between actual and scheduled time in minutes"""
     try:
-        actual = pd.to_datetime(actual_time)
-        scheduled = pd.to_datetime(scheduled_time)
+        # Get the current year
+        current_year = datetime.now().year
+
+        # Append the year to the time strings
+        actual_time_with_year = f"{actual_time} {current_year}"
+        scheduled_time_with_year = f"{scheduled_time} {current_year}"
+
+        # Define the format
+        time_format = '%H:%M %d-%m %Y'
+
+        # Parse the times
+        actual = pd.to_datetime(actual_time_with_year, format=time_format)
+        scheduled = pd.to_datetime(scheduled_time_with_year, format=time_format)
+
+        # Calculate the delay in minutes
         delay = int((actual - scheduled).total_seconds() / 60)
         return delay
-    except:
-        return 0
+    except Exception as e:
+        st.error(f"Error calculating delay: {e}")
+        return None
 
 def get_delay_color(delay):
     """Return background color based on delay"""
+    if delay is None:
+        return ["background-color: #e0e0e0"] * 7  # Gray for unknown delay
     if delay <= -5:  # Early
         return ["background-color: #c8e6c9"] * 7  # Light green for all columns
     elif delay > 5:  # Late
@@ -65,6 +81,8 @@ def get_delay_color(delay):
 
 def format_delay(delay):
     """Format delay with icon and color"""
+    if delay is None:
+        return "❓ Unknown Delay"
     if delay <= -5:
         return f"⏰ {abs(delay)} mins early"
     elif delay > 5:
@@ -123,14 +141,16 @@ try:
             axis=1
         )
 
-        # Calculate delay
+        # Calculate delay with enhanced error handling
         filtered_df['Delay'] = filtered_df.apply(
             lambda x: calculate_delay(x['Time'], x['Sch_Time']),
             axis=1
         )
 
-        # Format delay text
-        filtered_df['Delay_Text'] = filtered_df['Delay'].apply(format_delay)
+        # Format delay text, handling None values
+        filtered_df['Delay_Text'] = filtered_df['Delay'].apply(
+            lambda d: format_delay(d) if d is not None else "❓ Unknown Delay"
+        )
 
         # Add checkbox column
         filtered_df['Select'] = False
