@@ -80,9 +80,17 @@ try:
         columns_needed = ['Train Name', 'Station', 'Time', 'Status']
         filtered_df = df.loc[numeric_mask, columns_needed].copy()
 
-        # Convert Time column to datetime and format to show only time
-        filtered_df['Time'] = pd.to_datetime(filtered_df['Time'])
-        filtered_df['Time_Display'] = filtered_df['Time'].dt.strftime('%H:%M')
+        # Convert Time column to show only the time part (HH:MM)
+        def extract_time(time_str):
+            try:
+                # Extract just the time part (HH:MM) from "HH:MM DD-MM" format
+                return time_str.split()[0] if time_str else ''
+            except Exception as e:
+                logger.error(f"Error extracting time from {time_str}: {str(e)}")
+                return time_str
+
+        # Apply the time extraction to the Time column
+        filtered_df['Time_Display'] = filtered_df['Time'].apply(extract_time)
 
         # Add scheduled time column
         def get_scheduled_time_with_logging(row):
