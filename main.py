@@ -184,7 +184,7 @@ try:
 
         # Reorder columns to show checkbox first
         column_order = ['Select', 'Train Name', 'Station', 'Sch_Time', 'Time', 'Delay_Text', 'Status']
-        filtered_df = filtered_df[column_order]
+        display_df = filtered_df[column_order].copy()  # Create a display copy
 
         # Show filtering info
         st.info(f"Found {len(filtered_df)} trains with numeric names")
@@ -224,7 +224,7 @@ try:
 
         # Make the dataframe interactive with styling
         edited_df = st.data_editor(
-            filtered_df,
+            display_df,
             use_container_width=True,
             height=400,
             key="train_selector",
@@ -232,7 +232,7 @@ try:
             column_config=column_config,
             disabled=["Train Name", "Station", "Sch_Time", "Time", "Delay_Text", "Status"],
             hide_index=True,
-            # Apply conditional styling based on delay
+            # Apply conditional styling based on delay using the original filtered_df
             style=filtered_df.apply(lambda x: get_delay_color(x['Delay']), axis=1)
         )
 
