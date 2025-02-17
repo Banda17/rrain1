@@ -216,6 +216,30 @@ try:
             key="train_selector"
         )
 
+        # Handle train selection
+        if selected_train_option != "None":
+            # Parse the selected option to get train details
+            train_name, station = selected_train_option.split(" - ")
+            selected_train = display_df[
+                (display_df['Train Name'] == train_name) & 
+                (display_df['Station'] == station)
+            ].iloc[0]
+            update_selected_train_details(selected_train)
+        else:
+            # Clear selection
+            st.session_state['selected_train'] = None
+            st.session_state['selected_train_details'] = {}
+
+        # Display the selected train details if available
+        if st.session_state['selected_train_details']:
+            selected_details = st.session_state['selected_train_details']
+            st.markdown(f"<p>{selected_details['Delay']}</p>", unsafe_allow_html=True)
+            st.write({
+                'Scheduled Time': selected_details['Scheduled Time'],
+                'Actual Time': selected_details['Actual Time'],
+                'Current Status': selected_details['Current Status'],
+            })
+
         # Display the dataframe without the Select column
         st.dataframe(
             display_df.drop(columns=['Select']),
@@ -251,30 +275,6 @@ try:
                     'Current Status': selected['Status'],
                     'Delay': selected['Delay']
                 }
-
-        # Handle train selection
-        if selected_train_option != "None":
-            # Parse the selected option to get train details
-            train_name, station = selected_train_option.split(" - ")
-            selected_train = display_df[
-                (display_df['Train Name'] == train_name) & 
-                (display_df['Station'] == station)
-            ].iloc[0]
-            update_selected_train_details(selected_train)
-        else:
-            # Clear selection
-            st.session_state['selected_train'] = None
-            st.session_state['selected_train_details'] = {}
-
-        # Display the selected train details if available
-        if st.session_state['selected_train_details']:
-            selected_details = st.session_state['selected_train_details']
-            st.markdown(f"<p>{selected_details['Delay']}</p>", unsafe_allow_html=True)
-            st.write({
-                'Scheduled Time': selected_details['Scheduled Time'],
-                'Actual Time': selected_details['Actual Time'],
-                'Current Status': selected_details['Current Status'],
-            })
 
     else:
         st.error(f"Error loading data: {message}")
