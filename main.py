@@ -233,7 +233,22 @@ try:
             }
         )
 
-        # Simplified selection logic
+        # Function to update selected train details
+        def update_selected_train_details(selected):
+            station = selected['Station']
+            if st.session_state['map_viewer'].get_station_coordinates(station):
+                st.session_state['selected_train'] = {
+                    'train': selected['Train Name'],
+                    'station': station
+                }
+                st.session_state['selected_train_details'] = {
+                    'Scheduled Time': selected['Sch_Time'],
+                    'Actual Time': selected['Current Time'],
+                    'Current Status': selected['Status'],
+                    'Delay': selected['Delay']
+                }
+
+
         if len(edited_df) > 0:
             # Get currently selected trains
             selected_trains = edited_df[edited_df['Select']]
@@ -243,22 +258,8 @@ try:
                 st.session_state['selected_train'] = None
                 st.session_state['selected_train_details'] = {}
             else:
-                # Get the first selected train
-                selected = selected_trains.iloc[0]
-
-                # Direct coordinate lookup - only update if station exists in coordinates
-                station = selected['Station']
-                if st.session_state['map_viewer'].get_station_coordinates(station):
-                    st.session_state['selected_train'] = {
-                        'train': selected['Train Name'],
-                        'station': station
-                    }
-                    st.session_state['selected_train_details'] = {
-                        'Scheduled Time': selected['Sch_Time'],
-                        'Actual Time': selected['Current Time'],
-                        'Current Status': selected['Status'],
-                        'Delay': selected['Delay']
-                    }
+                # Get the first selected train and update details
+                update_selected_train_details(selected_trains.iloc[0])
 
         # Display the selected train details if available
         if st.session_state['selected_train_details']:
