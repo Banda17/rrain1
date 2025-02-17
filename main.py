@@ -91,8 +91,11 @@ with col1:
                 axis=1
             )
 
-            # Reorder columns to show times side by side
-            column_order = ['Train Name', 'Station', 'Sch_Time', 'Time', 'Status']
+            # Add checkbox column
+            filtered_df['Select'] = False
+
+            # Reorder columns to show checkbox first
+            column_order = ['Select', 'Train Name', 'Station', 'Sch_Time', 'Time', 'Status']
             filtered_df = filtered_df[column_order]
 
             # Show filtering info
@@ -105,22 +108,31 @@ with col1:
                 height=400,
                 key="train_selector",
                 column_order=column_order,
-                disabled=["Train Name", "Station", "Sch_Time", "Time", "Status"]
+                disabled=["Train Name", "Station", "Sch_Time", "Time", "Status"],
+                column_config={
+                    "Select": st.column_config.CheckboxColumn(
+                        "Select",
+                        help="Select to highlight on map",
+                        default=False,
+                    )
+                }
             )
 
-            # Update selected train in session state when a row is clicked
+            # Update selected train in session state when a checkbox is checked
             if len(selected_row) > 0:
-                selected_index = selected_row.index[0]
-                st.session_state['selected_train'] = {
-                    'train': selected_row.iloc[selected_index]['Train Name'],
-                    'station': selected_row.iloc[selected_index]['Station']
-                }
-                # Display detailed info for selected train
-                st.write({
-                    'Scheduled Time': selected_row.iloc[selected_index]['Sch_Time'],
-                    'Actual Time': selected_row.iloc[selected_index]['Time'],
-                    'Current Status': selected_row.iloc[selected_index]['Status']
-                })
+                selected_trains = selected_row[selected_row['Select']]
+                if not selected_trains.empty:
+                    selected_index = selected_trains.index[0]
+                    st.session_state['selected_train'] = {
+                        'train': selected_trains.iloc[0]['Train Name'],
+                        'station': selected_trains.iloc[0]['Station']
+                    }
+                    # Display detailed info for selected train
+                    st.write({
+                        'Scheduled Time': selected_trains.iloc[0]['Sch_Time'],
+                        'Actual Time': selected_trains.iloc[0]['Time'],
+                        'Current Status': selected_trains.iloc[0]['Status']
+                    })
 
         else:
             st.error(f"Error loading data: {message}")
