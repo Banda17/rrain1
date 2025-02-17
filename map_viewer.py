@@ -4,17 +4,18 @@ from typing import Dict, Optional, Tuple
 
 class MapViewer:
     def __init__(self):
-        # Station coordinates (normalized to image coordinates)
+        # Station coordinates (normalized to image coordinates 0-1)
+        # These coordinates are based on the relative positions on the map
         self.station_locations = {
-            'VNEC': {'x': 0.7, 'y': 0.3},   # Secunderabad
-            'GALA': {'x': 0.65, 'y': 0.35},  # Gala
-            'MBD': {'x': 0.68, 'y': 0.32},   # Malakpet
-            'GWM': {'x': 0.72, 'y': 0.28},   # Gandhigram
-            'PAVP': {'x': 0.75, 'y': 0.25},  # Pavalavagu
-            'BZA': {'x': 0.5, 'y': 0.5},     # Vijayawada
+            'VNEC': {'x': 0.15, 'y': 0.25},   # Secunderabad (left upper)
+            'GALA': {'x': 0.25, 'y': 0.30},   # Ghatkesar (middle upper)
+            'MBD': {'x': 0.35, 'y': 0.35},    #Malakpet (middle)
+            'GWM': {'x': 0.45, 'y': 0.40},    # Gandhinagar (middle lower)
+            'PAVP': {'x': 0.55, 'y': 0.45},   # Pavalavagu (right lower)
+            'BZA': {'x': 0.75, 'y': 0.60},    # Vijayawada (bottom right)
         }
         self.map_path = 'Vijayawada_Division_System_map_page-0001 (2).jpg'
-        self.marker_size = 30  # Size of the train marker
+        self.marker_size = 20  # Size of the train marker
 
     def load_map(self) -> Optional[Image.Image]:
         """Load the base map image"""
@@ -25,41 +26,52 @@ class MapViewer:
             return None
 
     def draw_train_marker(self, image: Image.Image, station_code: str, is_selected: bool = False) -> Image.Image:
-        """Draw a train marker at the specified station"""
+        """Draw a train marker at the specified station using x,y coordinates"""
         if station_code not in self.station_locations:
             return image
 
         display_image = image.copy()
         width, height = display_image.size
         station_pos = self.station_locations[station_code]
+
+        # Convert normalized coordinates to pixel positions
         x = int(station_pos['x'] * width)
         y = int(station_pos['y'] * height)
 
         draw = ImageDraw.Draw(display_image)
 
-        # Draw train marker
+        # Marker properties
         marker_color = 'red' if is_selected else 'blue'
         marker_radius = self.marker_size // 2
 
-        # Draw train icon (simplified train shape)
-        points = [
-            (x - marker_radius, y + marker_radius),  # bottom left
-            (x + marker_radius, y + marker_radius),  # bottom right
-            (x + marker_radius, y - marker_radius),  # top right
-            (x - marker_radius, y - marker_radius),  # top left
-        ]
+        # Draw station marker (circle)
+        draw.ellipse(
+            [(x - marker_radius, y - marker_radius), 
+             (x + marker_radius, y + marker_radius)],
+            fill=marker_color,
+            outline='white',
+            width=2
+        )
 
-        # Draw train body
-        draw.polygon(points, fill=marker_color, outline='white')
+        # Draw station code label
+        label_offset = marker_radius + 5
+        draw.text(
+            (x + label_offset, y - label_offset),
+            station_code,
+            fill='black',
+            stroke_width=1,
+            stroke_fill='white'
+        )
 
-        # Draw windows
-        window_size = marker_radius // 2
-        draw.rectangle([x - window_size, y - window_size, x + window_size, y], 
-                      fill='white', outline=marker_color)
-
-        # Add station name
-        draw.text((x + marker_radius + 5, y - marker_radius), 
-                 station_code, fill='black', stroke_width=2)
+        # Draw coordinates for debugging
+        debug_text = f"({station_pos['x']:.2f}, {station_pos['y']:.2f})"
+        draw.text(
+            (x + label_offset, y + 5),
+            debug_text,
+            fill='black',
+            stroke_width=1,
+            stroke_fill='white'
+        )
 
         return display_image
 
@@ -70,8 +82,8 @@ class MapViewer:
         if base_map is None:
             return
 
-        # Apply train markers
-        display_image = base_map
+        # Create display image
+        display_image = base_map.copy()
 
         # Draw markers for all stations
         for station in self.station_locations.keys():
@@ -85,5 +97,9 @@ class MapViewer:
             caption="Vijayawada Division System Map"
         )
 
+        # Show selected train info
         if selected_train:
-            st.caption(f"Currently showing: Train at {selected_train['station']}")
+            station = selected_train.get('station', '')
+            if station in self.station_locations:
+                coords = self.station_locations[station]
+                st.caption(f"Selected Train at {station} (x: {coords['x']:.2f}, y: {coords['y']:.2f})")
