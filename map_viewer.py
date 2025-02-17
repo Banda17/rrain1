@@ -18,8 +18,7 @@ class MapViewer:
         self.gps_pin_path = 'gps_pin.png'  # Path to your GPS pin image
         self.base_marker_size = 100  # Larger size for the GPS pin
         self.max_image_size = (2048, 2048)  # Maximum dimensions for the base map
-        self.default_zoom = 1.5
-        self.max_zoom = 4.0
+        self.zoom_level = 1.5  # Fixed zoom level
 
     def get_station_coordinates(self, station_code: str) -> Optional[Dict[str, float]]:
         """Get coordinates for a station code"""
@@ -57,7 +56,7 @@ class MapViewer:
             st.error(f"Error loading GPS pin: {str(e)}")
             return None
 
-    def draw_train_marker(self, image: Image.Image, station_code: str, zoom_level: float = 1.0) -> Image.Image:
+    def draw_train_marker(self, image: Image.Image, station_code: str) -> Image.Image:
         """Draw a GPS pin marker at the specified station using x,y coordinates"""
         station_pos = self.get_station_coordinates(station_code)
         if not station_pos:
@@ -69,7 +68,7 @@ class MapViewer:
         x = int(station_pos['x'] * width)
         y = int(station_pos['y'] * height)
 
-        marker_size = int(self.base_marker_size * zoom_level)
+        marker_size = int(self.base_marker_size * self.zoom_level)
         gps_pin = self.load_gps_pin(marker_size)
 
         if gps_pin:
@@ -88,7 +87,7 @@ class MapViewer:
         display_image = display_image.convert('RGB')
         draw = ImageDraw.Draw(display_image)
 
-        font_size = int(14 * zoom_level)
+        font_size = int(14 * self.zoom_level)
         try:
             font = ImageFont.truetype("DejaVuSans.ttf", font_size)
         except:
@@ -99,7 +98,7 @@ class MapViewer:
             (x + label_offset, y - label_offset),
             station_code,
             fill='black',
-            stroke_width=max(2, int(zoom_level)),
+            stroke_width=max(2, int(self.zoom_level)),
             stroke_fill='white',
             font=font
         )
@@ -108,16 +107,7 @@ class MapViewer:
 
     def render(self, selected_train: Optional[Dict] = None):
         """Render the map with all features"""
-        st.write("## Interactive Map Controls")
-
-        zoom_level = st.slider(
-            "Zoom Level",
-            min_value=1.0,
-            max_value=self.max_zoom,
-            value=self.default_zoom,
-            step=0.1,
-            help="Drag to zoom in/out of the map"
-        )
+        st.write("## Interactive Map View")
 
         show_coords = st.checkbox(
             "Show Coordinates",
@@ -144,21 +134,20 @@ class MapViewer:
                 if station_code in self.station_locations:
                     display_image = self.draw_train_marker(
                         display_image,
-                        station_code,
-                        zoom_level
+                        station_code
                     )
 
             # Convert to RGB before resizing and display
             display_image = display_image.convert('RGB')
             original_width, original_height = display_image.size
-            new_width = int(original_width * zoom_level)
-            new_height = int(original_height * zoom_level)
+            new_width = int(original_width * self.zoom_level)
+            new_height = int(original_height * self.zoom_level)
             display_image = display_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
 
             st.image(
                 display_image,
                 use_container_width=True,
-                caption="Vijayawada Division System Map (Use slider to zoom)"
+                caption="Vijayawada Division System Map"
             )
 
             if selected_train and selected_train.get('station'):

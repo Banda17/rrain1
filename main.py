@@ -45,6 +45,21 @@ if 'selected_train_details' not in st.session_state:
 if 'map_viewer' not in st.session_state:
     st.session_state['map_viewer'] = MapViewer()
 
+def update_selected_train_details(selected):
+    """Update the selected train details in session state"""
+    station = selected['Station']
+    if st.session_state['map_viewer'].get_station_coordinates(station):
+        st.session_state['selected_train'] = {
+            'train': selected['Train Name'],
+            'station': station
+        }
+        st.session_state['selected_train_details'] = {
+            'Scheduled Time': selected['Sch_Time'],
+            'Actual Time': selected['Current Time'],
+            'Current Status': selected['Status'],
+            'Delay': selected['Delay']
+        }
+
 def parse_time(time_str: str) -> Optional[datetime]:
     """Parse time string in HH:MM format to datetime object"""
     try:
@@ -190,6 +205,7 @@ try:
         timing_status = st.selectbox(
             "Filter by Timing Status",
             ["All", "Late", "On Time", "Early"],
+            index=1,  # Default to "Late"
             help="Filter trains based on their arrival status"
         )
 
@@ -255,21 +271,6 @@ try:
                 'Actual Time': selected_details['Actual Time'],
                 'Current Status': selected_details['Current Status'],
             })
-
-        # Function to update selected train details outside the if block
-        def update_selected_train_details(selected):
-            station = selected['Station']
-            if st.session_state['map_viewer'].get_station_coordinates(station):
-                st.session_state['selected_train'] = {
-                    'train': selected['Train Name'],
-                    'station': station
-                }
-                st.session_state['selected_train_details'] = {
-                    'Scheduled Time': selected['Sch_Time'],
-                    'Actual Time': selected['Current Time'],
-                    'Current Status': selected['Status'],
-                    'Delay': selected['Delay']
-                }
 
     else:
         st.error(f"Error loading data: {message}")
