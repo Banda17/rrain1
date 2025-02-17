@@ -28,7 +28,7 @@ class MapViewer:
 
     def draw_train_marker(self, image: Image.Image, station_code: str, is_selected: bool = False, zoom_level: float = 1.0) -> Image.Image:
         """Draw a train marker at the specified station using x,y coordinates"""
-        if station_code not in self.station_locations:
+        if station_code not in self.station_locations or not is_selected:
             return image
 
         display_image = image.copy()
@@ -45,29 +45,25 @@ class MapViewer:
         marker_size = int(self.base_marker_size * zoom_level)
         marker_radius = marker_size // 2
 
-        # Marker properties
-        marker_color = 'red' if is_selected else 'blue'
-
         # Draw station marker (circle with pulsing effect)
         # Inner circle
         draw.ellipse(
             [(x - marker_radius, y - marker_radius), 
              (x + marker_radius, y + marker_radius)],
-            fill=marker_color,
+            fill='red',
             outline='white',
             width=max(2, int(zoom_level))
         )
 
         # Outer circle for highlight effect
-        if is_selected:
-            outer_radius = int(marker_radius * 1.5)
-            draw.ellipse(
-                [(x - outer_radius, y - outer_radius),
-                 (x + outer_radius, y + outer_radius)],
-                fill=None,
-                outline='yellow',
-                width=max(2, int(zoom_level))
-            )
+        outer_radius = int(marker_radius * 1.5)
+        draw.ellipse(
+            [(x - outer_radius, y - outer_radius),
+             (x + outer_radius, y + outer_radius)],
+            fill=None,
+            outline='yellow',
+            width=max(2, int(zoom_level))
+        )
 
         # Scale text size with zoom
         font_size = int(14 * zoom_level)  # Increased base font size
@@ -117,10 +113,9 @@ class MapViewer:
             # Create display image
             display_image = base_map.copy()
 
-            # Draw markers for all stations
-            for station in self.station_locations.keys():
-                is_selected = (selected_train and selected_train.get('station') == station)
-                display_image = self.draw_train_marker(display_image, station, is_selected, zoom_level)
+            # Draw markers only for selected train's station
+            if selected_train and selected_train.get('station') in self.station_locations:
+                display_image = self.draw_train_marker(display_image, selected_train['station'], True, zoom_level)
 
             # Calculate new dimensions based on zoom
             original_width, original_height = display_image.size
@@ -137,24 +132,16 @@ class MapViewer:
                 caption="Vijayawada Division System Map (Use slider to zoom)"
             )
 
-            # Show hover information for stations
-            if st.checkbox("Show Station Information", value=True):
-                station_info = ""
-                for station, coords in self.station_locations.items():
-                    is_selected = (selected_train and selected_train.get('station') == station)
-                    status = "🔴 Selected" if is_selected else "🔵 Available"
-                    if show_coords:
-                        station_info += f"{status} - {station}: (x: {coords['x']:.2f}, y: {coords['y']:.2f})\n"
-                    else:
-                        station_info += f"{status} - {station}\n"
-
-                st.text_area("Station Status", value=station_info, height=150, disabled=True)
-
-            # Show selected train info with more details
+            # Show hover information for selected train
             if selected_train:
                 station = selected_train.get('station', '')
                 if station in self.station_locations:
-                    st.success(f"🚂 Train {selected_train.get('train', '')} selected at station {station}")
-                    if show_coords:
-                        coords = self.station_locations[station]
-                        st.info(f"Station coordinates: (x: {coords['x']:.2f}, y: {coords['y']:.2f})")
+                    with st.expander("🚂 Selected Train Information", expanded=True):
+                        st.markdown(f"""
+                        **Train Details:**
+                        - Train Number: {selected_train.get('train', '')}
+                        - Station: {station}
+                        - Position: {'(' + f"{self.station_locations[station]['x']:.2f}, {self.station_locations[station]['y']:.2f}" + ')' if show_coords else ''}
+
+                        Hover over the marker on the map to see the location!
+                        """)
