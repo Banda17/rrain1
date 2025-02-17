@@ -186,14 +186,12 @@ try:
                     "Scheduled Time",
                     help="Scheduled time in 24-hour format"
                 ),
-                "Delay": st.column_config.NumberColumn(
+                "Delay": st.column_config.Column(
                     "Delay (mins)",
                     help="Time difference between scheduled and actual time in minutes. Red indicates late, green indicates early.",
-                    format="%d",
-                    step=1,
-                    background=lambda x: "rgba(255, 0, 0, 0.2)" if pd.notna(x) and x > 5 else 
-                                      "rgba(0, 255, 0, 0.2)" if pd.notna(x) and x < -5 else 
-                                      "rgba(255, 255, 255, 0)"
+                    format=lambda x: f"⚠️ +{x}" if pd.notna(x) and x > 5 else
+                                   f"⏰ {x}" if pd.notna(x) and x < -5 else
+                                   f"{x}" if pd.notna(x) else "N/A"
                 )
             }
         )
