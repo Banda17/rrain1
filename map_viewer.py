@@ -2,11 +2,11 @@ import streamlit as st
 from PIL import Image, ImageDraw, ImageFont
 from typing import Dict, Optional, Tuple
 import io
+import math
 
 class MapViewer:
     def __init__(self):
         # Station coordinates (normalized to image coordinates 0-1)
-        # These coordinates are based on the relative positions on the map
         self.station_locations = {
             'VNEC': {'x': 0.15, 'y': 0.25},   # Secunderabad (left upper)
             'GALA': {'x': 0.25, 'y': 0.30},   # Ghatkesar (middle upper)
@@ -16,7 +16,7 @@ class MapViewer:
             'BZA': {'x': 0.75, 'y': 0.60},    # Vijayawada (bottom right)
         }
         self.map_path = 'Vijayawada_Division_System_map_page-0001 (2).jpg'
-        self.base_marker_size = 20  # Base size of the train marker
+        self.base_marker_size = 30  # Increased base size for arrow
         self.max_image_size = (2048, 2048)  # Maximum dimensions for the base map
         self.default_zoom = 1.5
         self.max_zoom = 4.0
@@ -68,6 +68,27 @@ class MapViewer:
             st.error(f"Error loading map: {str(e)}")
             return None
 
+    def draw_arrow(self, draw: ImageDraw.Draw, x: int, y: int, size: int, angle: float = 45, color: str = 'red', outline: str = 'white') -> None:
+        """Draw an arrow marker with the specified size and angle"""
+        # Calculate arrow points
+        half_size = size // 2
+        quarter_size = size // 4
+
+        # Arrow points (pointing right by default)
+        points = [
+            (x - half_size, y),  # Tail left
+            (x + half_size, y),  # Head
+            (x, y - quarter_size),  # Upper wing
+            (x + half_size, y),  # Head (repeat)
+            (x, y + quarter_size),  # Lower wing
+        ]
+
+        # Draw arrow body
+        draw.line(points, fill=color, width=max(2, size // 8))
+
+        # Draw outline for better visibility
+        draw.line(points, fill=outline, width=max(3, size // 6))
+
     def draw_train_marker(self, image: Image.Image, station_code: str, is_selected: bool = False, zoom_level: float = 1.0) -> Image.Image:
         """Draw a train marker at the specified station using x,y coordinates"""
         if station_code not in self.station_locations or not is_selected:
@@ -85,37 +106,19 @@ class MapViewer:
 
         # Scale marker size with zoom level
         marker_size = int(self.base_marker_size * zoom_level)
-        marker_radius = marker_size // 2
 
-        # Draw station marker (circle with pulsing effect)
-        # Inner circle
-        draw.ellipse(
-            [(x - marker_radius, y - marker_radius), 
-             (x + marker_radius, y + marker_radius)],
-            fill='red',
-            outline='white',
-            width=max(2, int(zoom_level))
-        )
-
-        # Outer circle for highlight effect
-        outer_radius = int(marker_radius * 1.5)
-        draw.ellipse(
-            [(x - outer_radius, y - outer_radius),
-             (x + outer_radius, y + outer_radius)],
-            fill=None,
-            outline='yellow',
-            width=max(2, int(zoom_level))
-        )
+        # Draw arrow marker
+        self.draw_arrow(draw, x, y, marker_size)
 
         # Scale text size with zoom
-        font_size = int(14 * zoom_level)  # Increased base font size
+        font_size = int(14 * zoom_level)
         try:
             font = ImageFont.truetype("DejaVuSans.ttf", font_size)
         except:
-            font = None  # Will use default font if custom font not available
+            font = None
 
         # Draw station code label with improved visibility
-        label_offset = marker_radius + 5
+        label_offset = marker_size // 2 + 5
         draw.text(
             (x + label_offset, y - label_offset),
             station_code,
