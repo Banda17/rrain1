@@ -10,13 +10,13 @@ class MapViewer:
         self.station_locations = {
             'VNEC': {'x': 0.15, 'y': 0.25},   # Secunderabad (left upper)
             'GALA': {'x': 0.25, 'y': 0.30},   # Ghatkesar (middle upper)
-            'MBD': {'x': 0.35, 'y': 0.35},    #Malakpet (middle)
+            'MBD': {'x': 0.35, 'y': 0.35},    # Malakpet (middle)
             'GWM': {'x': 0.45, 'y': 0.40},    # Gandhinagar (middle lower)
             'PAVP': {'x': 0.55, 'y': 0.45},   # Pavalavagu (right lower)
             'BZA': {'x': 0.75, 'y': 0.60},    # Vijayawada (bottom right)
         }
         self.map_path = 'Vijayawada_Division_System_map_page-0001 (2).jpg'
-        self.base_marker_size = 30  # Increased base size for arrow
+        self.base_marker_size = 300  # Increased base size for arrow
         self.max_image_size = (2048, 2048)  # Maximum dimensions for the base map
         self.default_zoom = 1.5
         self.max_zoom = 4.0
@@ -49,18 +49,14 @@ class MapViewer:
 
             # Calculate new dimensions while maintaining aspect ratio
             width, height = original_image.size
-            scale = min(
-                self.max_image_size[0] / width,
-                self.max_image_size[1] / height
-            )
+            scale = min(self.max_image_size[0] / width,
+                        self.max_image_size[1] / height)
 
             if scale < 1:  # Only resize if image is too large
                 new_width = int(width * scale)
                 new_height = int(height * scale)
-                resized_image = original_image.resize(
-                    (new_width, new_height),
-                    Image.Resampling.LANCZOS
-                )
+                resized_image = original_image.resize((new_width, new_height),
+                                                       Image.Resampling.LANCZOS)
                 return resized_image
             return original_image
 
@@ -68,7 +64,14 @@ class MapViewer:
             st.error(f"Error loading map: {str(e)}")
             return None
 
-    def draw_arrow(self, draw: ImageDraw.Draw, x: int, y: int, size: int, angle: float = 45, color: str = 'red', outline: str = 'white') -> None:
+    def draw_arrow(self,
+                   draw: ImageDraw.Draw,
+                   x: int,
+                   y: int,
+                   size: int,
+                   angle: float = 45,
+                   color: str = 'red',
+                   outline: str = 'white') -> None:
         """Draw an arrow marker with the specified size and angle"""
         # Calculate arrow points
         half_size = size // 2
@@ -89,7 +92,11 @@ class MapViewer:
         # Draw outline for better visibility
         draw.line(points, fill=outline, width=max(3, size // 6))
 
-    def draw_train_marker(self, image: Image.Image, station_code: str, is_selected: bool = False, zoom_level: float = 1.0) -> Image.Image:
+    def draw_train_marker(self,
+                          image: Image.Image,
+                          station_code: str,
+                          is_selected: bool = False,
+                          zoom_level: float = 1.0) -> Image.Image:
         """Draw a train marker at the specified station using x,y coordinates"""
         if station_code not in self.station_locations or not is_selected:
             return image
@@ -119,14 +126,12 @@ class MapViewer:
 
         # Draw station code label with improved visibility
         label_offset = marker_size // 2 + 5
-        draw.text(
-            (x + label_offset, y - label_offset),
-            station_code,
-            fill='black',
-            stroke_width=max(2, int(zoom_level)),
-            stroke_fill='white',
-            font=font
-        )
+        draw.text((x + label_offset, y - label_offset),
+                  station_code,
+                  fill='black',
+                  stroke_width=max(2, int(zoom_level)),
+                  stroke_fill='white',
+                  font=font)
 
         return display_image
 
@@ -144,17 +149,18 @@ class MapViewer:
 
         with col1:
             # Add zoom control with optimal zoom as initial value
-            zoom_level = st.slider("Zoom Level", 
-                                min_value=1.0, 
-                                max_value=self.max_zoom, 
-                                value=initial_zoom, 
-                                step=0.1,
-                                help="Drag to zoom in/out of the map")
+            zoom_level = st.slider("Zoom Level",
+                                   min_value=1.0,
+                                   max_value=self.max_zoom,
+                                   value=initial_zoom,
+                                   step=0.1,
+                                   help="Drag to zoom in/out of the map")
 
         with col2:
             # Add display options
-            show_coords = st.checkbox("Show Coordinates", value=False,
-                                    help="Display station coordinates on the map")
+            show_coords = st.checkbox("Show Coordinates",
+                                     value=False,
+                                     help="Display station coordinates on the map")
 
         # Load and process map
         base_map = self.load_map()
@@ -169,7 +175,8 @@ class MapViewer:
 
             # Draw markers only for selected train's station
             if selected_train and selected_train.get('station') in self.station_locations:
-                display_image = self.draw_train_marker(display_image, selected_train['station'], True, zoom_level)
+                display_image = self.draw_train_marker(
+                    display_image, selected_train['station'], True, zoom_level)
 
             # Calculate new dimensions based on zoom
             original_width, original_height = display_image.size
@@ -177,14 +184,14 @@ class MapViewer:
             new_height = int(original_height * zoom_level)
 
             # Resize image
-            display_image = display_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+            display_image = display_image.resize((new_width, new_height),
+                                                 Image.Resampling.LANCZOS)
 
             # Display the map with increased size
             st.image(
                 display_image,
                 use_container_width=True,  # Updated from use_column_width
-                caption="Vijayawada Division System Map (Use slider to zoom)"
-            )
+                caption="Vijayawada Division System Map (Use slider to zoom)")
 
             # Show hover information for selected train
             if selected_train:
