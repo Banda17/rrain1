@@ -120,9 +120,9 @@ try:
         filtered_df['Select'] = False
 
         # Reorder columns to show checkbox first, use Time_Display instead of Time
-        column_order = ['Select', 'Train Name', 'Station', 'Sch_Time', 'Time_Display', 'Status']
+        column_order = ['Select', 'Train Name', 'Station', 'Sch_Time', 'Time_Display', 'Time', 'Status']
         display_df = filtered_df[column_order].copy()
-        display_df = display_df.rename(columns={'Time_Display': 'Time'})
+        display_df = display_df.rename(columns={'Time_Display': 'Current Time'})
 
         # Show filtering info
         st.info(f"Found {len(display_df)} trains with numeric names")
@@ -134,16 +134,20 @@ try:
             height=400,
             key="train_selector",
             column_order=column_order,
-            disabled=["Train Name", "Station", "Sch_Time", "Time", "Status"],
+            disabled=["Train Name", "Station", "Sch_Time", "Current Time", "Time", "Status"],
             column_config={
                 "Select": st.column_config.CheckboxColumn(
                     "Select",
                     help="Select to highlight on map",
                     default=False,
                 ),
-                "Time": st.column_config.TextColumn(
-                    "Time",
+                "Current Time": st.column_config.TextColumn(
+                    "Current Time",
                     help="Current time in 24-hour format"
+                ),
+                "Time": st.column_config.TextColumn(
+                    "Full Time",
+                    help="Complete timestamp"
                 ),
                 "Sch_Time": st.column_config.TextColumn(
                     "Scheduled Time",
@@ -179,7 +183,7 @@ try:
                     # Display detailed info for selected train
                     st.write({
                         'Scheduled Time': first_selected['Sch_Time'],
-                        'Actual Time': first_selected['Time'],
+                        'Actual Time': first_selected['Current Time'],
                         'Current Status': first_selected['Status']
                     })
 
