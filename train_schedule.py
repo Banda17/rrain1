@@ -12,13 +12,14 @@ class TrainSchedule:
             self.schedule_tree = TrainScheduleTree.build_from_json('bhanu.json')
             logger.info("Train schedule tree initialized successfully")
 
-            # Create station code mapping
+            # Create station code mapping with only exact matches
             self.station_mapping = {
-                'CCT': 'VNEC',  # Map CCT to VNEC
-                'CSMT': 'VNEC',
-                'DR': 'MBD',
-                'BSR': 'GWM',
-                'BVI': 'PAVP'
+                'VNEC': 'VNEC',  # Secunderabad
+                'GALA': 'GALA',  # Ghatkesar
+                'MBD': 'MBD',    # Malakpet
+                'GWM': 'GWM',    # Gandhinagar
+                'PAVP': 'PAVP',  # Pavalavagu
+                'BZA': 'BZA'     # Vijayawada
             }
             logger.info(f"Station mapping initialized with {len(self.station_mapping)} entries")
 
@@ -45,7 +46,7 @@ class TrainSchedule:
             original_station_code = station_parts[0] if station_parts else ""
             station_code = self.station_mapping.get(original_station_code, original_station_code)
 
-            logger.debug(f"Mapped station code: {original_station_code} -> {station_code}")
+            logger.debug(f"Looking up schedule with station code: {station_code}")
 
             # Look up schedule in binary tree
             schedule = self.schedule_tree.find(train_number)
