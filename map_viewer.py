@@ -15,7 +15,7 @@ class MapViewer:
             'BZA': {'x': 0.75, 'y': 0.60},    # Vijayawada (bottom right)
         }
         self.map_path = 'Vijayawada_Division_System_map_page-0001 (2).jpg'
-        self.marker_size = 20  # Size of the train marker
+        self.base_marker_size = 20  # Base size of the train marker
 
     def load_map(self) -> Optional[Image.Image]:
         """Load the base map image"""
@@ -25,7 +25,7 @@ class MapViewer:
             st.error(f"Error loading map: {str(e)}")
             return None
 
-    def draw_train_marker(self, image: Image.Image, station_code: str, is_selected: bool = False) -> Image.Image:
+    def draw_train_marker(self, image: Image.Image, station_code: str, is_selected: bool = False, zoom_level: float = 1.0) -> Image.Image:
         """Draw a train marker at the specified station using x,y coordinates"""
         if station_code not in self.station_locations:
             return image
@@ -40,9 +40,12 @@ class MapViewer:
 
         draw = ImageDraw.Draw(display_image)
 
+        # Scale marker size with zoom level
+        marker_size = int(self.base_marker_size * zoom_level)
+        marker_radius = marker_size // 2
+
         # Marker properties
         marker_color = 'red' if is_selected else 'blue'
-        marker_radius = self.marker_size // 2
 
         # Draw station marker (circle)
         draw.ellipse(
@@ -50,8 +53,15 @@ class MapViewer:
              (x + marker_radius, y + marker_radius)],
             fill=marker_color,
             outline='white',
-            width=2
+            width=max(2, int(zoom_level))
         )
+
+        # Scale text size with zoom
+        font_size = int(12 * zoom_level)
+        try:
+            font = ImageFont.truetype("DejaVuSans.ttf", font_size)
+        except:
+            font = None  # Will use default font if custom font not available
 
         # Draw station code label
         label_offset = marker_radius + 5
@@ -59,8 +69,9 @@ class MapViewer:
             (x + label_offset, y - label_offset),
             station_code,
             fill='black',
-            stroke_width=1,
-            stroke_fill='white'
+            stroke_width=max(1, int(zoom_level/2)),
+            stroke_fill='white',
+            font=font
         )
 
         # Draw coordinates for debugging
@@ -69,37 +80,54 @@ class MapViewer:
             (x + label_offset, y + 5),
             debug_text,
             fill='black',
-            stroke_width=1,
-            stroke_fill='white'
+            stroke_width=max(1, int(zoom_level/2)),
+            stroke_fill='white',
+            font=font
         )
 
         return display_image
 
     def render(self, selected_train: Optional[Dict] = None):
         """Render the map with all features"""
+        st.write("## Interactive Map Controls")
+
+        # Add zoom control
+        zoom_level = st.slider("Zoom Level", min_value=1.0, max_value=3.0, value=1.5, step=0.1)
+
         # Load and process map
         base_map = self.load_map()
         if base_map is None:
             return
 
-        # Create display image
-        display_image = base_map.copy()
+        # Create display container with expanded width
+        map_container = st.container()
+        with map_container:
+            # Create display image
+            display_image = base_map.copy()
 
-        # Draw markers for all stations
-        for station in self.station_locations.keys():
-            is_selected = (selected_train and selected_train.get('station') == station)
-            display_image = self.draw_train_marker(display_image, station, is_selected)
+            # Draw markers for all stations
+            for station in self.station_locations.keys():
+                is_selected = (selected_train and selected_train.get('station') == station)
+                display_image = self.draw_train_marker(display_image, station, is_selected, zoom_level)
 
-        # Display the map
-        st.image(
-            display_image,
-            use_container_width=True,
-            caption="Vijayawada Division System Map"
-        )
+            # Calculate new dimensions based on zoom
+            original_width, original_height = display_image.size
+            new_width = int(original_width * zoom_level)
+            new_height = int(original_height * zoom_level)
 
-        # Show selected train info
-        if selected_train:
-            station = selected_train.get('station', '')
-            if station in self.station_locations:
-                coords = self.station_locations[station]
-                st.caption(f"Selected Train at {station} (x: {coords['x']:.2f}, y: {coords['y']:.2f})")
+            # Resize image
+            display_image = display_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+
+            # Display the map with increased size
+            st.image(
+                display_image,
+                use_column_width=True,
+                caption="Vijayawada Division System Map (Use slider to zoom)"
+            )
+
+            # Show selected train info
+            if selected_train:
+                station = selected_train.get('station', '')
+                if station in self.station_locations:
+                    coords = self.station_locations[station]
+                    st.caption(f"Selected Train at {station} (x: {coords['x']:.2f}, y: {coords['y']:.2f})")
