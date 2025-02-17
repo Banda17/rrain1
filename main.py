@@ -41,6 +41,8 @@ if 'selected_train' not in st.session_state:
     st.session_state['selected_train'] = None
 if 'map_viewer' not in st.session_state:
     st.session_state['map_viewer'] = MapViewer()
+if 'previous_selection' not in st.session_state:
+    st.session_state['previous_selection'] = None
 
 @st.cache_data(ttl=300)
 def load_and_process_data():
@@ -104,7 +106,7 @@ try:
         st.info(f"Found {len(filtered_df)} trains with numeric names")
 
         # Make the dataframe interactive
-        selected_row = st.data_editor(
+        edited_df = st.data_editor(
             filtered_df,
             use_container_width=True,
             height=400,
@@ -120,21 +122,36 @@ try:
             }
         )
 
-        # Update selected train in session state when a checkbox is checked
-        if len(selected_row) > 0:
-            selected_trains = selected_row[selected_row['Select']]
-            if not selected_trains.empty:
-                selected_index = selected_trains.index[0]
-                st.session_state['selected_train'] = {
-                    'train': selected_trains.iloc[0]['Train Name'],
-                    'station': selected_trains.iloc[0]['Station']
+        # Handle train selection
+        if len(edited_df) > 0:
+            # Get currently selected trains
+            selected_trains = edited_df[edited_df['Select']]
+
+            # Clear selection if no trains are selected
+            if selected_trains.empty:
+                st.session_state['selected_train'] = None
+                st.session_state['previous_selection'] = None
+            else:
+                # Get the first selected train
+                first_selected = selected_trains.iloc[0]
+
+                # Create new selection
+                new_selection = {
+                    'train': first_selected['Train Name'],
+                    'station': first_selected['Station']
                 }
-                # Display detailed info for selected train
-                st.write({
-                    'Scheduled Time': selected_trains.iloc[0]['Sch_Time'],
-                    'Actual Time': selected_trains.iloc[0]['Time'],
-                    'Current Status': selected_trains.iloc[0]['Status']
-                })
+
+                # Only update if selection has changed
+                if new_selection != st.session_state['previous_selection']:
+                    st.session_state['selected_train'] = new_selection
+                    st.session_state['previous_selection'] = new_selection
+
+                    # Display detailed info for selected train
+                    st.write({
+                        'Scheduled Time': first_selected['Sch_Time'],
+                        'Actual Time': first_selected['Time'],
+                        'Current Status': first_selected['Status']
+                    })
 
     else:
         st.error(f"Error loading data: {message}")
