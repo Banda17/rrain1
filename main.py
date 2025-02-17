@@ -44,6 +44,25 @@ if 'map_viewer' not in st.session_state:
 if 'previous_selection' not in st.session_state:
     st.session_state['previous_selection'] = None
 
+def calculate_delay(actual_time, scheduled_time):
+    """Calculate delay between actual and scheduled time in minutes"""
+    try:
+        actual = pd.to_datetime(actual_time)
+        scheduled = pd.to_datetime(scheduled_time)
+        delay = int((actual - scheduled).total_seconds() / 60)
+        return delay
+    except:
+        return 0
+
+def get_delay_color(delay):
+    """Return background color based on delay"""
+    if delay <= -5:  # Early
+        return "background-color: #c8e6c9"  # Light green
+    elif delay > 5:  # Late
+        return "background-color: #ffcdd2"  # Light red
+    else:  # On time
+        return "background-color: white"
+
 @st.cache_data(ttl=300)
 def load_and_process_data():
     """Cache data loading and processing"""
@@ -87,7 +106,7 @@ try:
             scheduled_time = st.session_state['train_schedule'].get_scheduled_time(
                 train_name, station
             )
-            return scheduled_time if scheduled_time else 'Not Available'
+            return scheduled_time if scheduled_time else row['Time']  # Use actual time if scheduled not available
 
         # Add Sch_Time column
         filtered_df['Sch_Time'] = filtered_df.apply(
@@ -95,31 +114,68 @@ try:
             axis=1
         )
 
+        # Calculate delay
+        filtered_df['Delay'] = filtered_df.apply(
+            lambda x: calculate_delay(x['Time'], x['Sch_Time']),
+            axis=1
+        )
+
         # Add checkbox column
         filtered_df['Select'] = False
 
         # Reorder columns to show checkbox first
-        column_order = ['Select', 'Train Name', 'Station', 'Sch_Time', 'Time', 'Status']
+        column_order = ['Select', 'Train Name', 'Station', 'Sch_Time', 'Time', 'Delay', 'Status']
         filtered_df = filtered_df[column_order]
 
         # Show filtering info
         st.info(f"Found {len(filtered_df)} trains with numeric names")
 
-        # Make the dataframe interactive
+        # Create column configuration with styling
+        column_config = {
+            "Select": st.column_config.CheckboxColumn(
+                "Select",
+                help="Select to highlight on map",
+                default=False,
+            ),
+            "Train Name": st.column_config.TextColumn(
+                "Train Name",
+                help="Train number and name"
+            ),
+            "Station": st.column_config.TextColumn(
+                "Station",
+                help="Current station"
+            ),
+            "Sch_Time": st.column_config.TextColumn(
+                "Scheduled Time",
+                help="Working Time Table (WTT) time"
+            ),
+            "Time": st.column_config.TextColumn(
+                "Actual Time",
+                help="Actual arrival/departure time"
+            ),
+            "Delay": st.column_config.NumberColumn(
+                "Delay (mins)",
+                help="Delay in minutes (negative = early)",
+                format="%d min"
+            ),
+            "Status": st.column_config.TextColumn(
+                "Status",
+                help="Current status"
+            )
+        }
+
+        # Make the dataframe interactive with styling
         edited_df = st.data_editor(
             filtered_df,
             use_container_width=True,
             height=400,
             key="train_selector",
             column_order=column_order,
-            disabled=["Train Name", "Station", "Sch_Time", "Time", "Status"],
-            column_config={
-                "Select": st.column_config.CheckboxColumn(
-                    "Select",
-                    help="Select to highlight on map",
-                    default=False,
-                )
-            }
+            column_config=column_config,
+            disabled=["Train Name", "Station", "Sch_Time", "Time", "Delay", "Status"],
+            hide_index=True,
+            # Apply conditional styling
+            style=filtered_df.apply(lambda x: [get_delay_color(x['Delay'])] * len(x))
         )
 
         # Handle train selection
@@ -150,6 +206,7 @@ try:
                     st.write({
                         'Scheduled Time': first_selected['Sch_Time'],
                         'Actual Time': first_selected['Time'],
+                        'Delay': f"{first_selected['Delay']} minutes",
                         'Current Status': first_selected['Status']
                     })
 
