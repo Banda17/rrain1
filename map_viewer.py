@@ -18,6 +18,27 @@ class MapViewer:
         self.map_path = 'Vijayawada_Division_System_map_page-0001 (2).jpg'
         self.base_marker_size = 20  # Base size of the train marker
         self.max_image_size = (2048, 2048)  # Maximum dimensions for the base map
+        self.default_zoom = 1.5
+        self.max_zoom = 4.0
+
+    def calculate_optimal_zoom(self, station_code: str) -> float:
+        """Calculate optimal zoom level for a selected station"""
+        if station_code not in self.station_locations:
+            return self.default_zoom
+
+        # Get station position
+        pos = self.station_locations[station_code]
+
+        # Calculate distance from center (0.5, 0.5)
+        dx = abs(pos['x'] - 0.5)
+        dy = abs(pos['y'] - 0.5)
+
+        # Calculate zoom based on position (closer to edges needs more zoom)
+        distance = max(dx, dy)
+        # Inverse relationship - further from center means more zoom
+        zoom = min(self.max_zoom, max(2.0, 3.0 - distance * 2))
+
+        return zoom
 
     def load_map(self) -> Optional[Image.Image]:
         """Load and safely resize the base map image"""
@@ -110,12 +131,21 @@ class MapViewer:
         """Render the map with all features"""
         st.write("## Interactive Map Controls")
 
+        # Calculate optimal zoom if train is selected
+        initial_zoom = self.default_zoom
+        if selected_train and selected_train.get('station') in self.station_locations:
+            initial_zoom = self.calculate_optimal_zoom(selected_train['station'])
+
         # Create columns for controls
         col1, col2 = st.columns([2, 1])
 
         with col1:
-            # Add zoom control
-            zoom_level = st.slider("Zoom Level", min_value=1.0, max_value=4.0, value=1.5, step=0.1,
+            # Add zoom control with optimal zoom as initial value
+            zoom_level = st.slider("Zoom Level", 
+                                min_value=1.0, 
+                                max_value=self.max_zoom, 
+                                value=initial_zoom, 
+                                step=0.1,
                                 help="Drag to zoom in/out of the map")
 
         with col2:
