@@ -47,8 +47,22 @@ if 'previous_selection' not in st.session_state:
 def calculate_delay(actual_time, scheduled_time):
     """Calculate delay between actual and scheduled time in minutes"""
     try:
+        # Log the input times for debugging
+        logger.debug(f"Calculating delay - Actual: {actual_time}, Scheduled: {scheduled_time}")
+
+        if not actual_time or not scheduled_time:
+            logger.warning("Missing time data")
+            return None
+
         # Get the current year
         current_year = datetime.now().year
+
+        # Clean and standardize the time strings
+        actual_time = str(actual_time).strip()
+        scheduled_time = str(scheduled_time).strip()
+
+        # Log the cleaned times
+        logger.debug(f"Cleaned times - Actual: {actual_time}, Scheduled: {scheduled_time}")
 
         # Append the year to the time strings
         actual_time_with_year = f"{actual_time} {current_year}"
@@ -57,15 +71,28 @@ def calculate_delay(actual_time, scheduled_time):
         # Define the format
         time_format = '%H:%M %d-%m %Y'
 
-        # Parse the times
-        actual = pd.to_datetime(actual_time_with_year, format=time_format)
-        scheduled = pd.to_datetime(scheduled_time_with_year, format=time_format)
+        # Parse the times with error handling
+        try:
+            actual = pd.to_datetime(actual_time_with_year, format=time_format)
+            logger.debug(f"Parsed actual time: {actual}")
+        except ValueError as e:
+            logger.error(f"Error parsing actual time: {e}")
+            return None
+
+        try:
+            scheduled = pd.to_datetime(scheduled_time_with_year, format=time_format)
+            logger.debug(f"Parsed scheduled time: {scheduled}")
+        except ValueError as e:
+            logger.error(f"Error parsing scheduled time: {e}")
+            return None
 
         # Calculate the delay in minutes
         delay = int((actual - scheduled).total_seconds() / 60)
+        logger.debug(f"Calculated delay: {delay} minutes")
         return delay
+
     except Exception as e:
-        st.error(f"Error calculating delay: {e}")
+        logger.error(f"Error calculating delay: {str(e)}")
         return None
 
 def get_delay_color(delay):
