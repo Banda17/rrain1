@@ -238,13 +238,13 @@ try:
             # Get currently selected trains
             selected_trains = edited_df[edited_df['Select']]
 
-            # Always clear selection if no trains are selected
+            # Handle state updates based on selection
             if selected_trains.empty:
-                # No selection, clear all state
-                st.session_state['selected_train'] = None
-                st.session_state['selected_train_details'] = {}
-                # Force map update by triggering rerun
-                st.rerun()
+                # Only clear and rerun if there was a previous selection
+                if st.session_state.get('selected_train') is not None:
+                    st.session_state['selected_train'] = None
+                    st.session_state['selected_train_details'] = {}
+                    st.experimental_rerun()
             else:
                 # Get the first selected train
                 selected = selected_trains.iloc[0]
@@ -255,10 +255,9 @@ try:
                     'station': selected['Station']
                 }
 
-                # Check if the selection has changed
+                # Update only if selection has changed
                 current_selection = st.session_state.get('selected_train')
                 if current_selection != new_selection:
-                    # Update the session state
                     st.session_state['selected_train'] = new_selection
                     st.session_state['selected_train_details'] = {
                         'Scheduled Time': selected['Sch_Time'],
@@ -266,8 +265,6 @@ try:
                         'Current Status': selected['Status'],
                         'Delay': selected['Delay']
                     }
-                    # Force map update
-                    st.rerun()
 
         # Display the selected train details if available
         if st.session_state['selected_train_details']:
