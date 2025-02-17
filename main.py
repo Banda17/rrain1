@@ -213,9 +213,11 @@ try:
             column_order=column_order,
             disabled=["Train Name", "Station", "Sch_Time", "Current Time", "Status", "Delay"],
             column_config={
-                "Select": st.column_config.RadioButtonColumn(
+                "Select": st.column_config.SelectboxColumn(
                     "Select",
                     help="Select to highlight on map",
+                    width="small",
+                    options=[False, True],
                     default=False,
                 ),
                 "Current Time": st.column_config.TextColumn(
