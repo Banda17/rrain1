@@ -17,11 +17,32 @@ class MapViewer:
         }
         self.map_path = 'Vijayawada_Division_System_map_page-0001 (2).jpg'
         self.base_marker_size = 20  # Base size of the train marker
+        self.max_image_size = (2048, 2048)  # Maximum dimensions for the base map
 
     def load_map(self) -> Optional[Image.Image]:
-        """Load the base map image"""
+        """Load and safely resize the base map image"""
         try:
-            return Image.open(self.map_path)
+            # Open image with Pillow's maximum size limit set
+            Image.MAX_IMAGE_PIXELS = 178956970  # Safe limit
+            original_image = Image.open(self.map_path)
+
+            # Calculate new dimensions while maintaining aspect ratio
+            width, height = original_image.size
+            scale = min(
+                self.max_image_size[0] / width,
+                self.max_image_size[1] / height
+            )
+
+            if scale < 1:  # Only resize if image is too large
+                new_width = int(width * scale)
+                new_height = int(height * scale)
+                resized_image = original_image.resize(
+                    (new_width, new_height),
+                    Image.Resampling.LANCZOS
+                )
+                return resized_image
+            return original_image
+
         except Exception as e:
             st.error(f"Error loading map: {str(e)}")
             return None
@@ -136,7 +157,7 @@ class MapViewer:
             if selected_train:
                 station = selected_train.get('station', '')
                 if station in self.station_locations:
-                    with st.expander("🚂 Selected Train Information", expanded=True):
+                    with st.expander("🚂 Train Information", expanded=True):
                         st.markdown(f"""
                         **Train Details:**
                         - Train Number: {selected_train.get('train', '')}
