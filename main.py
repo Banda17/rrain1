@@ -119,10 +119,16 @@ try:
         # Add checkbox column
         filtered_df['Select'] = False
 
+        # Add Time_Original to keep the original format
+        filtered_df['Time_Original'] = filtered_df['Time']
+
         # Reorder columns to show checkbox first, use Time_Display instead of Time
-        column_order = ['Select', 'Train Name', 'Station', 'Sch_Time', 'Time_Display', 'Time', 'Status']
+        column_order = ['Select', 'Train Name', 'Station', 'Sch_Time', 'Time_Display', 'Time_Original', 'Status']
         display_df = filtered_df[column_order].copy()
-        display_df = display_df.rename(columns={'Time_Display': 'Current Time'})
+        display_df = display_df.rename(columns={
+            'Time_Display': 'Current Time',
+            'Time_Original': 'Time'
+        })
 
         # Show filtering info
         st.info(f"Found {len(display_df)} trains with numeric names")
@@ -146,8 +152,8 @@ try:
                     help="Current time in 24-hour format"
                 ),
                 "Time": st.column_config.TextColumn(
-                    "Full Time",
-                    help="Complete timestamp"
+                    "Time",
+                    help="Time in HH:MM format"
                 ),
                 "Sch_Time": st.column_config.TextColumn(
                     "Scheduled Time",
