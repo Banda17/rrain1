@@ -1,6 +1,7 @@
 import streamlit as st
 from PIL import Image, ImageDraw, ImageFont
 from typing import Dict, Optional, Tuple
+import io
 
 class MapViewer:
     def __init__(self):
@@ -47,7 +48,8 @@ class MapViewer:
         # Marker properties
         marker_color = 'red' if is_selected else 'blue'
 
-        # Draw station marker (circle)
+        # Draw station marker (circle with pulsing effect)
+        # Inner circle
         draw.ellipse(
             [(x - marker_radius, y - marker_radius), 
              (x + marker_radius, y + marker_radius)],
@@ -56,31 +58,31 @@ class MapViewer:
             width=max(2, int(zoom_level))
         )
 
+        # Outer circle for highlight effect
+        if is_selected:
+            outer_radius = int(marker_radius * 1.5)
+            draw.ellipse(
+                [(x - outer_radius, y - outer_radius),
+                 (x + outer_radius, y + outer_radius)],
+                fill=None,
+                outline='yellow',
+                width=max(2, int(zoom_level))
+            )
+
         # Scale text size with zoom
-        font_size = int(12 * zoom_level)
+        font_size = int(14 * zoom_level)  # Increased base font size
         try:
             font = ImageFont.truetype("DejaVuSans.ttf", font_size)
         except:
             font = None  # Will use default font if custom font not available
 
-        # Draw station code label
+        # Draw station code label with improved visibility
         label_offset = marker_radius + 5
         draw.text(
             (x + label_offset, y - label_offset),
             station_code,
             fill='black',
-            stroke_width=max(1, int(zoom_level/2)),
-            stroke_fill='white',
-            font=font
-        )
-
-        # Draw coordinates for debugging
-        debug_text = f"({station_pos['x']:.2f}, {station_pos['y']:.2f})"
-        draw.text(
-            (x + label_offset, y + 5),
-            debug_text,
-            fill='black',
-            stroke_width=max(1, int(zoom_level/2)),
+            stroke_width=max(2, int(zoom_level)),
             stroke_fill='white',
             font=font
         )
@@ -91,8 +93,18 @@ class MapViewer:
         """Render the map with all features"""
         st.write("## Interactive Map Controls")
 
-        # Add zoom control
-        zoom_level = st.slider("Zoom Level", min_value=1.0, max_value=3.0, value=1.5, step=0.1)
+        # Create columns for controls
+        col1, col2 = st.columns([2, 1])
+
+        with col1:
+            # Add zoom control
+            zoom_level = st.slider("Zoom Level", min_value=1.0, max_value=4.0, value=1.5, step=0.1,
+                                help="Drag to zoom in/out of the map")
+
+        with col2:
+            # Add display options
+            show_coords = st.checkbox("Show Coordinates", value=False,
+                                    help="Display station coordinates on the map")
 
         # Load and process map
         base_map = self.load_map()
@@ -125,9 +137,24 @@ class MapViewer:
                 caption="Vijayawada Division System Map (Use slider to zoom)"
             )
 
-            # Show selected train info
+            # Show hover information for stations
+            if st.checkbox("Show Station Information", value=True):
+                station_info = ""
+                for station, coords in self.station_locations.items():
+                    is_selected = (selected_train and selected_train.get('station') == station)
+                    status = "🔴 Selected" if is_selected else "🔵 Available"
+                    if show_coords:
+                        station_info += f"{status} - {station}: (x: {coords['x']:.2f}, y: {coords['y']:.2f})\n"
+                    else:
+                        station_info += f"{status} - {station}\n"
+
+                st.text_area("Station Status", value=station_info, height=150, disabled=True)
+
+            # Show selected train info with more details
             if selected_train:
                 station = selected_train.get('station', '')
                 if station in self.station_locations:
-                    coords = self.station_locations[station]
-                    st.caption(f"Selected Train at {station} (x: {coords['x']:.2f}, y: {coords['y']:.2f})")
+                    st.success(f"🚂 Train {selected_train.get('train', '')} selected at station {station}")
+                    if show_coords:
+                        coords = self.station_locations[station]
+                        st.info(f"Station coordinates: (x: {coords['x']:.2f}, y: {coords['y']:.2f})")
