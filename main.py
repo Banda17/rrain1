@@ -204,48 +204,21 @@ try:
 
             st.info(f"Showing {len(display_df)} {timing_status.lower()} trains")
 
-        # Create unique identifiers for radio options
-        train_options = [f"{row['Train Name']} - {row['Station']}" for _, row in display_df.iterrows()]
-        train_options = ["None"] + train_options  # Add 'None' option
-
-        # Radio button for train selection
-        selected_train_option = st.radio(
-            "Select Train to Track",
-            options=train_options,
-            index=0,  # Default to 'None'
-            key="train_selector"
-        )
-
-        # Handle train selection
-        if selected_train_option != "None":
-            # Parse the selected option to get train details
-            train_name, station = selected_train_option.split(" - ")
-            selected_train = display_df[
-                (display_df['Train Name'] == train_name) & 
-                (display_df['Station'] == station)
-            ].iloc[0]
-            update_selected_train_details(selected_train)
-        else:
-            # Clear selection
-            st.session_state['selected_train'] = None
-            st.session_state['selected_train_details'] = {}
-
-        # Display the selected train details if available
-        if st.session_state['selected_train_details']:
-            selected_details = st.session_state['selected_train_details']
-            st.markdown(f"<p>{selected_details['Delay']}</p>", unsafe_allow_html=True)
-            st.write({
-                'Scheduled Time': selected_details['Scheduled Time'],
-                'Actual Time': selected_details['Actual Time'],
-                'Current Status': selected_details['Current Status'],
-            })
-
-        # Display the dataframe without the Select column
-        st.dataframe(
-            display_df.drop(columns=['Select']),
+        # Make the dataframe interactive
+        edited_df = st.data_editor(
+            display_df,
             use_container_width=True,
             height=400,
+            key="train_selector",
+            column_order=column_order,
+            disabled=["Train Name", "Station", "Sch_Time", "Current Time", "Status", "Delay"],
             column_config={
+                "Select": st.column_config.CheckboxColumn(
+                    "Select",
+                    help="Select to highlight on map",
+                    width="small",
+                    default=False
+                ),
                 "Current Time": st.column_config.TextColumn(
                     "Current Time",
                     help="Current time in 24-hour format"
@@ -261,7 +234,29 @@ try:
             }
         )
 
-        # Function to update selected train details
+        if len(edited_df) > 0:
+            # Get currently selected trains
+            selected_trains = edited_df[edited_df['Select']]
+
+            if selected_trains.empty:
+                # Clear selection
+                st.session_state['selected_train'] = None
+                st.session_state['selected_train_details'] = {}
+            else:
+                # Get the first selected train and update details
+                update_selected_train_details(selected_trains.iloc[0])
+
+        # Display the selected train details if available
+        if st.session_state['selected_train_details']:
+            selected_details = st.session_state['selected_train_details']
+            st.markdown(f"<p>{selected_details['Delay']}</p>", unsafe_allow_html=True)
+            st.write({
+                'Scheduled Time': selected_details['Scheduled Time'],
+                'Actual Time': selected_details['Actual Time'],
+                'Current Status': selected_details['Current Status'],
+            })
+
+        # Function to update selected train details outside the if block
         def update_selected_train_details(selected):
             station = selected['Station']
             if st.session_state['map_viewer'].get_station_coordinates(station):
