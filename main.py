@@ -39,10 +39,10 @@ if 'last_update' not in st.session_state:
     st.session_state['last_update'] = None
 if 'selected_train' not in st.session_state:
     st.session_state['selected_train'] = None
+if 'selected_train_details' not in st.session_state:
+    st.session_state['selected_train_details'] = {}
 if 'map_viewer' not in st.session_state:
     st.session_state['map_viewer'] = MapViewer()
-if 'previous_selection' not in st.session_state:
-    st.session_state['previous_selection'] = None
 
 def parse_time(time_str: str) -> datetime:
     """Parse time string in HH:MM format to datetime object"""
@@ -109,7 +109,6 @@ try:
         # Convert Time column to show only the time part (HH:MM)
         def extract_time(time_str):
             try:
-                # Extract just the time part (HH:MM) from "HH:MM DD-MM" format
                 return time_str.split()[0] if time_str else ''
             except Exception as e:
                 logger.error(f"Error extracting time from {time_str}: {str(e)}")
@@ -125,10 +124,8 @@ try:
             scheduled_time = st.session_state['train_schedule'].get_scheduled_time(
                 train_name, station
             )
-            # Format scheduled time to show only time part if available
             if scheduled_time and scheduled_time.strip():
                 try:
-                    # Split the time string and take only the time part before the space
                     time_part = scheduled_time.split()[0]
                     return time_part
                 except Exception as e:
@@ -159,9 +156,8 @@ try:
         filtered_df['Select'] = False
 
         # Both Time columns will show HH:MM format
-        column_order = ['Select', 'Train Name', 'Station', 'Sch_Time', 'Time_Display', 'Time', 'Status', 'Delay']
+        column_order = ['Select', 'Train Name', 'Station', 'Sch_Time', 'Time_Display', 'Status', 'Delay']
         display_df = filtered_df[column_order].copy()
-        display_df['Time'] = display_df['Time'].apply(extract_time)  # Format Time column to show only HH:MM
         display_df = display_df.rename(columns={'Time_Display': 'Current Time'})
 
         # Show filtering info
@@ -174,7 +170,7 @@ try:
             height=400,
             key="train_selector",
             column_order=column_order,
-            disabled=["Train Name", "Station", "Sch_Time", "Current Time", "Time", "Status", "Delay"],
+            disabled=["Train Name", "Station", "Sch_Time", "Current Time", "Status", "Delay"],
             column_config={
                 "Select": st.column_config.CheckboxColumn(
                     "Select",
@@ -184,10 +180,6 @@ try:
                 "Current Time": st.column_config.TextColumn(
                     "Current Time",
                     help="Current time in 24-hour format"
-                ),
-                "Time": st.column_config.TextColumn(
-                    "Time",
-                    help="Time in HH:MM format"
                 ),
                 "Sch_Time": st.column_config.TextColumn(
                     "Scheduled Time",
@@ -202,30 +194,46 @@ try:
 
         # Simplified selection logic
         if len(edited_df) > 0:
-            # Get currently selected train
+            # Get currently selected trains
             selected_trains = edited_df[edited_df['Select']]
 
             if selected_trains.empty:
                 # No selection, clear the map
-                st.session_state['selected_train'] = None
+                if st.session_state['selected_train'] is not None:
+                    st.session_state['selected_train'] = None
+                    st.session_state['selected_train_details'] = {}
             else:
-                # Get the first (and only) selected train
+                # Get the first selected train
                 selected = selected_trains.iloc[0]
 
-                # Update the selection state directly
-                st.session_state['selected_train'] = {
+                # Create new selection
+                new_selection = {
                     'train': selected['Train Name'],
                     'station': selected['Station']
                 }
 
-                # Show train details
-                delay_text = selected['Delay']
-                st.markdown(f"<p>{delay_text}</p>", unsafe_allow_html=True)
-                st.write({
-                    'Scheduled Time': selected['Sch_Time'],
-                    'Actual Time': selected['Current Time'],
-                    'Current Status': selected['Status'],
-                })
+                # Check if the selection has changed
+                if st.session_state.get('selected_train') != new_selection:
+                    # Update the session state
+                    st.session_state['selected_train'] = new_selection
+
+                    # Store the selected train details
+                    st.session_state['selected_train_details'] = {
+                        'Scheduled Time': selected['Sch_Time'],
+                        'Actual Time': selected['Current Time'],
+                        'Current Status': selected['Status'],
+                        'Delay': selected['Delay']
+                    }
+
+        # Display the selected train details if available
+        if st.session_state['selected_train_details']:
+            selected_details = st.session_state['selected_train_details']
+            st.markdown(f"<p>{selected_details['Delay']}</p>", unsafe_allow_html=True)
+            st.write({
+                'Scheduled Time': selected_details['Scheduled Time'],
+                'Actual Time': selected_details['Actual Time'],
+                'Current Status': selected_details['Current Status'],
+            })
 
     else:
         st.error(f"Error loading data: {message}")
