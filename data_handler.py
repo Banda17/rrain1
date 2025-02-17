@@ -71,6 +71,10 @@ class DataHandler:
 
         start_time = time.time()
         try:
+            # Ensure the first row becomes headers
+            df.columns = df.iloc[0]
+            df = df.iloc[1:].reset_index(drop=True)
+
             # Process only required columns with optimized operations
             required_cols = ['Train Name', 'Station', 'Time', 'Status']
             df = df[required_cols].copy()
@@ -85,7 +89,7 @@ class DataHandler:
             return df
         except Exception as e:
             logger.error(f"Error processing data: {str(e)}")
-            return pd.DataFrame()
+            return pd.DataFrame(columns=['Train Name', 'Station', 'Time', 'Status'])
 
     def get_train_status_table(self) -> pd.DataFrame:
         """Get status table from database with caching"""

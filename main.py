@@ -10,6 +10,7 @@ from database import init_db
 from train_schedule import TrainSchedule
 import logging
 from map_viewer import MapViewer
+from typing import Optional
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -44,19 +45,29 @@ if 'selected_train_details' not in st.session_state:
 if 'map_viewer' not in st.session_state:
     st.session_state['map_viewer'] = MapViewer()
 
-def parse_time(time_str: str) -> datetime:
+def parse_time(time_str: str) -> Optional[datetime]:
     """Parse time string in HH:MM format to datetime object"""
     try:
+        # If time string is empty, None, or "Not Available"
+        if not time_str or time_str.strip().lower() == "not available":
+            return None
+
         # Extract only the time part (HH:MM) from the string
         time_part = time_str.split()[0] if time_str else ''
         if not time_part:
             return None
+
+        # Validate time format (HH:MM)
+        if not ':' in time_part or len(time_part.split(':')) != 2:
+            logger.warning(f"Invalid time format: {time_str}")
+            return None
+
         return datetime.strptime(time_part, '%H:%M')
     except Exception as e:
-        logger.error(f"Error parsing time {time_str}: {str(e)}")
+        logger.debug(f"Error parsing time {time_str}: {str(e)}")
         return None
 
-def calculate_time_difference(scheduled: str, actual: str) -> int:
+def calculate_time_difference(scheduled: str, actual: str) -> Optional[int]:
     """Calculate time difference in minutes between scheduled and actual times"""
     try:
         sch_time = parse_time(scheduled)
@@ -68,7 +79,7 @@ def calculate_time_difference(scheduled: str, actual: str) -> int:
             return int(diff)
         return None
     except Exception as e:
-        logger.error(f"Error calculating time difference: {str(e)}")
+        logger.debug(f"Error calculating time difference: {str(e)}")
         return None
 
 @st.cache_data(ttl=300)
@@ -152,6 +163,18 @@ try:
                      f"✅ {x}" if pd.notna(x) else "N/A"
         )
 
+        # Add a background color based on condition
+        def style_delay(value):
+            if '⚠️' in value:
+                return 'background-color: #FFA07A;'  # Light Salmon
+            elif '⏰' in value:
+                return 'background-color: #8FBC8F;'  # Dark Sea Green
+            elif '✅' in value:
+                return 'background-color: #98FB98;'  # Pale Green
+            return ''
+
+        filtered_df.style.applymap(style_delay, subset=['Delay'])
+
         # Add checkbox column
         filtered_df['Select'] = False
 
@@ -160,8 +183,26 @@ try:
         display_df = filtered_df[column_order].copy()
         display_df = display_df.rename(columns={'Time_Display': 'Current Time'})
 
-        # Show filtering info
+        # Show filtering info and controls
         st.info(f"Found {len(display_df)} trains with numeric names")
+
+        # Add timing status filter
+        timing_status = st.selectbox(
+            "Filter by Timing Status",
+            ["All", "Late", "On Time", "Early"],
+            help="Filter trains based on their arrival status"
+        )
+
+        # Apply timing status filter
+        if timing_status != "All":
+            if timing_status == "Late":
+                display_df = display_df[display_df['Delay'].str.contains('⚠️', na=False)]
+            elif timing_status == "Early":
+                display_df = display_df[display_df['Delay'].str.contains('⏰', na=False)]
+            elif timing_status == "On Time":
+                display_df = display_df[display_df['Delay'].str.contains('✅', na=False)]
+
+            st.info(f"Showing {len(display_df)} {timing_status.lower()} trains")
 
         # Make the dataframe interactive
         edited_df = st.data_editor(
@@ -197,11 +238,13 @@ try:
             # Get currently selected trains
             selected_trains = edited_df[edited_df['Select']]
 
+            # Always clear selection if no trains are selected
             if selected_trains.empty:
-                # No selection, clear the map
-                if st.session_state['selected_train'] is not None:
-                    st.session_state['selected_train'] = None
-                    st.session_state['selected_train_details'] = {}
+                # No selection, clear all state
+                st.session_state['selected_train'] = None
+                st.session_state['selected_train_details'] = {}
+                # Force map update by triggering rerun
+                st.rerun()
             else:
                 # Get the first selected train
                 selected = selected_trains.iloc[0]
@@ -213,17 +256,18 @@ try:
                 }
 
                 # Check if the selection has changed
-                if st.session_state.get('selected_train') != new_selection:
+                current_selection = st.session_state.get('selected_train')
+                if current_selection != new_selection:
                     # Update the session state
                     st.session_state['selected_train'] = new_selection
-
-                    # Store the selected train details
                     st.session_state['selected_train_details'] = {
                         'Scheduled Time': selected['Sch_Time'],
                         'Actual Time': selected['Current Time'],
                         'Current Status': selected['Status'],
                         'Delay': selected['Delay']
                     }
+                    # Force map update
+                    st.rerun()
 
         # Display the selected train details if available
         if st.session_state['selected_train_details']:
