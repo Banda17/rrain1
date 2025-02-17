@@ -205,6 +205,9 @@ try:
             # Get currently selected trains
             selected_trains = edited_df[edited_df['Select']]
 
+            # Clear all selections except the current one
+            edited_df['Select'] = False
+
             # Clear selection if no trains are selected
             if selected_trains.empty:
                 st.session_state['selected_train'] = None
@@ -219,19 +222,18 @@ try:
                     'station': first_selected['Station']
                 }
 
-                # Only update if selection has changed
-                if new_selection != st.session_state['previous_selection']:
-                    st.session_state['selected_train'] = new_selection
-                    st.session_state['previous_selection'] = new_selection
+                # Update selection state immediately
+                st.session_state['selected_train'] = new_selection
+                st.session_state['previous_selection'] = new_selection
 
-                    # Display detailed info for selected train
-                    delay_text = first_selected['Delay'] 
-                    st.markdown(f"<p>{delay_text}</p>", unsafe_allow_html=True)
-                    st.write({
-                        'Scheduled Time': first_selected['Sch_Time'],
-                        'Actual Time': first_selected['Current Time'],
-                        'Current Status': first_selected['Status'],
-                    })
+                # Display detailed info for selected train
+                delay_text = first_selected['Delay'] 
+                st.markdown(f"<p>{delay_text}</p>", unsafe_allow_html=True)
+                st.write({
+                    'Scheduled Time': first_selected['Sch_Time'],
+                    'Actual Time': first_selected['Current Time'],
+                    'Current Status': first_selected['Status'],
+                })
 
     else:
         st.error(f"Error loading data: {message}")
