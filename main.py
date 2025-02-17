@@ -195,44 +195,36 @@ try:
                 ),
                 "Delay": st.column_config.TextColumn(
                     "Delay (mins)",
-                    help="Time difference between scheduled and actual time in minutes. Red indicates late, green indicates early."
+                    help="Time difference between scheduled and actual time in minutes"
                 )
             }
         )
 
-        # Handle train selection
+        # Simplified selection logic
         if len(edited_df) > 0:
-            # Get currently selected trains
+            # Get currently selected train
             selected_trains = edited_df[edited_df['Select']]
 
-            # Clear all selections except the current one
-            edited_df['Select'] = False
-
-            # Clear selection if no trains are selected
             if selected_trains.empty:
+                # No selection, clear the map
                 st.session_state['selected_train'] = None
-                st.session_state['previous_selection'] = None
             else:
-                # Get the first selected train
-                first_selected = selected_trains.iloc[0]
+                # Get the first (and only) selected train
+                selected = selected_trains.iloc[0]
 
-                # Create new selection
-                new_selection = {
-                    'train': first_selected['Train Name'],
-                    'station': first_selected['Station']
+                # Update the selection state directly
+                st.session_state['selected_train'] = {
+                    'train': selected['Train Name'],
+                    'station': selected['Station']
                 }
 
-                # Update selection state immediately
-                st.session_state['selected_train'] = new_selection
-                st.session_state['previous_selection'] = new_selection
-
-                # Display detailed info for selected train
-                delay_text = first_selected['Delay'] 
+                # Show train details
+                delay_text = selected['Delay']
                 st.markdown(f"<p>{delay_text}</p>", unsafe_allow_html=True)
                 st.write({
-                    'Scheduled Time': first_selected['Sch_Time'],
-                    'Actual Time': first_selected['Current Time'],
-                    'Current Status': first_selected['Status'],
+                    'Scheduled Time': selected['Sch_Time'],
+                    'Actual Time': selected['Current Time'],
+                    'Current Status': selected['Status'],
                 })
 
     else:
