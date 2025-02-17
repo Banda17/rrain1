@@ -128,7 +128,7 @@ class MapViewer:
         if base_map is None:
             return
 
-        # Create display container with expanded width
+        # Create display container
         map_container = st.container()
         with map_container:
             # Create display image
@@ -149,7 +149,7 @@ class MapViewer:
             # Display the map with increased size
             st.image(
                 display_image,
-                use_column_width=True,
+                use_container_width=True,  # Updated from use_column_width
                 caption="Vijayawada Division System Map (Use slider to zoom)"
             )
 
