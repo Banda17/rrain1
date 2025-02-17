@@ -1,5 +1,5 @@
 import streamlit as st
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 from typing import Dict, Optional, Tuple
 
 class MapViewer:
@@ -14,6 +14,7 @@ class MapViewer:
             'BZA': {'x': 0.5, 'y': 0.5},     # Vijayawada
         }
         self.map_path = 'Vijayawada_Division_System_map_page-0001 (2).jpg'
+        self.marker_size = 30  # Size of the train marker
 
     def load_map(self) -> Optional[Image.Image]:
         """Load the base map image"""
@@ -23,8 +24,8 @@ class MapViewer:
             st.error(f"Error loading map: {str(e)}")
             return None
 
-    def highlight_station(self, image: Image.Image, station_code: str) -> Image.Image:
-        """Highlight a specific station on the map"""
+    def draw_train_marker(self, image: Image.Image, station_code: str, is_selected: bool = False) -> Image.Image:
+        """Draw a train marker at the specified station"""
         if station_code not in self.station_locations:
             return image
 
@@ -34,14 +35,31 @@ class MapViewer:
         x = int(station_pos['x'] * width)
         y = int(station_pos['y'] * height)
 
-        # Draw highlight circle
         draw = ImageDraw.Draw(display_image)
-        circle_radius = 20
-        draw.ellipse(
-            [x-circle_radius, y-circle_radius, x+circle_radius, y+circle_radius],
-            outline='red',
-            width=3
-        )
+
+        # Draw train marker
+        marker_color = 'red' if is_selected else 'blue'
+        marker_radius = self.marker_size // 2
+
+        # Draw train icon (simplified train shape)
+        points = [
+            (x - marker_radius, y + marker_radius),  # bottom left
+            (x + marker_radius, y + marker_radius),  # bottom right
+            (x + marker_radius, y - marker_radius),  # top right
+            (x - marker_radius, y - marker_radius),  # top left
+        ]
+
+        # Draw train body
+        draw.polygon(points, fill=marker_color, outline='white')
+
+        # Draw windows
+        window_size = marker_radius // 2
+        draw.rectangle([x - window_size, y - window_size, x + window_size, y], 
+                      fill='white', outline=marker_color)
+
+        # Add station name
+        draw.text((x + marker_radius + 5, y - marker_radius), 
+                 station_code, fill='black', stroke_width=2)
 
         return display_image
 
@@ -52,11 +70,13 @@ class MapViewer:
         if base_map is None:
             return
 
-        # Apply station highlight if train is selected
+        # Apply train markers
         display_image = base_map
-        if selected_train and 'station' in selected_train:
-            display_image = self.highlight_station(display_image, selected_train['station'])
-            st.caption(f"Currently showing: {selected_train['station']}")
+
+        # Draw markers for all stations
+        for station in self.station_locations.keys():
+            is_selected = (selected_train and selected_train.get('station') == station)
+            display_image = self.draw_train_marker(display_image, station, is_selected)
 
         # Display the map
         st.image(
@@ -64,3 +84,6 @@ class MapViewer:
             use_container_width=True,
             caption="Vijayawada Division System Map"
         )
+
+        if selected_train:
+            st.caption(f"Currently showing: Train at {selected_train['station']}")
