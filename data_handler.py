@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import requests
 from typing import Dict, List, Tuple, Any
 from datetime import datetime
 from database import get_database_connection, TrainDetails
@@ -47,120 +46,46 @@ class DataHandler:
         self.last_update = None
         self.update_interval = 300  # 5 minutes in seconds
         self.db_session = get_database_connection()
-        # Sample data for testing
-        self.sample_data = pd.DataFrame({
-            'Train Name': ['12345', '67890'],
-            'Station': ['VNEC', 'GALA'],
-            'Time': ['10:30', '11:45'],
-            'Status': ['On Time', 'Delayed']
-        })
-        self.spreadsheet_url = "https://docs.google.com/spreadsheets/d/1OuiQ3FEoNAtH10NllgLusxACjn2NU0yZUcHh68hLoI4/export?format=csv&gid=0"
+        self.spreadsheet_url = "https://docs.google.com/spreadsheets/d/1OuiQ3FEoNAtH10NllgLusxACjn2NU0yZUcHh68hLoI4/export?format=csv"
         self.performance_metrics = {'load_time': 0, 'process_time': 0}
 
     def _fetch_csv_data(self) -> pd.DataFrame:
-        """Fetch CSV data with improved error handling and logging"""
+        """Fetch CSV data with performance tracking"""
         start_time = time.time()
         try:
-            logger.info(f"Attempting to fetch data from {self.spreadsheet_url}")
-
             @st.cache_data(ttl=300, show_spinner=False)
             def fetch_data(url):
-                try:
-                    response = requests.get(url)
-                    response.raise_for_status()
-
-                    df = pd.read_csv(url)
-                    logger.info(f"Successfully loaded CSV with shape {df.shape}")
-
-                    if df.empty:
-                        logger.warning("Using sample data as CSV was empty")
-                        return self.sample_data.copy()
-
-                    return df
-
-                except Exception as e:
-                    logger.warning(f"Failed to fetch CSV, using sample data: {str(e)}")
-                    return self.sample_data.copy()
+                return pd.read_csv(url)
 
             df = fetch_data(self.spreadsheet_url)
-
-            # Map columns if needed
-            required_cols = ['Train Name', 'Station', 'Time', 'Status']
-            column_mappings = {
-                'Train Name': ['Train_Name', 'TrainName', 'Train_ID', 'Train'],
-                'Station': ['Station_Name', 'StationName', 'Stop'],
-                'Time': ['Arrival_Time', 'Departure_Time', 'Schedule_Time'],
-                'Status': ['Train_Status', 'CurrentStatus', 'State']
-            }
-
-            # Try to map columns
-            for required_col, variants in column_mappings.items():
-                if required_col not in df.columns:
-                    for variant in variants:
-                        if variant in df.columns:
-                            df = df.rename(columns={variant: required_col})
-                            break
-
-            # Create any missing columns
-            for col in required_cols:
-                if col not in df.columns:
-                    df[col] = 'Not Available'
-
-            # Clean and format data
-            for col in required_cols:
-                if col in df.columns:
-                    df[col] = df[col].fillna('Not Available')
-                    df[col] = df[col].astype(str).str.strip()
-
-            # Ensure time format is consistent (HH:MM)
-            def format_time(time_str):
-                try:
-                    # Handle empty or invalid values
-                    if pd.isna(time_str) or time_str == 'Not Available':
-                        return 'Not Available'
-                    # Extract time part if datetime is present
-                    if ' ' in time_str:
-                        time_str = time_str.split()[1]
-                    # Ensure HH:MM format
-                    if ':' in time_str:
-                        hours, minutes = map(int, time_str.split(':')[:2])
-                        return f"{hours:02d}:{minutes:02d}"
-                    return 'Not Available'
-                except Exception:
-                    return 'Not Available'
-
-            df['Time'] = df['Time'].apply(format_time)
-
             self.performance_metrics['load_time'] = time.time() - start_time
-            return df[required_cols]
-
+            return df
         except Exception as e:
-            logger.error(f"Error in _fetch_csv_data: {str(e)}", exc_info=True)
-            return self.sample_data.copy()
+            logger.error(f"Error fetching CSV data: {str(e)}")
+            return pd.DataFrame()
 
     def _process_raw_data(self, df: pd.DataFrame) -> pd.DataFrame:
         """Process raw data with optimized operations"""
         if df.empty:
-            logger.warning("Received empty DataFrame for processing")
-            return self.sample_data.copy()
+            return df
 
         start_time = time.time()
         try:
+            # Process only required columns with optimized operations
             required_cols = ['Train Name', 'Station', 'Time', 'Status']
-            processed_df = df[required_cols].copy()
+            df = df[required_cols].copy()
 
-            # Clean string columns
-            for col in processed_df.columns:
-                if col != 'Time':  # Skip time column as it's handled separately
-                    processed_df[col] = processed_df[col].fillna('Not Available')
-                    processed_df[col] = processed_df[col].astype(str).str.strip()
+            # Vectorized string cleaning
+            df = df.apply(lambda x: x.str.strip() if x.dtype == 'object' else x)
+
+            # Efficient datetime conversion
+            df['Time'] = pd.to_datetime(df['Time'], format='%Y-%m-%d %H:%M:%S', errors='coerce')
 
             self.performance_metrics['process_time'] = time.time() - start_time
-            return processed_df
-
+            return df
         except Exception as e:
-            logger.error(f"Error processing data: {str(e)}", exc_info=True)
-            return self.sample_data.copy()
+            logger.error(f"Error processing data: {str(e)}")
+            return pd.DataFrame()
 
     def get_train_status_table(self) -> pd.DataFrame:
         """Get status table from database with caching"""
@@ -242,7 +167,7 @@ class DataHandler:
             records = []
 
             for _, row in self.data.iterrows():
-                time_actual = pd.to_datetime(row['Time'], format='%H:%M', errors='coerce')
+                time_actual = pd.to_datetime(row['Time'])
                 time_scheduled = time_actual  # Simplified for now
                 status, delay = self.get_timing_status(time_actual, time_scheduled)
 
