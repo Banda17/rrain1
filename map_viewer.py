@@ -21,6 +21,10 @@ class MapViewer:
         self.default_zoom = 1.5
         self.max_zoom = 4.0
 
+    def get_station_coordinates(self, station_code: str) -> Optional[Dict[str, float]]:
+        """Get coordinates for a station code"""
+        return self.station_locations.get(station_code)
+
     def load_map(self) -> Optional[Image.Image]:
         """Load and safely resize the base map image"""
         try:
@@ -53,15 +57,15 @@ class MapViewer:
             st.error(f"Error loading GPS pin: {str(e)}")
             return None
 
-    def draw_train_marker(self, image: Image.Image, station_code: str, is_selected: bool = False, zoom_level: float = 1.0) -> Image.Image:
+    def draw_train_marker(self, image: Image.Image, station_code: str, zoom_level: float = 1.0) -> Image.Image:
         """Draw a GPS pin marker at the specified station using x,y coordinates"""
-        if station_code not in self.station_locations or not is_selected:
+        station_pos = self.get_station_coordinates(station_code)
+        if not station_pos:
             return image
 
         # Ensure display image is in RGBA mode
         display_image = image.convert('RGBA')
         width, height = display_image.size
-        station_pos = self.station_locations[station_code]
         x = int(station_pos['x'] * width)
         y = int(station_pos['y'] * height)
 
@@ -134,13 +138,15 @@ class MapViewer:
         with map_container:
             display_image = base_map.copy()
 
-            if selected_train and selected_train.get('station') in self.station_locations:
-                display_image = self.draw_train_marker(
-                    display_image,
-                    selected_train['station'],
-                    True,
-                    zoom_level
-                )
+            if selected_train and selected_train.get('station'):
+                # Directly check if station exists in coordinates
+                station_code = selected_train['station']
+                if station_code in self.station_locations:
+                    display_image = self.draw_train_marker(
+                        display_image,
+                        station_code,
+                        zoom_level
+                    )
 
             # Convert to RGB before resizing and display
             display_image = display_image.convert('RGB')
@@ -155,8 +161,8 @@ class MapViewer:
                 caption="Vijayawada Division System Map (Use slider to zoom)"
             )
 
-            if selected_train and selected_train.get('station') in self.station_locations:
-                station = selected_train.get('station', '')
+            if selected_train and selected_train.get('station'):
+                station = selected_train['station']
                 if station in self.station_locations:
                     with st.expander("🚂 Train Information", expanded=True):
                         st.markdown(f"""

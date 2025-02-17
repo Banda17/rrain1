@@ -238,27 +238,21 @@ try:
             # Get currently selected trains
             selected_trains = edited_df[edited_df['Select']]
 
-            # Handle state updates based on selection
             if selected_trains.empty:
-                # Only clear and rerun if there was a previous selection
-                if st.session_state.get('selected_train') is not None:
-                    st.session_state['selected_train'] = None
-                    st.session_state['selected_train_details'] = {}
-                    st.experimental_rerun()
+                # Clear selection
+                st.session_state['selected_train'] = None
+                st.session_state['selected_train_details'] = {}
             else:
                 # Get the first selected train
                 selected = selected_trains.iloc[0]
 
-                # Create new selection
-                new_selection = {
-                    'train': selected['Train Name'],
-                    'station': selected['Station']
-                }
-
-                # Update only if selection has changed
-                current_selection = st.session_state.get('selected_train')
-                if current_selection != new_selection:
-                    st.session_state['selected_train'] = new_selection
+                # Direct coordinate lookup - only update if station exists in coordinates
+                station = selected['Station']
+                if st.session_state['map_viewer'].get_station_coordinates(station):
+                    st.session_state['selected_train'] = {
+                        'train': selected['Train Name'],
+                        'station': station
+                    }
                     st.session_state['selected_train_details'] = {
                         'Scheduled Time': selected['Sch_Time'],
                         'Actual Time': selected['Current Time'],
