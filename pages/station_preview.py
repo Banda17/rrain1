@@ -2,7 +2,6 @@ import streamlit as st
 from map_viewer import MapViewer
 from PIL import Image, ImageDraw, ImageFont
 import pandas as pd
-import re
 
 # Page configuration
 st.set_page_config(
@@ -29,42 +28,6 @@ stations_df = pd.DataFrame([
     }
     for code, coords in map_viewer.station_locations.items()
 ])
-
-def update_map_viewer_file(updated_coords):
-    """Update the map_viewer.py file with new coordinates"""
-    try:
-        with open('map_viewer.py', 'r') as file:
-            content = file.read()
-
-        # Find the station_locations dictionary in the file
-        start_pattern = r"self\.station_locations = {"
-        match = re.search(start_pattern, content)
-        if not match:
-            st.error("Could not find station locations in map_viewer.py")
-            return False
-
-        # Build the new station locations dictionary
-        new_dict = "        self.station_locations = {\n"
-        for code, coords in updated_coords.items():
-            new_dict += f"            '{code}': {{\n"
-            new_dict += f"                'x': {coords['x']:.2f},\n"
-            new_dict += f"                'y': {coords['y']:.2f}\n"
-            new_dict += "            },\n"
-        new_dict += "        }"
-
-        # Replace the old dictionary with the new one
-        pattern = r"self\.station_locations = \{[^}]+\}"
-        updated_content = re.sub(pattern, new_dict.rstrip(',\n') + "}", content, flags=re.DOTALL)
-
-        # Write the updated content back to the file
-        with open('map_viewer.py', 'w') as file:
-            file.write(updated_content)
-
-        return True
-
-    except Exception as e:
-        st.error(f"Error updating map_viewer.py: {str(e)}")
-        return False
 
 # Load and prepare the base map
 base_map = map_viewer.load_map()
@@ -136,23 +99,15 @@ if base_map:
     )
 
     # Update map_viewer's station locations if coordinates have changed
-    if edited_df is not None and not edited_df.equals(stations_df):
-        # Update the in-memory coordinates
-        updated_coords = {}
+    if edited_df is not None:
         for _, row in edited_df.iterrows():
             station_code = row['Station Code']
             map_viewer.station_locations[station_code] = {
                 'x': row['X Coordinate'],
                 'y': row['Y Coordinate']
             }
-            updated_coords[station_code] = {
-                'x': row['X Coordinate'],
-                'y': row['Y Coordinate']
-            }
 
-        # Update the file
-        if update_map_viewer_file(map_viewer.station_locations):
-            st.success("Coordinates updated in map_viewer.py! The changes will be reflected on the map above.")
+        st.success("Coordinates updated! The changes will be reflected on the map above.")
 
         # Add a button to reset coordinates to default
         if st.button("Reset to Default Coordinates"):
