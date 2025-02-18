@@ -14,13 +14,12 @@ st.set_page_config(
 map_viewer = MapViewer()
 
 st.title("📍 Station Markers Preview")
-st.markdown("This page shows all station locations on the map")
+st.markdown("This page shows all station locations on the map. Edit coordinates in the table below to adjust station positions.")
 
 # Controls
 show_coords = st.checkbox("Show Coordinates", value=True)
-show_station_list = st.checkbox("Show Station List", value=True)
 
-# Create a DataFrame of stations for easy display
+# Create a DataFrame of stations for easy display and editing
 stations_df = pd.DataFrame([
     {
         'Station Code': code,
@@ -36,46 +35,82 @@ base_map = map_viewer.load_map()
 if base_map:
     # Draw all station markers
     display_image = base_map.copy()
-    
+
     for station_code in map_viewer.station_locations.keys():
         display_image = map_viewer.draw_train_marker(display_image, station_code)
-    
+
     # Convert and resize for display
     display_image = display_image.convert('RGB')
     original_width, original_height = display_image.size
-    
+
     # Calculate new dimensions maintaining aspect ratio
     max_height = 600  # Larger height for better visibility
     height_ratio = max_height / original_height
     new_width = int(original_width * height_ratio * 1.2)
     new_height = max_height
-    
+
     display_image = display_image.resize(
         (new_width, new_height),
         Image.Resampling.LANCZOS
     )
-    
+
     # Display the map
     st.image(
         display_image,
         use_container_width=True,
         caption="Station Markers on Vijayawada Division System Map"
     )
-    
-    # Show station list if enabled
-    if show_station_list:
-        st.subheader("Station List")
-        if show_coords:
-            st.dataframe(
-                stations_df.sort_values('Station Code'),
-                use_container_width=True,
-                height=400
+
+    # Show editable station list
+    st.subheader("Station Coordinates")
+    st.markdown("Edit the X and Y coordinates below to adjust station positions (values between 0 and 1)")
+
+    # Make the dataframe editable
+    edited_df = st.data_editor(
+        stations_df,
+        use_container_width=True,
+        height=400,
+        column_config={
+            "Station Code": st.column_config.TextColumn(
+                "Station Code",
+                help="Station identification code",
+                width="medium",
+                required=True
+            ),
+            "X Coordinate": st.column_config.NumberColumn(
+                "X Coordinate",
+                help="Horizontal position (0-1)",
+                min_value=0.0,
+                max_value=1.0,
+                step=0.01,
+                format="%.2f"
+            ),
+            "Y Coordinate": st.column_config.NumberColumn(
+                "Y Coordinate",
+                help="Vertical position (0-1)",
+                min_value=0.0,
+                max_value=1.0,
+                step=0.01,
+                format="%.2f"
             )
-        else:
-            st.dataframe(
-                stations_df[['Station Code']].sort_values('Station Code'),
-                use_container_width=True,
-                height=400
-            )
+        },
+        disabled=["Station Code"],
+        num_rows="dynamic"
+    )
+
+    # Update map_viewer's station locations if coordinates have changed
+    if edited_df is not None:
+        for _, row in edited_df.iterrows():
+            station_code = row['Station Code']
+            map_viewer.station_locations[station_code] = {
+                'x': row['X Coordinate'],
+                'y': row['Y Coordinate']
+            }
+
+        st.success("Coordinates updated! The changes will be reflected on the map above.")
+
+        # Add a button to reset coordinates to default
+        if st.button("Reset to Default Coordinates"):
+            st.rerun()
 else:
     st.error("Unable to load the base map. Please check the map file path.")
