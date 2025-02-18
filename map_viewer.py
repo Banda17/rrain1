@@ -140,8 +140,13 @@ class MapViewer:
             # Convert to RGB before resizing and display
             display_image = display_image.convert('RGB')
             original_width, original_height = display_image.size
-            new_width = int(original_width * self.zoom_level)
-            new_height = int(original_height * self.zoom_level)
+
+            # Set maximum height while maintaining aspect ratio
+            max_height = 400  # Reduced height
+            height_ratio = max_height / original_height
+            new_width = int(original_width * height_ratio * 1.2)  # Increase width by 20%
+            new_height = max_height
+
             display_image = display_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
 
             st.image(
