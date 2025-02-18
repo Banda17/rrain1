@@ -7,18 +7,65 @@ class MapViewer:
     def __init__(self):
         # Station coordinates (normalized to image coordinates 0-1)
         self.station_locations = {
-            'VNEC': {'x': 0.15, 'y': 0.25},   # Secunderabad (left upper)
-            'GALA': {'x': 0.25, 'y': 0.30},   # Ghatkesar (middle upper)
-            'MBD': {'x': 0.35, 'y': 0.35},    # Malakpet (middle)
-            'GWM': {'x': 0.45, 'y': 0.40},    # Gandhinagar (middle lower)
-            'PAVP': {'x': 0.55, 'y': 0.45},   # Pavalavagu (right lower)
-            'BZA': {'x': 0.75, 'y': 0.60},    # Vijayawada (bottom right)
+            # Existing reference stations
+            'VNEC': {'x': 0.15, 'y': 0.25},   # Secunderabad
+            'GALA': {'x': 0.25, 'y': 0.30},   # Ghatkesar
+            'MBD': {'x': 0.35, 'y': 0.35},    # Malakpet
+            'GWM': {'x': 0.45, 'y': 0.40},    # Gandhinagar
+            'PAVP': {'x': 0.55, 'y': 0.45},   # Pavalavagu
+            'BZA': {'x': 0.75, 'y': 0.60},    # Vijayawada
+
+            # Vijayawada to Gudur route (increasing x, y coordinates)
+            'BVRM': {'x': 0.78, 'y': 0.62},   # Bhimavaram
+            'TNKU': {'x': 0.80, 'y': 0.64},   # Tanuku
+            'RAJM': {'x': 0.82, 'y': 0.66},   # Rajahmundry
+            'VSKP': {'x': 0.84, 'y': 0.68},   # Visakhapatnam
+            'VZIP': {'x': 0.86, 'y': 0.70},   # Vizianagaram
+            'SCMN': {'x': 0.88, 'y': 0.72},   # Srikakulam
+            'PTPU': {'x': 0.90, 'y': 0.74},   # Palasa
+            'GDR': {'x': 0.92, 'y': 0.76},    # Gudur
+
+            # Thadi to Vijayawada route (decreasing x coordinates)
+            'TADI': {'x': 0.10, 'y': 0.55},   # Thadi
+            'KDGL': {'x': 0.15, 'y': 0.56},   # Kondagal
+            'MRGA': {'x': 0.20, 'y': 0.57},   # Miryalaguda
+            'NLDA': {'x': 0.25, 'y': 0.58},   # Nalgonda
+            'PGDP': {'x': 0.30, 'y': 0.59},   # Pagidipalli
+            'NDKD': {'x': 0.35, 'y': 0.59},   # Nadikudi
+            'GNTW': {'x': 0.40, 'y': 0.60},   # Guntur West
+            'GUNT': {'x': 0.45, 'y': 0.60},   # Guntur
+            'MNGT': {'x': 0.50, 'y': 0.60},   # Mangalagiri
+
+            # Adding more stations with appropriate spacing
+            'BPRD': {'x': 0.83, 'y': 0.67},   # Bhupalapatnam Road
+            'ANKL': {'x': 0.85, 'y': 0.69},   # Ankapalle
+            'RGDA': {'x': 0.87, 'y': 0.71},   # Rayagada
+            'KRPU': {'x': 0.89, 'y': 0.73},   # Koraput
+            'KRDL': {'x': 0.91, 'y': 0.75},   # Kirandul
+
+            # Additional stations on branch lines
+            'PDPL': {'x': 0.60, 'y': 0.50},   # Piduguralla
+            'NDKD': {'x': 0.65, 'y': 0.55},   # Nadikude
+            'MCLA': {'x': 0.70, 'y': 0.57},   # Machilipatnam
+            'BVRM': {'x': 0.72, 'y': 0.58},   # Bhimavaram
+
+            # Adding more stations for comprehensive coverage
+            'TUNI': {'x': 0.83, 'y': 0.67},   # Tuni
+            'ANVM': {'x': 0.84, 'y': 0.68},   # Anakapalle
+            'VSKP': {'x': 0.85, 'y': 0.69},   # Visakhapatnam
+            'SCMN': {'x': 0.86, 'y': 0.70},   # Srikakulam Road
+            'CHE': {'x': 0.87, 'y': 0.71},    # Chennai
+
+            # More stations towards Gudur
+            'OGL': {'x': 0.88, 'y': 0.72},    # Ongole
+            'NLPR': {'x': 0.89, 'y': 0.73},   # Nellore
+            'GDR': {'x': 0.90, 'y': 0.74},    # Gudur
         }
         self.map_path = 'Vijayawada_Division_System_map_page-0001 (2).jpg'
-        self.gps_pin_path = 'gps_pin.png'  # Path to your GPS pin image
-        self.base_marker_size = 100  # Larger size for the GPS pin
-        self.max_image_size = (2048, 2048)  # Maximum dimensions for the base map
-        self.zoom_level = 1.5  # Fixed zoom level
+        self.gps_pin_path = 'gps_pin.png'
+        self.base_marker_size = 100
+        self.max_image_size = (2048, 2048)
+        self.zoom_level = 1.5
 
     def get_station_coordinates(self, station_code: str) -> Optional[Dict[str, float]]:
         """Get coordinates for a station code"""
@@ -47,7 +94,6 @@ class MapViewer:
     def load_gps_pin(self, size: int) -> Optional[Image.Image]:
         """Load and resize the GPS pin image"""
         try:
-            # Open image and ensure it's in RGBA mode
             gps_pin = Image.open(self.gps_pin_path).convert('RGBA')
             resized_pin = gps_pin.resize((size, size), Image.Resampling.LANCZOS)
             return resized_pin
@@ -57,12 +103,11 @@ class MapViewer:
             return None
 
     def draw_train_marker(self, image: Image.Image, station_code: str) -> Image.Image:
-        """Draw a GPS pin marker at the specified station using x,y coordinates"""
+        """Draw a GPS pin marker at the specified station"""
         station_pos = self.get_station_coordinates(station_code)
         if not station_pos:
             return image
 
-        # Ensure display image is in RGBA mode
         display_image = image.convert('RGBA')
         width, height = display_image.size
         x = int(station_pos['x'] * width)
@@ -72,18 +117,14 @@ class MapViewer:
         gps_pin = self.load_gps_pin(marker_size)
 
         if gps_pin:
-            # Calculate paste position to center the pin
             paste_x = x - marker_size // 2
             paste_y = y - marker_size // 2
 
-            # Create a new blank image with alpha channel
             temp = Image.new('RGBA', display_image.size, (0, 0, 0, 0))
             temp.paste(gps_pin, (paste_x, paste_y), gps_pin)
 
-            # Composite the images
             display_image = Image.alpha_composite(display_image, temp)
 
-        # Convert back to RGB for drawing text
         display_image = display_image.convert('RGB')
         draw = ImageDraw.Draw(display_image)
 
@@ -129,7 +170,6 @@ class MapViewer:
             display_image = base_map.copy()
 
             if selected_train and selected_train.get('station'):
-                # Directly check if station exists in coordinates
                 station_code = selected_train['station']
                 if station_code in self.station_locations:
                     display_image = self.draw_train_marker(
@@ -137,14 +177,12 @@ class MapViewer:
                         station_code
                     )
 
-            # Convert to RGB before resizing and display
             display_image = display_image.convert('RGB')
             original_width, original_height = display_image.size
 
-            # Set maximum height while maintaining aspect ratio
-            max_height = 400  # Reduced height
+            max_height = 400
             height_ratio = max_height / original_height
-            new_width = int(original_width * height_ratio * 1.2)  # Increase width by 20%
+            new_width = int(original_width * height_ratio * 1.2)
             new_height = max_height
 
             display_image = display_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
