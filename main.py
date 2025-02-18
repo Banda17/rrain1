@@ -78,6 +78,17 @@ def handle_timing_status_change():
     st.session_state['filter_status'] = st.session_state.get('timing_status_select', 'Late')
     logger.debug(f"Timing status changed to: {st.session_state['filter_status']}")
 
+@st.cache_data(ttl=300)
+def load_and_process_data():
+    """Cache data loading and processing"""
+    success, message = st.session_state['data_handler'].load_data_from_drive()
+    if success:
+        status_table = st.session_state['data_handler'].get_train_status_table()
+        cached_data = st.session_state['data_handler'].get_cached_data()
+        if cached_data:
+            return True, status_table, pd.DataFrame(cached_data), message
+    return False, None, None, message
+
 # Initialize session state
 initialize_session_state()
 
@@ -259,17 +270,6 @@ except Exception as e:
 # Footer
 st.markdown("---")
 st.markdown("Train Tracking System")
-
-@st.cache_data(ttl=300)
-def load_and_process_data():
-    """Cache data loading and processing"""
-    success, message = st.session_state['data_handler'].load_data_from_drive()
-    if success:
-        status_table = st.session_state['data_handler'].get_train_status_table()
-        cached_data = st.session_state['data_handler'].get_cached_data()
-        if cached_data:
-            return True, status_table, pd.DataFrame(cached_data), message
-    return False, None, None, message
 
 def parse_time(time_str: str) -> Optional[datetime]:
     """Parse time string in HH:MM format to datetime object"""
