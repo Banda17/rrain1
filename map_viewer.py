@@ -4,7 +4,6 @@ from typing import Dict, Optional
 
 
 class MapViewer:
-
     def __init__(self):
         # Station coordinates (normalized to image coordinates 0-1)
         self.station_locations = {
@@ -175,8 +174,7 @@ class MapViewer:
         self.max_image_size = (2048, 2048)
         self.zoom_level = 1.5
 
-    def get_station_coordinates(
-            self, station_code: str) -> Optional[Dict[str, float]]:
+    def get_station_coordinates(self, station_code: str) -> Optional[Dict[str, float]]:
         """Get coordinates for a station code"""
         return self.station_locations.get(station_code)
 
@@ -193,8 +191,10 @@ class MapViewer:
             if scale < 1:  # Only resize if image is too large
                 new_width = int(width * scale)
                 new_height = int(height * scale)
-                resized_image = original_image.resize((new_width, new_height),
-                                                    Image.Resampling.LANCZOS)
+                resized_image = original_image.resize(
+                    (new_width, new_height),
+                    Image.Resampling.LANCZOS
+                )
                 return resized_image
             return original_image
 
@@ -206,16 +206,17 @@ class MapViewer:
         """Load and resize the GPS pin image"""
         try:
             gps_pin = Image.open(self.gps_pin_path).convert('RGBA')
-            resized_pin = gps_pin.resize((size, size),
-                                       Image.Resampling.LANCZOS)
+            resized_pin = gps_pin.resize(
+                (size, size),
+                Image.Resampling.LANCZOS
+            )
             return resized_pin
 
         except Exception as e:
             st.error(f"Error loading GPS pin: {str(e)}")
             return None
 
-    def draw_train_marker(self, image: Image.Image,
-                         station_code: str) -> Image.Image:
+    def draw_train_marker(self, image: Image.Image, station_code: str) -> Image.Image:
         """Draw a GPS pin marker at the specified station"""
         station_pos = self.get_station_coordinates(station_code)
         if not station_pos:
@@ -248,12 +249,14 @@ class MapViewer:
             font = None
 
         label_offset = marker_size // 2 + 5
-        draw.text((x + label_offset, y - label_offset),
-                 station_code,
-                 fill='black',
-                 stroke_width=max(2, int(self.zoom_level)),
-                 stroke_fill='white',
-                 font=font)
+        draw.text(
+            (x + label_offset, y - label_offset),
+            station_code,
+            fill='black',
+            stroke_width=max(2, int(self.zoom_level)),
+            stroke_fill='white',
+            font=font
+        )
 
         return display_image
 
@@ -264,7 +267,8 @@ class MapViewer:
         show_coords = st.checkbox(
             "Show Coordinates",
             value=False,
-            help="Display station coordinates on the map")
+            help="Display station coordinates on the map"
+        )
 
         # Cache the base map loading
         @st.cache_data(ttl=3600)
@@ -283,7 +287,8 @@ class MapViewer:
                 station_code = selected_train['station']
                 if station_code in self.station_locations:
                     display_image = self.draw_train_marker(
-                        display_image, station_code)
+                        display_image, station_code
+                    )
 
             display_image = display_image.convert('RGB')
             original_width, original_height = display_image.size
@@ -293,12 +298,16 @@ class MapViewer:
             new_width = int(original_width * height_ratio * 1.2)
             new_height = max_height
 
-            display_image = display_image.resize((new_width, new_height),
-                                               Image.Resampling.LANCZOS)
+            display_image = display_image.resize(
+                (new_width, new_height),
+                Image.Resampling.LANCZOS
+            )
 
-            st.image(display_image,
-                    use_container_width=True,
-                    caption="Vijayawada Division System Map")
+            st.image(
+                display_image,
+                use_container_width=True,
+                caption="Vijayawada Division System Map"
+            )
 
             if selected_train and selected_train.get('station'):
                 station = selected_train['station']
