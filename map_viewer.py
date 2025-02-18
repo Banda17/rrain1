@@ -3,63 +3,289 @@ from PIL import Image, ImageDraw, ImageFont
 from typing import Dict, Optional, Tuple
 import io
 
+
 class MapViewer:
+
     def __init__(self):
         # Station coordinates (normalized to image coordinates 0-1)
         self.station_locations = {
             # Existing reference stations
-            'VNEC': {'x': 0.15, 'y': 0.25},   # Secunderabad
-            'GALA': {'x': 0.25, 'y': 0.30},   # Ghatkesar
-            'MBD': {'x': 0.35, 'y': 0.35},    # Malakpet
-            'GWM': {'x': 0.45, 'y': 0.40},    # Gandhinagar
-            'PAVP': {'x': 0.55, 'y': 0.45},   # Pavalavagu
-            'BZA': {'x': 0.75, 'y': 0.60},    # Vijayawada
+            'VNEC': {
+                'x': 0.15,
+                'y': 0.25
+            },  # Secunderabad
+            'GALA': {
+                'x': 0.25,
+                'y': 0.30
+            },  # Ghatkesar
+            'MBD': {
+                'x': 0.35,
+                'y': 0.35
+            },  # Malakpet
+            'GWM': {
+                'x': 0.45,
+                'y': 0.40
+            },  # Gandhinagar
+            'PAVP': {
+                'x': 0.55,
+                'y': 0.45
+            },  # Pavalavagu
+            'BZA': {
+                'x': 0.75,
+                'y': 0.60
+            },  # Vijayawada
 
             # Vijayawada to Gudur route (increasing x, y coordinates)
-            'BVRM': {'x': 0.78, 'y': 0.62},   # Bhimavaram
-            'TNKU': {'x': 0.80, 'y': 0.64},   # Tanuku
-            'RAJM': {'x': 0.82, 'y': 0.66},   # Rajahmundry
-            'VSKP': {'x': 0.84, 'y': 0.68},   # Visakhapatnam
-            'VZIP': {'x': 0.86, 'y': 0.70},   # Vizianagaram
-            'SCMN': {'x': 0.88, 'y': 0.72},   # Srikakulam
-            'PTPU': {'x': 0.90, 'y': 0.74},   # Palasa
-            'GDR': {'x': 0.92, 'y': 0.76},    # Gudur
+            'KJJ': {
+                'x': 0.78,
+                'y': 0.62
+            },  # Bhimavaram
+            'PGU': {
+                'x': 0.80,
+                'y': 0.64
+            },  # Tanuku
+            'NLR': {
+                'x': 0.82,
+                'y': 0.66
+            },  # Rajahmundry
+            'VDE': {
+                'x': 0.84,
+                'y': 0.68
+            },  # Visakhapatnam
+            'VKT': {
+                'x': 0.86,
+                'y': 0.70
+            },  # Vizianagaram
+            'KMLP': {
+                'x': 0.88,
+                'y': 0.72
+            },  # Srikakulam
+            'MBL': {
+                'x': 0.90,
+                'y': 0.74
+            },  # Palasa
+            'GDR': {
+                'x': 0.50,
+                'y': 0.50
+            },
+            'TMC': {
+                'x': 0.76,
+                'y': 0.60
+            },
+            'AXR': {
+                'x': 0.74,
+                'y': 0.58
+            },
+            'BTTR': {
+                'x': 0.72,
+                'y': 0.62
+            },
+            'SVPM': {
+                'x': 0.70,
+                'y': 0.60
+            },
+            'KVZ': {
+                'x': 0.68,
+                'y': 0.58
+            },
+            'TTU': {
+                'x': 0.66,
+                'y': 0.56
+            },
+            'UPD': {
+                'x': 0.64,
+                'y': 0.54
+            },
+            'SKM': {
+                'x': 0.62,
+                'y': 0.52
+            },
+            'TNR': {
+                'x': 0.60,
+                'y': 0.50
+            },
+            'SDM': {
+                'x': 0.58,
+                'y': 0.48
+            },
+            'OGL': {
+                'x': 0.56,
+                'y': 0.46
+            },
+            'KRV': {
+                'x': 0.54,
+                'y': 0.44
+            },
+            'ANB': {
+                'x': 0.52,
+                'y': 0.42
+            },
+            'UGD': {
+                'x': 0.50,
+                'y': 0.40
+            },
+            'CJM': {
+                'x': 0.48,
+                'y': 0.38
+            },
+            'VTM': {
+                'x': 0.46,
+                'y': 0.36
+            },
+            'CLX': {
+                'x': 0.44,
+                'y': 0.34
+            },
+            'SPF': {
+                'x': 0.42,
+                'y': 0.32
+            },
+            'BPP': {
+                'x': 0.40,
+                'y': 0.30
+            },
+            'APL': {
+                'x': 0.38,
+                'y': 0.28
+            },
+            'NDO': {
+                'x': 0.36,
+                'y': 0.26
+            },
+            'TSR': {
+                'x': 0.34,
+                'y': 0.24
+            },
+            'TEL': {
+                'x': 0.32,
+                'y': 0.22
+            },
+            'DIG': {
+                'x': 0.28,
+                'y': 0.18
+            },
+            'PVD': {
+                'x': 0.26,
+                'y': 0.16
+            },
+            'KCC': {
+                'x': 0.24,
+                'y': 0.14
+            },  # Gudur
 
             # Thadi to Vijayawada route (decreasing x coordinates)
-            'TADI': {'x': 0.10, 'y': 0.55},   # Thadi
-            'KDGL': {'x': 0.15, 'y': 0.56},   # Kondagal
-            'MRGA': {'x': 0.20, 'y': 0.57},   # Miryalaguda
-            'NLDA': {'x': 0.25, 'y': 0.58},   # Nalgonda
-            'PGDP': {'x': 0.30, 'y': 0.59},   # Pagidipalli
-            'NDKD': {'x': 0.35, 'y': 0.59},   # Nadikudi
-            'GNTW': {'x': 0.40, 'y': 0.60},   # Guntur West
-            'GUNT': {'x': 0.45, 'y': 0.60},   # Guntur
-            'MNGT': {'x': 0.50, 'y': 0.60},   # Mangalagiri
+            'TADI': {
+                'x': 0.10,
+                'y': 0.55
+            },  # Thadi
+            'KDGL': {
+                'x': 0.15,
+                'y': 0.56
+            },  # Kondagal
+            'MRGA': {
+                'x': 0.20,
+                'y': 0.57
+            },  # Miryalaguda
+            'NLDA': {
+                'x': 0.25,
+                'y': 0.58
+            },  # Nalgonda
+            'PGDP': {
+                'x': 0.30,
+                'y': 0.59
+            },  # Pagidipalli
+            'NDKD': {
+                'x': 0.35,
+                'y': 0.59
+            },  # Nadikudi
+            'GNTW': {
+                'x': 0.40,
+                'y': 0.60
+            },  # Guntur West
+            'GUNT': {
+                'x': 0.45,
+                'y': 0.60
+            },  # Guntur
+            'MNGT': {
+                'x': 0.50,
+                'y': 0.60
+            },  # Mangalagiri
 
             # Adding more stations with appropriate spacing
-            'BPRD': {'x': 0.83, 'y': 0.67},   # Bhupalapatnam Road
-            'ANKL': {'x': 0.85, 'y': 0.69},   # Ankapalle
-            'RGDA': {'x': 0.87, 'y': 0.71},   # Rayagada
-            'KRPU': {'x': 0.89, 'y': 0.73},   # Koraput
-            'KRDL': {'x': 0.91, 'y': 0.75},   # Kirandul
+            'BPRD': {
+                'x': 0.83,
+                'y': 0.67
+            },  # Bhupalapatnam Road
+            'ANKL': {
+                'x': 0.85,
+                'y': 0.69
+            },  # Ankapalle
+            'RGDA': {
+                'x': 0.87,
+                'y': 0.71
+            },  # Rayagada
+            'KRPU': {
+                'x': 0.89,
+                'y': 0.73
+            },  # Koraput
+            'KRDL': {
+                'x': 0.91,
+                'y': 0.75
+            },  # Kirandul
 
             # Additional stations on branch lines
-            'PDPL': {'x': 0.60, 'y': 0.50},   # Piduguralla
-            'NDKD': {'x': 0.65, 'y': 0.55},   # Nadikude
-            'MCLA': {'x': 0.70, 'y': 0.57},   # Machilipatnam
-            'BVRM': {'x': 0.72, 'y': 0.58},   # Bhimavaram
+            'PDPL': {
+                'x': 0.60,
+                'y': 0.50
+            },  # Piduguralla
+            'NDKD': {
+                'x': 0.65,
+                'y': 0.55
+            },  # Nadikude
+            'MCLA': {
+                'x': 0.70,
+                'y': 0.57
+            },  # Machilipatnam
+            'BVRM': {
+                'x': 0.72,
+                'y': 0.58
+            },  # Bhimavaram
 
             # Adding more stations for comprehensive coverage
-            'TUNI': {'x': 0.83, 'y': 0.67},   # Tuni
-            'ANVM': {'x': 0.84, 'y': 0.68},   # Anakapalle
-            'VSKP': {'x': 0.85, 'y': 0.69},   # Visakhapatnam
-            'SCMN': {'x': 0.86, 'y': 0.70},   # Srikakulam Road
-            'CHE': {'x': 0.87, 'y': 0.71},    # Chennai
+            'TUNI': {
+                'x': 0.83,
+                'y': 0.67
+            },  # Tuni
+            'ANVM': {
+                'x': 0.84,
+                'y': 0.68
+            },  # Anakapalle
+            'VSKP': {
+                'x': 0.85,
+                'y': 0.69
+            },  # Visakhapatnam
+            'SCMN': {
+                'x': 0.86,
+                'y': 0.70
+            },  # Srikakulam Road
+            'CHE': {
+                'x': 0.87,
+                'y': 0.71
+            },  # Chennai
 
             # More stations towards Gudur
-            'OGL': {'x': 0.88, 'y': 0.72},    # Ongole
-            'NLPR': {'x': 0.89, 'y': 0.73},   # Nellore
-            'GDR': {'x': 0.90, 'y': 0.74},    # Gudur
+            'OGL': {
+                'x': 0.88,
+                'y': 0.72
+            },  # Ongole
+            'NLPR': {
+                'x': 0.89,
+                'y': 0.73
+            },  # Nellore
+            'GDR': {
+                'x': 0.90,
+                'y': 0.74
+            },  # Gudur
         }
         self.map_path = 'Vijayawada_Division_System_map_page-0001 (2).jpg'
         self.gps_pin_path = 'gps_pin.png'
@@ -67,7 +293,8 @@ class MapViewer:
         self.max_image_size = (2048, 2048)
         self.zoom_level = 1.5
 
-    def get_station_coordinates(self, station_code: str) -> Optional[Dict[str, float]]:
+    def get_station_coordinates(
+            self, station_code: str) -> Optional[Dict[str, float]]:
         """Get coordinates for a station code"""
         return self.station_locations.get(station_code)
 
@@ -78,12 +305,14 @@ class MapViewer:
             original_image = Image.open(self.map_path).convert('RGBA')
 
             width, height = original_image.size
-            scale = min(self.max_image_size[0] / width, self.max_image_size[1] / height)
+            scale = min(self.max_image_size[0] / width,
+                        self.max_image_size[1] / height)
 
             if scale < 1:  # Only resize if image is too large
                 new_width = int(width * scale)
                 new_height = int(height * scale)
-                resized_image = original_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+                resized_image = original_image.resize((new_width, new_height),
+                                                      Image.Resampling.LANCZOS)
                 return resized_image
             return original_image
 
@@ -95,14 +324,16 @@ class MapViewer:
         """Load and resize the GPS pin image"""
         try:
             gps_pin = Image.open(self.gps_pin_path).convert('RGBA')
-            resized_pin = gps_pin.resize((size, size), Image.Resampling.LANCZOS)
+            resized_pin = gps_pin.resize((size, size),
+                                         Image.Resampling.LANCZOS)
             return resized_pin
 
         except Exception as e:
             st.error(f"Error loading GPS pin: {str(e)}")
             return None
 
-    def draw_train_marker(self, image: Image.Image, station_code: str) -> Image.Image:
+    def draw_train_marker(self, image: Image.Image,
+                          station_code: str) -> Image.Image:
         """Draw a GPS pin marker at the specified station"""
         station_pos = self.get_station_coordinates(station_code)
         if not station_pos:
@@ -135,14 +366,12 @@ class MapViewer:
             font = None
 
         label_offset = marker_size // 2 + 5
-        draw.text(
-            (x + label_offset, y - label_offset),
-            station_code,
-            fill='black',
-            stroke_width=max(2, int(self.zoom_level)),
-            stroke_fill='white',
-            font=font
-        )
+        draw.text((x + label_offset, y - label_offset),
+                  station_code,
+                  fill='black',
+                  stroke_width=max(2, int(self.zoom_level)),
+                  stroke_fill='white',
+                  font=font)
 
         return display_image
 
@@ -153,8 +382,7 @@ class MapViewer:
         show_coords = st.checkbox(
             "Show Coordinates",
             value=False,
-            help="Display station coordinates on the map"
-        )
+            help="Display station coordinates on the map")
 
         # Cache the base map loading
         @st.cache_data(ttl=3600)
@@ -173,9 +401,7 @@ class MapViewer:
                 station_code = selected_train['station']
                 if station_code in self.station_locations:
                     display_image = self.draw_train_marker(
-                        display_image,
-                        station_code
-                    )
+                        display_image, station_code)
 
             display_image = display_image.convert('RGB')
             original_width, original_height = display_image.size
@@ -185,13 +411,12 @@ class MapViewer:
             new_width = int(original_width * height_ratio * 1.2)
             new_height = max_height
 
-            display_image = display_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+            display_image = display_image.resize((new_width, new_height),
+                                                 Image.Resampling.LANCZOS)
 
-            st.image(
-                display_image,
-                use_container_width=True,
-                caption="Vijayawada Division System Map"
-            )
+            st.image(display_image,
+                     use_container_width=True,
+                     caption="Vijayawada Division System Map")
 
             if selected_train and selected_train.get('station'):
                 station = selected_train['station']
