@@ -4,9 +4,10 @@ address = "0.0.0.0"
 port = 5000
 
 [theme]
-primaryColor = "#B3E5FC"
-backgroundColor = "#E1F5FE"
-textColor = "#000000"
+primaryColor = "#0066cc"
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f0f2f6"
+textColor = "#262730"
 
 [secrets]
 sheet_name = "Sheet1"
