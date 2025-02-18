@@ -19,6 +19,14 @@ logger = logging.getLogger(__name__)
 # Initialize database
 init_db()
 
+# Page configuration must be the first Streamlit command
+st.set_page_config(
+    page_title="Train Tracking System",
+    page_icon="🚂",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
+
 # Custom CSS to reduce header spacing
 st.markdown("""
     <style>
@@ -102,96 +110,6 @@ def format_delay_value(delay: Optional[int]) -> str:
     except Exception as e:
         logger.error(f"Error formatting delay value: {str(e)}")
         return "N/A"
-
-# Page configuration
-st.set_page_config(
-    page_title="Train Tracking System",
-    page_icon="🚂",
-    layout="wide",
-    initial_sidebar_state="collapsed"
-)
-
-
-def initialize_session_state():
-    """Initialize all session state variables with proper typing"""
-    state_configs = {
-        'data_handler': {'default': DataHandler(), 'type': DataHandler},
-        'ai_analyzer': {'default': AIAnalyzer(), 'type': AIAnalyzer},
-        'visualizer': {'default': Visualizer(), 'type': Visualizer},
-        'train_schedule': {'default': TrainSchedule(), 'type': TrainSchedule},
-        'map_viewer': {'default': MapViewer(), 'type': MapViewer},
-        'last_update': {'default': None, 'type': Optional[datetime]},
-        'selected_train': {'default': None, 'type': Optional[Dict]},
-        'selected_train_details': {'default': {}, 'type': Dict},
-        'filter_status': {'default': 'Late', 'type': str}
-    }
-
-    for key, config in state_configs.items():
-        if key not in st.session_state:
-            st.session_state[key] = config['default']
-
-def update_selected_train_details(selected):
-    """Update the selected train details in session state"""
-    try:
-        # Clear selection if selected is None or empty DataFrame
-        if selected is None or (isinstance(selected, pd.Series) and selected.empty):
-            st.session_state['selected_train'] = None
-            st.session_state['selected_train_details'] = {}
-            return
-
-        # Extract values safely from pandas Series
-        if isinstance(selected, pd.Series):
-            station = selected.get('Station', '')
-            train_name = selected.get('Train Name', '')
-            sch_time = selected.get('Sch_Time', '')
-            current_time = selected.get('Current Time', '')
-            status = selected.get('Status', '')
-            delay = selected.get('Delay', '')
-        else:
-            station = selected.get('Station', '')
-            train_name = selected.get('Train Name', '')
-            sch_time = selected.get('Sch_Time', '')
-            current_time = selected.get('Current Time', '')
-            status = selected.get('Status', '')
-            delay = selected.get('Delay', '')
-
-        if station and st.session_state['map_viewer'].get_station_coordinates(station):
-            st.session_state['selected_train'] = {
-                'train': train_name,
-                'station': station
-            }
-            st.session_state['selected_train_details'] = {
-                'Scheduled Time': sch_time,
-                'Actual Time': current_time,
-                'Current Status': status,
-                'Delay': delay
-            }
-            logger.debug(f"Updated selected train: {st.session_state['selected_train']}")
-        else:
-            logger.warning(f"Invalid station or coordinates not found for station: {station}")
-            st.session_state['selected_train'] = None
-            st.session_state['selected_train_details'] = {}
-
-    except Exception as e:
-        logger.error(f"Error updating selected train details: {str(e)}")
-        st.session_state['selected_train'] = None
-        st.session_state['selected_train_details'] = {}
-
-def handle_timing_status_change():
-    """Handle changes in timing status filter"""
-    st.session_state['filter_status'] = st.session_state.get('timing_status_select', 'Late')
-    logger.debug(f"Timing status changed to: {st.session_state['filter_status']}")
-
-@st.cache_data(ttl=300)
-def load_and_process_data():
-    """Cache data loading and processing"""
-    success, message = st.session_state['data_handler'].load_data_from_drive()
-    if success:
-        status_table = st.session_state['data_handler'].get_train_status_table()
-        cached_data = st.session_state['data_handler'].get_cached_data()
-        if cached_data:
-            return True, status_table, pd.DataFrame(cached_data), message
-    return False, None, None, message
 
 # Initialize session state
 initialize_session_state()
@@ -373,3 +291,84 @@ except Exception as e:
 # Footer
 st.markdown("---")
 st.markdown("Train Tracking System")
+
+def initialize_session_state():
+    """Initialize all session state variables with proper typing"""
+    state_configs = {
+        'data_handler': {'default': DataHandler(), 'type': DataHandler},
+        'ai_analyzer': {'default': AIAnalyzer(), 'type': AIAnalyzer},
+        'visualizer': {'default': Visualizer(), 'type': Visualizer},
+        'train_schedule': {'default': TrainSchedule(), 'type': TrainSchedule},
+        'map_viewer': {'default': MapViewer(), 'type': MapViewer},
+        'last_update': {'default': None, 'type': Optional[datetime]},
+        'selected_train': {'default': None, 'type': Optional[Dict]},
+        'selected_train_details': {'default': {}, 'type': Dict},
+        'filter_status': {'default': 'Late', 'type': str}
+    }
+
+    for key, config in state_configs.items():
+        if key not in st.session_state:
+            st.session_state[key] = config['default']
+
+def update_selected_train_details(selected):
+    """Update the selected train details in session state"""
+    try:
+        # Clear selection if selected is None or empty DataFrame
+        if selected is None or (isinstance(selected, pd.Series) and selected.empty):
+            st.session_state['selected_train'] = None
+            st.session_state['selected_train_details'] = {}
+            return
+
+        # Extract values safely from pandas Series
+        if isinstance(selected, pd.Series):
+            station = selected.get('Station', '')
+            train_name = selected.get('Train Name', '')
+            sch_time = selected.get('Sch_Time', '')
+            current_time = selected.get('Current Time', '')
+            status = selected.get('Status', '')
+            delay = selected.get('Delay', '')
+        else:
+            station = selected.get('Station', '')
+            train_name = selected.get('Train Name', '')
+            sch_time = selected.get('Sch_Time', '')
+            current_time = selected.get('Current Time', '')
+            status = selected.get('Status', '')
+            delay = selected.get('Delay', '')
+
+        if station and st.session_state['map_viewer'].get_station_coordinates(station):
+            st.session_state['selected_train'] = {
+                'train': train_name,
+                'station': station
+            }
+            st.session_state['selected_train_details'] = {
+                'Scheduled Time': sch_time,
+                'Actual Time': current_time,
+                'Current Status': status,
+                'Delay': delay
+            }
+            logger.debug(f"Updated selected train: {st.session_state['selected_train']}")
+        else:
+            logger.warning(f"Invalid station or coordinates not found for station: {station}")
+            st.session_state['selected_train'] = None
+            st.session_state['selected_train_details'] = {}
+
+    except Exception as e:
+        logger.error(f"Error updating selected train details: {str(e)}")
+        st.session_state['selected_train'] = None
+        st.session_state['selected_train_details'] = {}
+
+def handle_timing_status_change():
+    """Handle changes in timing status filter"""
+    st.session_state['filter_status'] = st.session_state.get('timing_status_select', 'Late')
+    logger.debug(f"Timing status changed to: {st.session_state['filter_status']}")
+
+@st.cache_data(ttl=300)
+def load_and_process_data():
+    """Cache data loading and processing"""
+    success, message = st.session_state['data_handler'].load_data_from_drive()
+    if success:
+        status_table = st.session_state['data_handler'].get_train_status_table()
+        cached_data = st.session_state['data_handler'].get_cached_data()
+        if cached_data:
+            return True, status_table, pd.DataFrame(cached_data), message
+    return False, None, None, message
