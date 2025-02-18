@@ -19,6 +19,43 @@ logger = logging.getLogger(__name__)
 # Initialize database
 init_db()
 
+def parse_time(time_str: str) -> Optional[datetime]:
+    """Parse time string in HH:MM format to datetime object"""
+    try:
+        # If time string is empty, None, or "Not Available"
+        if not time_str or time_str.strip().lower() == "not available":
+            return None
+
+        # Extract only the time part (HH:MM) from the string
+        time_part = time_str.split()[0] if time_str else ''
+        if not time_part:
+            return None
+
+        # Validate time format (HH:MM)
+        if not ':' in time_part or len(time_part.split(':')) != 2:
+            logger.warning(f"Invalid time format: {time_str}")
+            return None
+
+        return datetime.strptime(time_part, '%H:%M')
+    except Exception as e:
+        logger.debug(f"Error parsing time {time_str}: {str(e)}")
+        return None
+
+def calculate_time_difference(scheduled: str, actual: str) -> Optional[int]:
+    """Calculate time difference in minutes between scheduled and actual times"""
+    try:
+        sch_time = parse_time(scheduled)
+        act_time = parse_time(actual)
+
+        if sch_time and act_time:
+            # Convert both times to same date for comparison
+            diff = (act_time - sch_time).total_seconds() / 60
+            return int(diff)
+        return None
+    except Exception as e:
+        logger.debug(f"Error calculating time difference: {str(e)}")
+        return None
+
 # Page configuration
 st.set_page_config(
     page_title="Train Tracking System",
@@ -270,40 +307,3 @@ except Exception as e:
 # Footer
 st.markdown("---")
 st.markdown("Train Tracking System")
-
-def parse_time(time_str: str) -> Optional[datetime]:
-    """Parse time string in HH:MM format to datetime object"""
-    try:
-        # If time string is empty, None, or "Not Available"
-        if not time_str or time_str.strip().lower() == "not available":
-            return None
-
-        # Extract only the time part (HH:MM) from the string
-        time_part = time_str.split()[0] if time_str else ''
-        if not time_part:
-            return None
-
-        # Validate time format (HH:MM)
-        if not ':' in time_part or len(time_part.split(':')) != 2:
-            logger.warning(f"Invalid time format: {time_str}")
-            return None
-
-        return datetime.strptime(time_part, '%H:%M')
-    except Exception as e:
-        logger.debug(f"Error parsing time {time_str}: {str(e)}")
-        return None
-
-def calculate_time_difference(scheduled: str, actual: str) -> Optional[int]:
-    """Calculate time difference in minutes between scheduled and actual times"""
-    try:
-        sch_time = parse_time(scheduled)
-        act_time = parse_time(actual)
-
-        if sch_time and act_time:
-            # Convert both times to same date for comparison
-            diff = (act_time - sch_time).total_seconds() / 60
-            return int(diff)
-        return None
-    except Exception as e:
-        logger.debug(f"Error calculating time difference: {str(e)}")
-        return None
