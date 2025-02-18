@@ -59,11 +59,11 @@ class MapViewer:
                 'x': 0.88,
                 'y': 0.72
             },  # Srikakulam
-            'MBL': {
+            'PVD': {
                 'x': 0.90,
                 'y': 0.74
             },  # Palasa
-            'GDR': {
+            'KCC': {
                 'x': 0.50,
                 'y': 0.50
             },
@@ -163,124 +163,14 @@ class MapViewer:
                 'x': 0.28,
                 'y': 0.18
             },
-            'PVD': {
-                'x': 0.26,
-                'y': 0.16
-            },
-            'KCC': {
-                'x': 0.24,
-                'y': 0.14
-            },  # Gudur
-
-            # Thadi to Vijayawada route (decreasing x coordinates)
-            'TADI': {
-                'x': 0.10,
-                'y': 0.55
-            },  # Thadi
-            'KDGL': {
-                'x': 0.15,
-                'y': 0.56
-            },  # Kondagal
-            'MRGA': {
-                'x': 0.20,
-                'y': 0.57
-            },  # Miryalaguda
-            'NLDA': {
+            'MBL': {
                 'x': 0.25,
-                'y': 0.58
-            },  # Nalgonda
-            'PGDP': {
-                'x': 0.30,
-                'y': 0.59
-            },  # Pagidipalli
-            'NDKD': {
-                'x': 0.35,
-                'y': 0.59
-            },  # Nadikudi
-            'GNTW': {
-                'x': 0.40,
-                'y': 0.60
-            },  # Guntur West
-            'GUNT': {
-                'x': 0.45,
-                'y': 0.60
-            },  # Guntur
-            'MNGT': {
-                'x': 0.50,
-                'y': 0.60
-            },  # Mangalagiri
-
-            # Adding more stations with appropriate spacing
-            'BPRD': {
-                'x': 0.83,
-                'y': 0.67
-            },  # Bhupalapatnam Road
-            'ANKL': {
-                'x': 0.85,
-                'y': 0.69
-            },  # Ankapalle
-            'RGDA': {
-                'x': 0.87,
-                'y': 0.71
-            },  # Rayagada
-            'KRPU': {
-                'x': 0.89,
-                'y': 0.73
-            },  # Koraput
-            'KRDL': {
-                'x': 0.91,
-                'y': 0.75
-            },  # Kirandul
-
-            # Additional stations on branch lines
-            'PDPL': {
-                'x': 0.60,
-                'y': 0.50
-            },  # Piduguralla
-            'NDKD': {
-                'x': 0.65,
-                'y': 0.55
-            },  # Nadikude
-            'MCLA': {
-                'x': 0.70,
-                'y': 0.57
-            },  # Machilipatnam
-            'BVRM': {
-                'x': 0.72,
-                'y': 0.58
-            },  # Bhimavaram
-
-            # Adding more stations for comprehensive coverage
-            'TUNI': {
-                'x': 0.83,
-                'y': 0.67
-            },  # Tuni
-            'ANVM': {
-                'x': 0.84,
-                'y': 0.68
-            },  # Anakapalle
-            'VSKP': {
-                'x': 0.85,
-                'y': 0.69
-            },  # Visakhapatnam
-            'SCMN': {
-                'x': 0.86,
-                'y': 0.70
-            },  # Srikakulam Road
-            'CHE': {
-                'x': 0.87,
-                'y': 0.71
-            },  # Chennai
-
-            # More stations towards Gudur
-            'OGL': {
-                'x': 0.88,
-                'y': 0.72
-            },  # Ongole
-            'NLPR': {
-                'x': 0.89,
-                'y': 0.73
-            },  # Nellore
+                'y': 0.92
+            },
+            'GDR': {
+                'x': 0.25,
+                'y': 0.93
+            },  # Gudur
         }
         self.map_path = 'Vijayawada_Division_System_map_page-0001 (2).png'
         self.gps_pin_path = 'gps_pin.png'
