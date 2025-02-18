@@ -50,12 +50,25 @@ class DataHandler:
         self.performance_metrics = {'load_time': 0, 'process_time': 0}
 
     def _fetch_csv_data(self) -> pd.DataFrame:
-        """Fetch CSV data with performance tracking"""
+        """Fetch CSV data with performance tracking and proper column handling"""
         start_time = time.time()
         try:
             @st.cache_data(ttl=300, show_spinner=False)
             def fetch_data(url):
-                return pd.read_csv(url)
+                df = pd.read_csv(url)
+                # Ensure we have data and proper column names
+                if not df.empty:
+                    # If first row contains column headers, use it
+                    if 'Train Name' in df.iloc[0].values:
+                        df.columns = df.iloc[0]
+                        df = df.iloc[1:].reset_index(drop=True)
+                    # If columns are already correct, keep them
+                    elif 'Train Name' in df.columns:
+                        pass
+                    else:
+                        logger.error("CSV data does not contain required column 'Train Name'")
+                        return pd.DataFrame()
+                return df
 
             df = fetch_data(self.spreadsheet_url)
             self.performance_metrics['load_time'] = time.time() - start_time
@@ -71,12 +84,15 @@ class DataHandler:
 
         start_time = time.time()
         try:
-            # Ensure the first row becomes headers
-            df.columns = df.iloc[0]
-            df = df.iloc[1:].reset_index(drop=True)
-
             # Process only required columns with optimized operations
             required_cols = ['Train Name', 'Station', 'Time', 'Status']
+
+            # Verify required columns exist
+            missing_cols = [col for col in required_cols if col not in df.columns]
+            if missing_cols:
+                logger.error(f"Missing required columns: {missing_cols}")
+                return pd.DataFrame(columns=required_cols)
+
             df = df[required_cols].copy()
 
             # Vectorized string cleaning
@@ -89,7 +105,7 @@ class DataHandler:
             return df
         except Exception as e:
             logger.error(f"Error processing data: {str(e)}")
-            return pd.DataFrame(columns=['Train Name', 'Station', 'Time', 'Status'])
+            return pd.DataFrame(columns=required_cols)
 
     def get_train_status_table(self) -> pd.DataFrame:
         """Get status table from database with caching"""
