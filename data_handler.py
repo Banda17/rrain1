@@ -71,13 +71,22 @@ class DataHandler:
 
         start_time = time.time()
         try:
-            # Ensure the first row becomes headers
+            # Ensure we have the required columns in the first row
+            if not all(col in df.iloc[0].values for col in ['Train Name', 'Station', 'Time', 'Status']):
+                logger.error("Required columns not found in data")
+                return pd.DataFrame(columns=['Train Name', 'Station', 'Time', 'Status'])
+
+            # Set the first row as headers and reset index
             df.columns = df.iloc[0]
             df = df.iloc[1:].reset_index(drop=True)
 
             # Process only required columns with optimized operations
             required_cols = ['Train Name', 'Station', 'Time', 'Status']
-            df = df[required_cols].copy()
+            try:
+                df = df[required_cols].copy()
+            except KeyError as e:
+                logger.error(f"Missing required columns: {str(e)}")
+                return pd.DataFrame(columns=required_cols)
 
             # Vectorized string cleaning
             df = df.apply(lambda x: x.str.strip() if x.dtype == 'object' else x)
