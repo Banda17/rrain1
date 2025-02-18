@@ -11,55 +11,55 @@ class MapViewer:
             'VNEC': {
                 'x': 0.15,
                 'y': 0.25
-            },  # Secunderabad
+            },
             'GALA': {
                 'x': 0.25,
                 'y': 0.30
-            },  # Ghatkesar
+            },
             'MBD': {
                 'x': 0.35,
                 'y': 0.35
-            },  # Malakpet
+            },
             'GWM': {
                 'x': 0.45,
                 'y': 0.40
-            },  # Gandhinagar
+            },
             'PAVP': {
                 'x': 0.55,
                 'y': 0.45
-            },  # Pavalavagu
+            },
             'BZA': {
-                'x': -1,
-                'y': -1
-            },  # Vijayawada
+                'x': -1.00,
+                'y': -1.00
+            },
             'KJJ': {
                 'x': 0.78,
                 'y': 0.62
-            },  # Bhimavaram
+            },
             'PGU': {
                 'x': 0.80,
                 'y': 0.64
-            },  # Tanuku
+            },
             'NLR': {
                 'x': 0.82,
                 'y': 0.66
-            },  # Rajahmundry
+            },
             'VDE': {
                 'x': 0.84,
                 'y': 0.68
-            },  # Visakhapatnam
+            },
             'VKT': {
                 'x': 0.86,
                 'y': 0.70
-            },  # Vizianagaram
+            },
             'KMLP': {
                 'x': 0.88,
                 'y': 0.72
-            },  # Srikakulam
+            },
             'PVD': {
                 'x': 0.90,
                 'y': 0.74
-            },  # Palasa
+            },
             'KCC': {
                 'x': 0.50,
                 'y': 0.50
@@ -167,7 +167,7 @@ class MapViewer:
             'GDR': {
                 'x': 0.25,
                 'y': 0.93
-            }  # Gudur
+            }
         }
         self.map_path = 'Vijayawada_Division_System_map_page-0001 (2).png'
         self.gps_pin_path = 'gps_pin.png'
@@ -188,13 +188,13 @@ class MapViewer:
 
             width, height = original_image.size
             scale = min(self.max_image_size[0] / width,
-                        self.max_image_size[1] / height)
+                       self.max_image_size[1] / height)
 
             if scale < 1:  # Only resize if image is too large
                 new_width = int(width * scale)
                 new_height = int(height * scale)
                 resized_image = original_image.resize((new_width, new_height),
-                                                       Image.Resampling.LANCZOS)
+                                                    Image.Resampling.LANCZOS)
                 return resized_image
             return original_image
 
@@ -207,7 +207,7 @@ class MapViewer:
         try:
             gps_pin = Image.open(self.gps_pin_path).convert('RGBA')
             resized_pin = gps_pin.resize((size, size),
-                                          Image.Resampling.LANCZOS)
+                                       Image.Resampling.LANCZOS)
             return resized_pin
 
         except Exception as e:
@@ -215,7 +215,7 @@ class MapViewer:
             return None
 
     def draw_train_marker(self, image: Image.Image,
-                          station_code: str) -> Image.Image:
+                         station_code: str) -> Image.Image:
         """Draw a GPS pin marker at the specified station"""
         station_pos = self.get_station_coordinates(station_code)
         if not station_pos:
@@ -249,11 +249,11 @@ class MapViewer:
 
         label_offset = marker_size // 2 + 5
         draw.text((x + label_offset, y - label_offset),
-                  station_code,
-                  fill='black',
-                  stroke_width=max(2, int(self.zoom_level)),
-                  stroke_fill='white',
-                  font=font)
+                 station_code,
+                 fill='black',
+                 stroke_width=max(2, int(self.zoom_level)),
+                 stroke_fill='white',
+                 font=font)
 
         return display_image
 
@@ -294,11 +294,11 @@ class MapViewer:
             new_height = max_height
 
             display_image = display_image.resize((new_width, new_height),
-                                                  Image.Resampling.LANCZOS)
+                                               Image.Resampling.LANCZOS)
 
             st.image(display_image,
-                      use_container_width=True,
-                      caption="Vijayawada Division System Map")
+                    use_container_width=True,
+                    caption="Vijayawada Division System Map")
 
             if selected_train and selected_train.get('station'):
                 station = selected_train['station']
