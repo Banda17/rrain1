@@ -19,6 +19,32 @@ logger = logging.getLogger(__name__)
 # Initialize database
 init_db()
 
+# Custom CSS to reduce header spacing
+st.markdown("""
+    <style>
+    .title-container {
+        margin-bottom: 0.5rem;
+    }
+    .header-container {
+        margin-bottom: 1rem;
+    }
+    .stMarkdown {
+        margin-bottom: 0.5rem;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# Add headers with reduced spacing
+st.markdown("""
+    <div class="title-container">
+        <h1 style='text-align: center; color: #1f497d; margin-bottom: 0.5rem;'>South Central Railway</h1>
+    </div>
+    <div class="header-container">
+        <h2 style='text-align: center; color: #4f81bd; margin-top: 0.5rem;'>Vijayawada Division</h2>
+    </div>
+    <hr>
+""", unsafe_allow_html=True)
+
 def parse_time(time_str: str) -> Optional[datetime]:
     """Parse time string in HH:MM format to datetime object"""
     try:
@@ -85,12 +111,6 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Add headers
-st.markdown("""
-    <h1 style='text-align: center; color: #1f497d;'>South Central Railway</h1>
-    <h2 style='text-align: center; color: #4f81bd;'>Vijayawada Division</h2>
-    <hr>
-""", unsafe_allow_html=True)
 
 def initialize_session_state():
     """Initialize all session state variables with proper typing"""
@@ -237,7 +257,7 @@ try:
         filtered_df['Delay'] = filtered_df.apply(
             lambda row: format_delay_value(
                 calculate_time_difference(
-                    row['Sch_Time'], 
+                    row['Sch_Time'],
                     row['Time_Display']
                 )
             ),
