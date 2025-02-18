@@ -171,34 +171,24 @@ class DataHandler:
             records = []
 
             for _, row in self.data.iterrows():
-                try:
-                    time_actual = pd.to_datetime(row['Time'])
-                    time_scheduled = time_actual  # Simplified for now
+                time_actual = pd.to_datetime(row['Time'])
+                time_scheduled = time_actual  # Simplified for now
+                status, delay = self.get_timing_status(time_actual, time_scheduled)
 
-                    # Skip records with invalid times
-                    if pd.isna(time_actual) or pd.isna(time_scheduled):
-                        continue
+                records.append(TrainDetails(
+                    train_id=str(row['Train Name']),
+                    station=str(row['Station']),
+                    time_actual=time_actual,
+                    time_scheduled=time_scheduled,
+                    delay=delay,
+                    status=status
+                ))
 
-                    status, delay = self.get_timing_status(time_actual, time_scheduled)
-
-                    records.append(TrainDetails(
-                        train_id=str(row['Train Name']),
-                        station=str(row['Station']),
-                        time_actual=time_actual,
-                        time_scheduled=time_scheduled,
-                        delay=delay,
-                        status=status
-                    ))
-
-                    # Commit in batches
-                    if len(records) >= batch_size:
-                        self.db_session.bulk_save_objects(records)
-                        self.db_session.commit()
-                        records = []
-
-                except Exception as e:
-                    logger.error(f"Error processing row {row}: {str(e)}")
-                    continue
+                # Commit in batches
+                if len(records) >= batch_size:
+                    self.db_session.bulk_save_objects(records)
+                    self.db_session.commit()
+                    records = []
 
             # Commit any remaining records
             if records:
@@ -213,10 +203,6 @@ class DataHandler:
     def get_timing_status(self, actual_time: datetime, scheduled_time: datetime) -> Tuple[str, int]:
         """Calculate if train is early, late, or on time"""
         try:
-            # Check for None or NaN values
-            if actual_time is None or scheduled_time is None:
-                return "UNKNOWN ❓", 0
-
             diff_minutes = int((actual_time - scheduled_time).total_seconds() / 60)
 
             if diff_minutes <= -5:

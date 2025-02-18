@@ -8,279 +8,53 @@ class MapViewer:
     def __init__(self):
         # Station coordinates (normalized to image coordinates 0-1)
         self.station_locations = {
-            # Existing reference stations
-            'VNEC': {
-                'x': 0.15,
-                'y': 0.25
-            },  # Secunderabad
-            'GALA': {
-                'x': 0.25,
-                'y': 0.30
-            },  # Ghatkesar
-            'MBD': {
-                'x': 0.35,
-                'y': 0.35
-            },  # Malakpet
-            'GWM': {
-                'x': 0.45,
-                'y': 0.40
-            },  # Gandhinagar
-            'PAVP': {
-                'x': 0.55,
-                'y': 0.45
-            },  # Pavalavagu
-            'BZA': {
-                'x': -1,
-                'y': -1
-            },  # Vijayawada
+            # Main junction stations
+            'BZA': {'x': 0.65, 'y': 0.60},  # Vijayawada
+            'GDR': {'x': 0.22, 'y': 0.15},  # Gudur
+            'TADI': {'x': 0.10, 'y': 0.55},  # Thadi
 
-            # Vijayawada to Gudur route (increasing x, y coordinates)
-            'KJJ': {
-                'x': 0.78,
-                'y': 0.62
-            },  # Bhimavaram
-            'PGU': {
-                'x': 0.80,
-                'y': 0.64
-            },  # Tanuku
-            'NLR': {
-                'x': 0.82,
-                'y': 0.66
-            },  # Rajahmundry
-            'VDE': {
-                'x': 0.84,
-                'y': 0.68
-            },  # Visakhapatnam
-            'VKT': {
-                'x': 0.86,
-                'y': 0.70
-            },  # Vizianagaram
-            'KMLP': {
-                'x': 0.88,
-                'y': 0.72
-            },  # Srikakulam
-            'MBL': {
-                'x': 0.90,
-                'y': 0.74
-            },  # Palasa
-            'GDR': {
-                'x': 0.50,
-                'y': 0.50
-            },
-            'TMC': {
-                'x': 0.76,
-                'y': 0.60
-            },
-            'AXR': {
-                'x': 0.74,
-                'y': 0.58
-            },
-            'BTTR': {
-                'x': 0.72,
-                'y': 0.62
-            },
-            'SVPM': {
-                'x': 0.70,
-                'y': 0.60
-            },
-            'KVZ': {
-                'x': 0.68,
-                'y': 0.58
-            },
-            'TTU': {
-                'x': 0.66,
-                'y': 0.56
-            },
-            'UPD': {
-                'x': 0.64,
-                'y': 0.54
-            },
-            'SKM': {
-                'x': 0.62,
-                'y': 0.52
-            },
-            'TNR': {
-                'x': 0.60,
-                'y': 0.50
-            },
-            'SDM': {
-                'x': 0.58,
-                'y': 0.48
-            },
-            'OGL': {
-                'x': 0.56,
-                'y': 0.46
-            },
-            'KRV': {
-                'x': 0.54,
-                'y': 0.44
-            },
-            'ANB': {
-                'x': 0.52,
-                'y': 0.42
-            },
-            'UGD': {
-                'x': 0.50,
-                'y': 0.40
-            },
-            'CJM': {
-                'x': 0.48,
-                'y': 0.38
-            },
-            'VTM': {
-                'x': 0.46,
-                'y': 0.36
-            },
-            'CLX': {
-                'x': 0.44,
-                'y': 0.34
-            },
-            'SPF': {
-                'x': 0.42,
-                'y': 0.32
-            },
-            'BPP': {
-                'x': 0.40,
-                'y': 0.30
-            },
-            'APL': {
-                'x': 0.38,
-                'y': 0.28
-            },
-            'NDO': {
-                'x': 0.36,
-                'y': 0.26
-            },
-            'TSR': {
-                'x': 0.34,
-                'y': 0.24
-            },
-            'TEL': {
-                'x': 0.32,
-                'y': 0.22
-            },
-            'DIG': {
-                'x': 0.28,
-                'y': 0.18
-            },
-            'PVD': {
-                'x': 0.26,
-                'y': 0.16
-            },
-            'KCC': {
-                'x': 0.24,
-                'y': 0.14
-            },  # Gudur
+            # Vijayawada to Gudur route (decreasing y coordinates)
+            'MTM': {'x': 0.60, 'y': 0.55},   # Mangalagiri
+            'NDL': {'x': 0.55, 'y': 0.50},   # Nidadavolu
+            'RJY': {'x': 0.50, 'y': 0.45},   # Rajahmundry
+            'ANV': {'x': 0.45, 'y': 0.40},   # Anakapalle
+            'VSKP': {'x': 0.40, 'y': 0.35},  # Visakhapatnam
+            'VZM': {'x': 0.35, 'y': 0.30},   # Vizianagaram
+            'SKM': {'x': 0.30, 'y': 0.25},   # Srikakulam
+            'PLH': {'x': 0.25, 'y': 0.20},   # Palasa
 
-            # Thadi to Vijayawada route (decreasing x coordinates)
-            'TADI': {
-                'x': 0.10,
-                'y': 0.55
-            },  # Thadi
-            'KDGL': {
-                'x': 0.15,
-                'y': 0.56
-            },  # Kondagal
-            'MRGA': {
-                'x': 0.20,
-                'y': 0.57
-            },  # Miryalaguda
-            'NLDA': {
-                'x': 0.25,
-                'y': 0.58
-            },  # Nalgonda
-            'PGDP': {
-                'x': 0.30,
-                'y': 0.59
-            },  # Pagidipalli
-            'NDKD': {
-                'x': 0.35,
-                'y': 0.59
-            },  # Nadikudi
-            'GNTW': {
-                'x': 0.40,
-                'y': 0.60
-            },  # Guntur West
-            'GUNT': {
-                'x': 0.45,
-                'y': 0.60
-            },  # Guntur
-            'MNGT': {
-                'x': 0.50,
-                'y': 0.60
-            },  # Mangalagiri
+            # Thadi to Vijayawada route (increasing x coordinates)
+            'KDGL': {'x': 0.15, 'y': 0.56},  # Kondagal
+            'MRGA': {'x': 0.20, 'y': 0.57},  # Miryalaguda
+            'NLDA': {'x': 0.25, 'y': 0.58},  # Nalgonda
+            'PGDP': {'x': 0.30, 'y': 0.59},  # Pagidipalli
+            'NDKD': {'x': 0.35, 'y': 0.59},  # Nadikudi
+            'GNTW': {'x': 0.40, 'y': 0.60},  # Guntur West
+            'GUNT': {'x': 0.45, 'y': 0.60},  # Guntur
+            'MNGT': {'x': 0.50, 'y': 0.60},  # Mangalagiri
 
-            # Adding more stations with appropriate spacing
-            'BPRD': {
-                'x': 0.83,
-                'y': 0.67
-            },  # Bhupalapatnam Road
-            'ANKL': {
-                'x': 0.85,
-                'y': 0.69
-            },  # Ankapalle
-            'RGDA': {
-                'x': 0.87,
-                'y': 0.71
-            },  # Rayagada
-            'KRPU': {
-                'x': 0.89,
-                'y': 0.73
-            },  # Koraput
-            'KRDL': {
-                'x': 0.91,
-                'y': 0.75
-            },  # Kirandul
+            # Additional important stations
+            'TEL': {'x': 0.32, 'y': 0.22},   # Tuni
+            'OGL': {'x': 0.42, 'y': 0.32},   # Ongole
+            'NLPR': {'x': 0.27, 'y': 0.18},  # Nellore
 
-            # Additional stations on branch lines
-            'PDPL': {
-                'x': 0.60,
-                'y': 0.50
-            },  # Piduguralla
-            'NDKD': {
-                'x': 0.65,
-                'y': 0.55
-            },  # Nadikude
-            'MCLA': {
-                'x': 0.70,
-                'y': 0.57
-            },  # Machilipatnam
-            'BVRM': {
-                'x': 0.72,
-                'y': 0.58
-            },  # Bhimavaram
+            # Intermediate stations Vijayawada-Gudur
+            'BPQ': {'x': 0.58, 'y': 0.53},   # Bhimavaram
+            'TPG': {'x': 0.53, 'y': 0.48},   # Tadepalligudem
+            'ELR': {'x': 0.48, 'y': 0.43},   # Eluru
+            'RYP': {'x': 0.43, 'y': 0.38},   # Rayapuram
+            'KVZ': {'x': 0.38, 'y': 0.33},   # Kovvur
+            'CHE': {'x': 0.33, 'y': 0.28},   # Chirala
+            'VKT': {'x': 0.28, 'y': 0.23},   # Venkatachalam
 
-            # Adding more stations for comprehensive coverage
-            'TUNI': {
-                'x': 0.83,
-                'y': 0.67
-            },  # Tuni
-            'ANVM': {
-                'x': 0.84,
-                'y': 0.68
-            },  # Anakapalle
-            'VSKP': {
-                'x': 0.85,
-                'y': 0.69
-            },  # Visakhapatnam
-            'SCMN': {
-                'x': 0.86,
-                'y': 0.70
-            },  # Srikakulam Road
-            'CHE': {
-                'x': 0.87,
-                'y': 0.71
-            },  # Chennai
-
-            # More stations towards Gudur
-            'OGL': {
-                'x': 0.88,
-                'y': 0.72
-            },  # Ongole
-            'NLPR': {
-                'x': 0.89,
-                'y': 0.73
-            },  # Nellore
+            # Intermediate stations Thadi-Vijayawada
+            'SYL': {'x': 0.18, 'y': 0.57},   # Suryapet
+            'NSL': {'x': 0.23, 'y': 0.58},   # Nadikude South
+            'PGR': {'x': 0.28, 'y': 0.59},   # Piduguralla
+            'MAC': {'x': 0.33, 'y': 0.59},   # Macherla
+            'SAT': {'x': 0.38, 'y': 0.60},   # Sattenapalli
+            'PDL': {'x': 0.43, 'y': 0.60},   # Peddakurapadu
+            'CHR': {'x': 0.48, 'y': 0.60},   # Chebrolu
         }
         self.map_path = 'Vijayawada_Division_System_map_page-0001 (2).png'
         self.gps_pin_path = 'gps_pin.png'
