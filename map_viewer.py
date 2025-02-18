@@ -8,7 +8,6 @@ class MapViewer:
     def __init__(self):
         # Station coordinates (normalized to image coordinates 0-1)
         self.station_locations = {
-            # Existing reference stations
             'VNEC': {
                 'x': 0.15,
                 'y': 0.25
@@ -33,8 +32,6 @@ class MapViewer:
                 'x': -1,
                 'y': -1
             },  # Vijayawada
-
-            # Vijayawada to Gudur route (increasing x, y coordinates)
             'KJJ': {
                 'x': 0.78,
                 'y': 0.62
@@ -170,7 +167,7 @@ class MapViewer:
             'GDR': {
                 'x': 0.25,
                 'y': 0.93
-            },  # Gudur
+            }  # Gudur
         }
         self.map_path = 'Vijayawada_Division_System_map_page-0001 (2).png'
         self.gps_pin_path = 'gps_pin.png'
@@ -197,7 +194,7 @@ class MapViewer:
                 new_width = int(width * scale)
                 new_height = int(height * scale)
                 resized_image = original_image.resize((new_width, new_height),
-                                                      Image.Resampling.LANCZOS)
+                                                       Image.Resampling.LANCZOS)
                 return resized_image
             return original_image
 
@@ -210,7 +207,7 @@ class MapViewer:
         try:
             gps_pin = Image.open(self.gps_pin_path).convert('RGBA')
             resized_pin = gps_pin.resize((size, size),
-                                         Image.Resampling.LANCZOS)
+                                          Image.Resampling.LANCZOS)
             return resized_pin
 
         except Exception as e:
@@ -297,11 +294,11 @@ class MapViewer:
             new_height = max_height
 
             display_image = display_image.resize((new_width, new_height),
-                                                 Image.Resampling.LANCZOS)
+                                                  Image.Resampling.LANCZOS)
 
             st.image(display_image,
-                     use_container_width=True,
-                     caption="Vijayawada Division System Map")
+                      use_container_width=True,
+                      caption="Vijayawada Division System Map")
 
             if selected_train and selected_train.get('station'):
                 station = selected_train['station']
