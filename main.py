@@ -27,6 +27,13 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+# Add headers
+st.markdown("""
+    <h1 style='text-align: center; color: #1f497d;'>South Central Railway</h1>
+    <h2 style='text-align: center; color: #4f81bd;'>Vijayawada Division</h2>
+    <hr>
+""", unsafe_allow_html=True)
+
 # Initialize session state
 if 'data_handler' not in st.session_state:
     st.session_state['data_handler'] = DataHandler()
