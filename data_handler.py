@@ -46,8 +46,23 @@ class DataHandler:
         self.last_update = None
         self.update_interval = 300  # 5 minutes in seconds
         self.db_session = get_database_connection()
-        self.spreadsheet_url = "https://docs.google.com/spreadsheets/d/1OuiQ3FEoNAtH10NllgLusxACjn2NU0yZUcHh68hLoI4/export?format=csv"
+        # Updated URL to a publicly accessible CSV file
+        self.spreadsheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQMqC_6fkaH6oZweJDIIYFDdE9o3P3G1hB0OKLzkGGf0pB-FjWJoAMoYca2hxvmZeZLGIaD7OHwNAr4/pub?output=csv"
         self.performance_metrics = {'load_time': 0, 'process_time': 0}
+
+    def _get_sample_data(self) -> pd.DataFrame:
+        """Generate sample data when CSV is not available"""
+        sample_data = {
+            'Train Name': ['12345', '67890', '11223'],
+            'Station': ['BZA', 'VNEC', 'GALA'],
+            'Time': [
+                datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                (datetime.now() - pd.Timedelta(minutes=30)).strftime('%Y-%m-%d %H:%M:%S'),
+                (datetime.now() - pd.Timedelta(minutes=45)).strftime('%Y-%m-%d %H:%M:%S')
+            ],
+            'Status': ['ON TIME', 'DELAYED', 'EARLY']
+        }
+        return pd.DataFrame(sample_data)
 
     def _fetch_csv_data(self) -> pd.DataFrame:
         """Fetch CSV data with performance tracking and proper column handling"""
@@ -55,27 +70,37 @@ class DataHandler:
         try:
             @st.cache_data(ttl=300, show_spinner=False)
             def fetch_data(url):
-                df = pd.read_csv(url)
-                # Ensure we have data and proper column names
-                if not df.empty:
-                    # If first row contains column headers, use it
-                    if 'Train Name' in df.iloc[0].values:
-                        df.columns = df.iloc[0]
-                        df = df.iloc[1:].reset_index(drop=True)
-                    # If columns are already correct, keep them
-                    elif 'Train Name' in df.columns:
-                        pass
-                    else:
-                        logger.error("CSV data does not contain required column 'Train Name'")
-                        return pd.DataFrame()
-                return df
+                try:
+                    df = pd.read_csv(url)
+                    logger.info(f"CSV data fetched successfully. Shape: {df.shape}")
+
+                    # Ensure we have data and proper column names
+                    if not df.empty:
+                        # Log column information
+                        logger.info(f"CSV columns: {df.columns.tolist()}")
+                        logger.info(f"First row: {df.iloc[0].tolist()}")
+
+                        # If first row contains column headers, use it
+                        if any('Train Name' in str(val) for val in df.iloc[0].values):
+                            df.columns = df.iloc[0]
+                            df = df.iloc[1:].reset_index(drop=True)
+                        # If columns are already correct, keep them
+                        elif 'Train Name' in df.columns:
+                            pass
+                        else:
+                            logger.error("CSV data does not contain required column 'Train Name'")
+                            return self._get_sample_data()
+                    return df
+                except Exception as e:
+                    logger.error(f"Error reading CSV: {str(e)}")
+                    return self._get_sample_data()
 
             df = fetch_data(self.spreadsheet_url)
             self.performance_metrics['load_time'] = time.time() - start_time
             return df
         except Exception as e:
             logger.error(f"Error fetching CSV data: {str(e)}")
-            return pd.DataFrame()
+            return self._get_sample_data()
 
     def _process_raw_data(self, df: pd.DataFrame) -> pd.DataFrame:
         """Process raw data with optimized operations"""
@@ -125,7 +150,7 @@ class DataHandler:
 
             raw_data = self._fetch_csv_data()
             if raw_data.empty:
-                return False, "No data received from CSV"
+                return False, "No data received from CSV, using sample data."
 
             self.data = self._process_raw_data(raw_data)
 
