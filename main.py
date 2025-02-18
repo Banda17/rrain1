@@ -45,68 +45,10 @@ if 'selected_train_details' not in st.session_state:
 if 'map_viewer' not in st.session_state:
     st.session_state['map_viewer'] = MapViewer()
 
-def update_selected_train_details(selected):
-    """Update the selected train details in session state"""
-    station = selected['Station']
-    if st.session_state['map_viewer'].get_station_coordinates(station):
-        st.session_state['selected_train'] = {
-            'train': selected['Train Name'],
-            'station': station
-        }
-        st.session_state['selected_train_details'] = {
-            'Scheduled Time': selected['Sch_Time'],
-            'Actual Time': selected['Current Time'],
-            'Current Status': selected['Status'],
-            'Delay': selected['Delay']
-        }
-
-def parse_time(time_str: str) -> Optional[datetime]:
-    """Parse time string in HH:MM format to datetime object"""
-    try:
-        # If time string is empty, None, or "Not Available"
-        if not time_str or time_str.strip().lower() == "not available":
-            return None
-
-        # Extract only the time part (HH:MM) from the string
-        time_part = time_str.split()[0] if time_str else ''
-        if not time_part:
-            return None
-
-        # Validate time format (HH:MM)
-        if not ':' in time_part or len(time_part.split(':')) != 2:
-            logger.warning(f"Invalid time format: {time_str}")
-            return None
-
-        return datetime.strptime(time_part, '%H:%M')
-    except Exception as e:
-        logger.debug(f"Error parsing time {time_str}: {str(e)}")
-        return None
-
-def calculate_time_difference(scheduled: str, actual: str) -> Optional[int]:
-    """Calculate time difference in minutes between scheduled and actual times"""
-    try:
-        sch_time = parse_time(scheduled)
-        act_time = parse_time(actual)
-
-        if sch_time and act_time:
-            # Convert both times to same date for comparison
-            diff = (act_time - sch_time).total_seconds() / 60
-            return int(diff)
-        return None
-    except Exception as e:
-        logger.debug(f"Error calculating time difference: {str(e)}")
-        return None
-
-@st.cache_data(ttl=300)
-def load_and_process_data():
-    """Cache data loading and processing"""
-    success, message = st.session_state['data_handler'].load_data_from_drive()
-    if success:
-        status_table = st.session_state['data_handler'].get_train_status_table()
-        cached_data = st.session_state['data_handler'].get_cached_data()
-        if cached_data:
-            return True, status_table, pd.DataFrame(cached_data), message
-    return False, None, None, message
+# Add header and title
+st.markdown("<h1 style='text-align: center;'>🚂 South Central Railway</h1>", unsafe_allow_html=True)
+st.markdown("<h2 style='text-align: center;'>Vijayawada Division</h2>", unsafe_allow_html=True)
+st.markdown("---")
 
 # Map Section
 st.title("🗺️ Division Map")
@@ -283,3 +225,66 @@ except Exception as e:
 # Footer
 st.markdown("---")
 st.markdown("Train Tracking System")
+
+def update_selected_train_details(selected):
+    """Update the selected train details in session state"""
+    station = selected['Station']
+    if st.session_state['map_viewer'].get_station_coordinates(station):
+        st.session_state['selected_train'] = {
+            'train': selected['Train Name'],
+            'station': station
+        }
+        st.session_state['selected_train_details'] = {
+            'Scheduled Time': selected['Sch_Time'],
+            'Actual Time': selected['Current Time'],
+            'Current Status': selected['Status'],
+            'Delay': selected['Delay']
+        }
+
+def parse_time(time_str: str) -> Optional[datetime]:
+    """Parse time string in HH:MM format to datetime object"""
+    try:
+        # If time string is empty, None, or "Not Available"
+        if not time_str or time_str.strip().lower() == "not available":
+            return None
+
+        # Extract only the time part (HH:MM) from the string
+        time_part = time_str.split()[0] if time_str else ''
+        if not time_part:
+            return None
+
+        # Validate time format (HH:MM)
+        if not ':' in time_part or len(time_part.split(':')) != 2:
+            logger.warning(f"Invalid time format: {time_str}")
+            return None
+
+        return datetime.strptime(time_part, '%H:%M')
+    except Exception as e:
+        logger.debug(f"Error parsing time {time_str}: {str(e)}")
+        return None
+
+def calculate_time_difference(scheduled: str, actual: str) -> Optional[int]:
+    """Calculate time difference in minutes between scheduled and actual times"""
+    try:
+        sch_time = parse_time(scheduled)
+        act_time = parse_time(actual)
+
+        if sch_time and act_time:
+            # Convert both times to same date for comparison
+            diff = (act_time - sch_time).total_seconds() / 60
+            return int(diff)
+        return None
+    except Exception as e:
+        logger.debug(f"Error calculating time difference: {str(e)}")
+        return None
+
+@st.cache_data(ttl=300)
+def load_and_process_data():
+    """Cache data loading and processing"""
+    success, message = st.session_state['data_handler'].load_data_from_drive()
+    if success:
+        status_table = st.session_state['data_handler'].get_train_status_table()
+        cached_data = st.session_state['data_handler'].get_cached_data()
+        if cached_data:
+            return True, status_table, pd.DataFrame(cached_data), message
+    return False, None, None, message
