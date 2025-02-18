@@ -1,7 +1,6 @@
 import streamlit as st
 from PIL import Image, ImageDraw, ImageFont
-from typing import Dict, Optional, Tuple
-import io
+from typing import Dict, Optional
 
 
 class MapViewer:
@@ -31,8 +30,8 @@ class MapViewer:
                 'y': 0.45
             },  # Pavalavagu
             'BZA': {
-                'x': 0.75,
-                'y': 0.60
+                'x': -1,
+                'y': -1
             },  # Vijayawada
 
             # Vijayawada to Gudur route (increasing x, y coordinates)
@@ -282,14 +281,10 @@ class MapViewer:
                 'x': 0.89,
                 'y': 0.73
             },  # Nellore
-            'GDR': {
-                'x': 0.90,
-                'y': 0.74
-            },  # Gudur
         }
-        self.map_path = 'Vijayawada_Division_System_map_page-0001 (2).jpg'
+        self.map_path = 'Vijayawada_Division_System_map_page-0001 (2).png'
         self.gps_pin_path = 'gps_pin.png'
-        self.base_marker_size = 100
+        self.base_marker_size = 50
         self.max_image_size = (2048, 2048)
         self.zoom_level = 1.5
 
