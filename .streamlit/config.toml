@@ -4,9 +4,9 @@ address = "0.0.0.0"
 port = 5000
 
 [theme]
-primaryColor = "#A9B5DF"
-backgroundColor = "#FFF2F2"
-secondaryBackgroundColor = "#7886C7"
+primaryColor = "#0066cc"
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f0f2f6"
 textColor = "#262730"
 
 [secrets]
