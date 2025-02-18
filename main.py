@@ -44,6 +44,12 @@ def parse_time(time_str: str) -> Optional[datetime]:
 def calculate_time_difference(scheduled: str, actual: str) -> Optional[int]:
     """Calculate time difference in minutes between scheduled and actual times"""
     try:
+        # Return None if either time is empty or "Not Available"
+        if pd.isna(scheduled) or pd.isna(actual) or \
+           scheduled.strip().lower() == "not available" or \
+           actual.strip().lower() == "not available":
+            return None
+
         sch_time = parse_time(scheduled)
         act_time = parse_time(actual)
 
@@ -55,6 +61,21 @@ def calculate_time_difference(scheduled: str, actual: str) -> Optional[int]:
     except Exception as e:
         logger.debug(f"Error calculating time difference: {str(e)}")
         return None
+
+def format_delay_value(delay: Optional[int]) -> str:
+    """Format delay value with appropriate indicator"""
+    try:
+        if delay is None:
+            return "N/A"
+        elif delay > 5:
+            return f"⚠️ +{delay}"
+        elif delay < -5:
+            return f"⏰ {delay}"
+        else:
+            return f"✅ {delay}"
+    except Exception as e:
+        logger.error(f"Error formatting delay value: {str(e)}")
+        return "N/A"
 
 # Page configuration
 st.set_page_config(
@@ -91,24 +112,50 @@ def initialize_session_state():
 
 def update_selected_train_details(selected):
     """Update the selected train details in session state"""
-    if not selected:
+    try:
+        # Clear selection if selected is None or empty DataFrame
+        if selected is None or (isinstance(selected, pd.Series) and selected.empty):
+            st.session_state['selected_train'] = None
+            st.session_state['selected_train_details'] = {}
+            return
+
+        # Extract values safely from pandas Series
+        if isinstance(selected, pd.Series):
+            station = selected.get('Station', '')
+            train_name = selected.get('Train Name', '')
+            sch_time = selected.get('Sch_Time', '')
+            current_time = selected.get('Current Time', '')
+            status = selected.get('Status', '')
+            delay = selected.get('Delay', '')
+        else:
+            station = selected.get('Station', '')
+            train_name = selected.get('Train Name', '')
+            sch_time = selected.get('Sch_Time', '')
+            current_time = selected.get('Current Time', '')
+            status = selected.get('Status', '')
+            delay = selected.get('Delay', '')
+
+        if station and st.session_state['map_viewer'].get_station_coordinates(station):
+            st.session_state['selected_train'] = {
+                'train': train_name,
+                'station': station
+            }
+            st.session_state['selected_train_details'] = {
+                'Scheduled Time': sch_time,
+                'Actual Time': current_time,
+                'Current Status': status,
+                'Delay': delay
+            }
+            logger.debug(f"Updated selected train: {st.session_state['selected_train']}")
+        else:
+            logger.warning(f"Invalid station or coordinates not found for station: {station}")
+            st.session_state['selected_train'] = None
+            st.session_state['selected_train_details'] = {}
+
+    except Exception as e:
+        logger.error(f"Error updating selected train details: {str(e)}")
         st.session_state['selected_train'] = None
         st.session_state['selected_train_details'] = {}
-        return
-
-    station = selected['Station']
-    if st.session_state['map_viewer'].get_station_coordinates(station):
-        st.session_state['selected_train'] = {
-            'train': selected['Train Name'],
-            'station': station
-        }
-        st.session_state['selected_train_details'] = {
-            'Scheduled Time': selected['Sch_Time'],
-            'Actual Time': selected['Current Time'],
-            'Current Status': selected['Status'],
-            'Delay': selected['Delay']
-        }
-        logger.debug(f"Updated selected train: {st.session_state['selected_train']}")
 
 def handle_timing_status_change():
     """Handle changes in timing status filter"""
@@ -188,16 +235,15 @@ try:
 
         # Calculate time difference
         filtered_df['Delay'] = filtered_df.apply(
-            lambda row: calculate_time_difference(row['Sch_Time'], row['Time_Display']),
+            lambda row: format_delay_value(
+                calculate_time_difference(
+                    row['Sch_Time'], 
+                    row['Time_Display']
+                )
+            ),
             axis=1
         )
 
-        # Format delay values with indicators
-        filtered_df['Delay'] = filtered_df['Delay'].apply(
-            lambda x: f"⚠️ +{x}" if pd.notna(x) and x > 5 else
-                     f"⏰ {x}" if pd.notna(x) and x < -5 else
-                     f"✅ {x}" if pd.notna(x) else "N/A"
-        )
 
         # Add a background color based on condition
         def style_delay(value):
