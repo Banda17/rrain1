@@ -10,7 +10,7 @@ from database import init_db
 from train_schedule import TrainSchedule
 import logging
 from map_viewer import MapViewer
-from typing import Optional
+from typing import Optional, Dict
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -34,26 +34,31 @@ st.markdown("""
     <hr>
 """, unsafe_allow_html=True)
 
-# Initialize session state
-if 'data_handler' not in st.session_state:
-    st.session_state['data_handler'] = DataHandler()
-if 'ai_analyzer' not in st.session_state:
-    st.session_state['ai_analyzer'] = AIAnalyzer()
-if 'visualizer' not in st.session_state:
-    st.session_state['visualizer'] = Visualizer()
-if 'train_schedule' not in st.session_state:
-    st.session_state['train_schedule'] = TrainSchedule()
-if 'last_update' not in st.session_state:
-    st.session_state['last_update'] = None
-if 'selected_train' not in st.session_state:
-    st.session_state['selected_train'] = None
-if 'selected_train_details' not in st.session_state:
-    st.session_state['selected_train_details'] = {}
-if 'map_viewer' not in st.session_state:
-    st.session_state['map_viewer'] = MapViewer()
+def initialize_session_state():
+    """Initialize all session state variables with proper typing"""
+    state_configs = {
+        'data_handler': {'default': DataHandler(), 'type': DataHandler},
+        'ai_analyzer': {'default': AIAnalyzer(), 'type': AIAnalyzer},
+        'visualizer': {'default': Visualizer(), 'type': Visualizer},
+        'train_schedule': {'default': TrainSchedule(), 'type': TrainSchedule},
+        'map_viewer': {'default': MapViewer(), 'type': MapViewer},
+        'last_update': {'default': None, 'type': Optional[datetime]},
+        'selected_train': {'default': None, 'type': Optional[Dict]},
+        'selected_train_details': {'default': {}, 'type': Dict},
+        'filter_status': {'default': 'Late', 'type': str}
+    }
+
+    for key, config in state_configs.items():
+        if key not in st.session_state:
+            st.session_state[key] = config['default']
 
 def update_selected_train_details(selected):
     """Update the selected train details in session state"""
+    if not selected:
+        st.session_state['selected_train'] = None
+        st.session_state['selected_train_details'] = {}
+        return
+
     station = selected['Station']
     if st.session_state['map_viewer'].get_station_coordinates(station):
         st.session_state['selected_train'] = {
@@ -66,54 +71,15 @@ def update_selected_train_details(selected):
             'Current Status': selected['Status'],
             'Delay': selected['Delay']
         }
+        logger.debug(f"Updated selected train: {st.session_state['selected_train']}")
 
-def parse_time(time_str: str) -> Optional[datetime]:
-    """Parse time string in HH:MM format to datetime object"""
-    try:
-        # If time string is empty, None, or "Not Available"
-        if not time_str or time_str.strip().lower() == "not available":
-            return None
+def handle_timing_status_change():
+    """Handle changes in timing status filter"""
+    st.session_state['filter_status'] = st.session_state.get('timing_status_select', 'Late')
+    logger.debug(f"Timing status changed to: {st.session_state['filter_status']}")
 
-        # Extract only the time part (HH:MM) from the string
-        time_part = time_str.split()[0] if time_str else ''
-        if not time_part:
-            return None
-
-        # Validate time format (HH:MM)
-        if not ':' in time_part or len(time_part.split(':')) != 2:
-            logger.warning(f"Invalid time format: {time_str}")
-            return None
-
-        return datetime.strptime(time_part, '%H:%M')
-    except Exception as e:
-        logger.debug(f"Error parsing time {time_str}: {str(e)}")
-        return None
-
-def calculate_time_difference(scheduled: str, actual: str) -> Optional[int]:
-    """Calculate time difference in minutes between scheduled and actual times"""
-    try:
-        sch_time = parse_time(scheduled)
-        act_time = parse_time(actual)
-
-        if sch_time and act_time:
-            # Convert both times to same date for comparison
-            diff = (act_time - sch_time).total_seconds() / 60
-            return int(diff)
-        return None
-    except Exception as e:
-        logger.debug(f"Error calculating time difference: {str(e)}")
-        return None
-
-@st.cache_data(ttl=300)
-def load_and_process_data():
-    """Cache data loading and processing"""
-    success, message = st.session_state['data_handler'].load_data_from_drive()
-    if success:
-        status_table = st.session_state['data_handler'].get_train_status_table()
-        cached_data = st.session_state['data_handler'].get_cached_data()
-        if cached_data:
-            return True, status_table, pd.DataFrame(cached_data), message
-    return False, None, None, message
+# Initialize session state
+initialize_session_state()
 
 # Map Section
 st.title("🗺️ Division Map")
@@ -213,19 +179,22 @@ try:
             "Filter by Timing Status",
             ["All", "Late", "On Time", "Early"],
             index=1,  # Default to "Late"
+            key='timing_status_select',
+            on_change=handle_timing_status_change,
             help="Filter trains based on their arrival status"
         )
 
-        # Apply timing status filter
-        if timing_status != "All":
-            if timing_status == "Late":
+        # Apply timing status filter using session state
+        current_filter = st.session_state['filter_status']
+        if current_filter != "All":
+            if current_filter == "Late":
                 display_df = display_df[display_df['Delay'].str.contains('⚠️', na=False)]
-            elif timing_status == "Early":
+            elif current_filter == "Early":
                 display_df = display_df[display_df['Delay'].str.contains('⏰', na=False)]
-            elif timing_status == "On Time":
+            elif current_filter == "On Time":
                 display_df = display_df[display_df['Delay'].str.contains('✅', na=False)]
 
-            st.info(f"Showing {len(display_df)} {timing_status.lower()} trains")
+            st.info(f"Showing {len(display_df)} {current_filter.lower()} trains")
 
         # Make the dataframe interactive
         edited_df = st.data_editor(
@@ -290,3 +259,51 @@ except Exception as e:
 # Footer
 st.markdown("---")
 st.markdown("Train Tracking System")
+
+@st.cache_data(ttl=300)
+def load_and_process_data():
+    """Cache data loading and processing"""
+    success, message = st.session_state['data_handler'].load_data_from_drive()
+    if success:
+        status_table = st.session_state['data_handler'].get_train_status_table()
+        cached_data = st.session_state['data_handler'].get_cached_data()
+        if cached_data:
+            return True, status_table, pd.DataFrame(cached_data), message
+    return False, None, None, message
+
+def parse_time(time_str: str) -> Optional[datetime]:
+    """Parse time string in HH:MM format to datetime object"""
+    try:
+        # If time string is empty, None, or "Not Available"
+        if not time_str or time_str.strip().lower() == "not available":
+            return None
+
+        # Extract only the time part (HH:MM) from the string
+        time_part = time_str.split()[0] if time_str else ''
+        if not time_part:
+            return None
+
+        # Validate time format (HH:MM)
+        if not ':' in time_part or len(time_part.split(':')) != 2:
+            logger.warning(f"Invalid time format: {time_str}")
+            return None
+
+        return datetime.strptime(time_part, '%H:%M')
+    except Exception as e:
+        logger.debug(f"Error parsing time {time_str}: {str(e)}")
+        return None
+
+def calculate_time_difference(scheduled: str, actual: str) -> Optional[int]:
+    """Calculate time difference in minutes between scheduled and actual times"""
+    try:
+        sch_time = parse_time(scheduled)
+        act_time = parse_time(actual)
+
+        if sch_time and act_time:
+            # Convert both times to same date for comparison
+            diff = (act_time - sch_time).total_seconds() / 60
+            return int(diff)
+        return None
+    except Exception as e:
+        logger.debug(f"Error calculating time difference: {str(e)}")
+        return None
