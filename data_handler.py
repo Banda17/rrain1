@@ -46,7 +46,7 @@ class DataHandler:
         self.last_update = None
         self.update_interval = 300  # 5 minutes in seconds
         self.db_session = get_database_connection()
-        self.spreadsheet_url = "https://docs.google.com/spreadsheets/d/1OuiQ3FEoNAtH10NllgLusxACjn2NU0yZUcHh68hLoI4/export?format=csv"
+        self.spreadsheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRO2ZV-BOcL11_5NhlrOnn5Keph3-cVp7Tyr1t6RxsoDvxZjdOyDsmRkdvesJLbSnZwY8v3CATt1Of9/pub?gid=377625640&single=true&output=csv"
         self.performance_metrics = {'load_time': 0, 'process_time': 0}
 
     def _fetch_csv_data(self) -> pd.DataFrame:
@@ -107,6 +107,9 @@ class DataHandler:
     def load_data_from_drive(self) -> Tuple[bool, str]:
         """Load data from Google Sheets URL with optimized caching"""
         try:
+            # Clear cache to ensure fresh data load
+            st.cache_data.clear()
+
             # Check cache first
             if not self.should_update() and self.processed_data_cache:
                 logger.debug("Using processed data cache")
