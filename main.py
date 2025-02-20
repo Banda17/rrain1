@@ -9,7 +9,6 @@ from utils import format_time_difference, create_status_badge, show_ai_insights
 from database import init_db
 from train_schedule import TrainSchedule
 import logging
-from map_viewer import MapViewer
 from typing import Optional, Dict
 
 # Configure logging
@@ -99,7 +98,6 @@ def initialize_session_state():
         'ai_analyzer': {'default': AIAnalyzer(), 'type': AIAnalyzer},
         'visualizer': {'default': Visualizer(), 'type': Visualizer},
         'train_schedule': {'default': TrainSchedule(), 'type': TrainSchedule},
-        'map_viewer': {'default': MapViewer(), 'type': MapViewer},
         'last_update': {'default': None, 'type': Optional[datetime]},
         'selected_train': {'default': None, 'type': Optional[Dict]},
         'selected_train_details': {'default': {}, 'type': Dict},
@@ -135,22 +133,17 @@ def update_selected_train_details(selected):
             status = selected.get('Status', '')
             delay = selected.get('Delay', '')
 
-        if station and st.session_state['map_viewer'].get_station_coordinates(station):
-            st.session_state['selected_train'] = {
-                'train': train_name,
-                'station': station
-            }
-            st.session_state['selected_train_details'] = {
-                'Scheduled Time': sch_time,
-                'Actual Time': current_time,
-                'Current Status': status,
-                'Delay': delay
-            }
-            logger.debug(f"Updated selected train: {st.session_state['selected_train']}")
-        else:
-            logger.warning(f"Invalid station or coordinates not found for station: {station}")
-            st.session_state['selected_train'] = None
-            st.session_state['selected_train_details'] = {}
+        st.session_state['selected_train'] = {
+            'train': train_name,
+            'station': station
+        }
+        st.session_state['selected_train_details'] = {
+            'Scheduled Time': sch_time,
+            'Actual Time': current_time,
+            'Current Status': status,
+            'Delay': delay
+        }
+        logger.debug(f"Updated selected train: {st.session_state['selected_train']}")
 
     except Exception as e:
         logger.error(f"Error updating selected train details: {str(e)}")
@@ -175,10 +168,6 @@ def load_and_process_data():
 
 # Initialize session state
 initialize_session_state()
-
-# Map Section
-st.title("🗺️ Division Map")
-st.session_state['map_viewer'].render(st.session_state.get('selected_train'))
 
 # Train List Section
 st.title("🚂 Train List")
@@ -301,7 +290,7 @@ try:
             column_config={
                 "Select": st.column_config.CheckboxColumn(
                     "Select",
-                    help="Select to highlight on map",
+                    help="Select to highlight train",
                     width="small",
                     default=False
                 ),
