@@ -1,6 +1,6 @@
 import streamlit as st
-from map_viewer import MapViewer
-from PIL import Image, ImageDraw, ImageFont
+import folium
+from streamlit_folium import folium_static
 import pandas as pd
 
 # Page configuration
@@ -10,114 +10,94 @@ st.set_page_config(
     layout="wide"
 )
 
-# Initialize map viewer
-map_viewer = MapViewer()
-
 st.title("🗺️ Division Map View")
 st.markdown("""
 This interactive map shows the stations in Vijayawada Division with their GPS coordinates.
 Use the controls below to customize the view.
 """)
 
+# Define Andhra Pradesh center coordinates
+AP_CENTER = [16.5167, 80.6167]  # Centered around Vijayawada
+
+# Create the base map
+m = folium.Map(
+    location=AP_CENTER,
+    zoom_start=8,
+    tiles="cartodb positron"
+)
+
+# Sample station coordinates (Replace these with actual GPS coordinates)
+stations = {
+    'BZA': {'name': 'Vijayawada', 'lat': 16.5167, 'lon': 80.6167},
+    'GNT': {'name': 'Guntur', 'lat': 16.3067, 'lon': 80.4365},
+    'VSKP': {'name': 'Visakhapatnam', 'lat': 17.6868, 'lon': 83.2185},
+    'TUNI': {'name': 'Tuni', 'lat': 17.3572, 'lon': 82.5483},
+    'RJY': {'name': 'Rajahmundry', 'lat': 17.0005, 'lon': 81.7799},
+    'NLDA': {'name': 'Nalgonda', 'lat': 17.0575, 'lon': 79.2690},
+}
+
 # Controls
 col1, col2 = st.columns([1, 2])
 with col1:
     show_coords = st.checkbox("Show GPS Coordinates", value=True)
     show_station_list = st.checkbox("Show Station List", value=True)
-    route_filter = st.selectbox(
-        "Filter by Route",
-        ["All Stations", "Vijayawada-Gudur", "Thadi-Vijayawada"],
-        index=0
-    )
 
-# Create a DataFrame of stations with route information
-def get_route_for_station(coords):
-    # Simplified route determination based on coordinates
-    if 0.10 <= coords['x'] <= 0.50 and 0.55 <= coords['y'] <= 0.60:
-        return "Thadi-Vijayawada"
+# Add markers for each station
+for code, info in stations.items():
+    folium.Marker(
+        [info['lat'], info['lon']],
+        popup=f"{code} - {info['name']}",
+        tooltip=code,
+        icon=folium.Icon(color='red', icon='info-sign')
+    ).add_to(m)
+
+# Add railway lines connecting stations (simplified)
+station_points = [[info['lat'], info['lon']] for info in stations.values()]
+folium.PolyLine(
+    station_points,
+    weight=2,
+    color='gray',
+    opacity=0.8,
+    dash_array='5, 10'
+).add_to(m)
+
+# Display the map
+folium_static(m, width=1000, height=600)
+
+# Show station list if enabled
+if show_station_list:
+    st.subheader("Station Coordinates")
+
+    # Create DataFrame for display
+    stations_df = pd.DataFrame([
+        {
+            'Station Code': code,
+            'Name': info['name'],
+            'Latitude': info['lat'],
+            'Longitude': info['lon']
+        }
+        for code, info in stations.items()
+    ])
+
+    if show_coords:
+        st.dataframe(
+            stations_df,
+            use_container_width=True,
+            height=400
+        )
     else:
-        return "Vijayawada-Gudur"
-
-stations_df = pd.DataFrame([
-    {
-        'Station Code': code,
-        'GPS Coordinates': f"({coords['x']:.4f}, {coords['y']:.4f})",
-        'Route': get_route_for_station(coords)
-    }
-    for code, coords in map_viewer.station_locations.items()
-])
-
-# Apply route filter
-if route_filter != "All Stations":
-    stations_df = stations_df[stations_df['Route'] == route_filter]
-
-# Load and prepare the base map
-base_map = map_viewer.load_map()
-
-if base_map:
-    # Draw all station markers
-    display_image = base_map.copy()
-
-    # Only draw markers for filtered stations
-    for _, row in stations_df.iterrows():
-        display_image = map_viewer.draw_train_marker(
-            display_image, 
-            row['Station Code']
+        st.dataframe(
+            stations_df[['Station Code', 'Name']],
+            use_container_width=True,
+            height=400
         )
 
-    # Convert and resize for display
-    display_image = display_image.convert('RGB')
-    original_width, original_height = display_image.size
+    st.info(f"Showing {len(stations)} stations")
 
-    # Calculate new dimensions maintaining aspect ratio
-    max_height = 600  # Larger height for better visibility
-    height_ratio = max_height / original_height
-    new_width = int(original_width * height_ratio * 1.2)
-    new_height = max_height
-
-    display_image = display_image.resize(
-        (new_width, new_height),
-        Image.Resampling.LANCZOS
-    )
-
-    # Display the map
-    st.image(
-        display_image,
-        use_container_width=True,
-        caption=f"Station Markers on Vijayawada Division System Map ({route_filter})"
-    )
-
-    # Show station list if enabled
-    if show_station_list:
-        st.subheader("Station Coordinates")
-
-        # Allow sorting by any column
-        sort_by = st.selectbox("Sort by", stations_df.columns.tolist())
-        stations_df_sorted = stations_df.sort_values(sort_by)
-
-        if show_coords:
-            st.dataframe(
-                stations_df_sorted,
-                use_container_width=True,
-                height=400
-            )
-        else:
-            st.dataframe(
-                stations_df_sorted[['Station Code', 'Route']],
-                use_container_width=True,
-                height=400
-            )
-
-        # Show station count
-        st.info(f"Showing {len(stations_df)} stations" + 
-                (f" on {route_filter} route" if route_filter != "All Stations" else ""))
-else:
-    st.error("Unable to load the base map. Please check the map file path.")
-
-# Add description of coordinate system
+# Add instructions for coordinate updates
 st.markdown("""
-### About the Coordinate System
-- Coordinates are normalized to the range (0,0) to (1,1)
-- X: Horizontal position (0 = leftmost, 1 = rightmost)
-- Y: Vertical position (0 = topmost, 1 = bottommost)
+### About GPS Coordinates
+- Latitude: North-South position (-90° to 90°)
+- Longitude: East-West position (-180° to 180°)
+- Coordinates shown are in decimal degrees
 """)
