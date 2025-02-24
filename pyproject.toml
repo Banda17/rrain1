@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Add your description here"
 requires-python = ">=3.11"
 dependencies = [
+    "cairosvg>=2.7.1",
     "google-api-python-client>=2.160.0",
     "google-auth>=2.38.0",
     "google-auth-httplib2>=0.2.0",

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="800" height="600" viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg">
+    <!-- Background -->
+    <rect width="800" height="600" fill="#f8f9fa"/>
+    
+    <!-- Andhra Pradesh simplified outline -->
+    <path d="M200,100 L600,150 L650,300 L500,500 L200,450 Z" 
+          fill="none" 
+          stroke="#333" 
+          stroke-width="2"/>
+    
+    <!-- Key cities/points -->
+    <circle cx="400" cy="300" r="5" fill="red"/> <!-- Vijayawada -->
+    <text x="410" y="300" font-size="12">Vijayawada</text>
+    
+    <circle cx="300" cy="200" r="5" fill="red"/> <!-- Guntur -->
+    <text x="310" y="200" font-size="12">Guntur</text>
+    
+    <circle cx="500" cy="250" r="5" fill="red"/> <!-- Visakhapatnam -->
+    <text x="510" y="250" font-size="12">Visakhapatnam</text>
+    
+    <!-- Railways (simplified) -->
+    <path d="M300,200 L400,300 L500,250" 
+          fill="none" 
+          stroke="#666" 
+          stroke-width="1" 
+          stroke-dasharray="5,5"/>
+</svg>

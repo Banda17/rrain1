@@ -1,6 +1,8 @@
 import streamlit as st
 from PIL import Image, ImageDraw, ImageFont
 from typing import Dict, Optional
+import cairosvg
+import io
 
 
 class MapViewer:
@@ -56,10 +58,10 @@ class MapViewer:
             'PDL': {'x': 0.43, 'y': 0.60},   # Peddakurapadu
             'CHR': {'x': 0.48, 'y': 0.60},   # Chebrolu
         }
-        self.map_path = 'Vijayawada_Division_System_map_page-0001 (2).png'
+        self.map_path = 'andhra_pradesh_map.svg'
         self.gps_pin_path = 'gps_pin.png'
         self.base_marker_size = 50
-        self.max_image_size = (2048, 2048)
+        self.max_image_size = (800, 600)
         self.zoom_level = 1.5
 
     def get_station_coordinates(
@@ -68,23 +70,23 @@ class MapViewer:
         return self.station_locations.get(station_code)
 
     def load_map(self) -> Optional[Image.Image]:
-        """Load and safely resize the base map image"""
+        """Load and convert SVG map to PIL Image"""
         try:
-            Image.MAX_IMAGE_PIXELS = 178956970  # Safe limit
-            original_image = Image.open(self.map_path).convert('RGBA')
+            # Read SVG file
+            with open(self.map_path, 'rb') as svg_file:
+                svg_data = svg_file.read()
 
-            width, height = original_image.size
-            scale = min(self.max_image_size[0] / width,
-                        self.max_image_size[1] / height)
+            # Convert SVG to PNG in memory
+            png_data = cairosvg.svg2png(bytestring=svg_data)
 
-            if scale < 1:  # Only resize if image is too large
-                new_width = int(width * scale)
-                new_height = int(height * scale)
-                resized_image = original_image.resize((new_width, new_height),
-                                                      Image.Resampling.LANCZOS)
-                return resized_image
-            return original_image
+            # Create PIL Image from PNG data
+            image = Image.open(io.BytesIO(png_data))
 
+            # Resize if needed
+            if image.size != self.max_image_size:
+                image = image.resize(self.max_image_size, Image.Resampling.LANCZOS)
+
+            return image.convert('RGBA')
         except Exception as e:
             st.error(f"Error loading map: {str(e)}")
             return None
