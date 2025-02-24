@@ -3,6 +3,7 @@ import folium
 from streamlit_folium import folium_static
 import pandas as pd
 import os
+from map_utils import OfflineMapHandler
 
 # Page configuration
 st.set_page_config(
@@ -20,22 +21,15 @@ Use the controls below to customize the view.
 # Define Andhra Pradesh center coordinates
 AP_CENTER = [16.5167, 80.6167]  # Centered around Vijayawada
 
-# Create the base map with custom tiles configuration
-m = folium.Map(
-    location=AP_CENTER,
-    zoom_start=8,
-    tiles=None  # No default tiles
-)
+# Initialize offline map handler
+map_handler = OfflineMapHandler('Vijayawada_Division_System_map_page-0001 (2).png')
 
-# Add custom offline tiles layer
-folium.TileLayer(
-    name='Custom Offline',
-    tiles='Vijayawada_Division_System_map_page-0001 (2).png',
-    attr='Local Map',
-    overlay=True,
-    control=True,
-    bounds=[[14.5, 78.0], [19.5, 84.5]]  # Andhra Pradesh bounds
-).add_to(m)
+# Create the map with offline support
+m = map_handler.create_offline_map(center=AP_CENTER)
+
+if not m:
+    st.error("Failed to load offline map. Please check the map file.")
+    st.stop()
 
 # Station coordinates with actual GPS locations
 stations = {
