@@ -1,9 +1,6 @@
 import streamlit as st
 from PIL import Image, ImageDraw, ImageFont
 from typing import Dict, Optional
-import cairosvg
-import io
-
 
 class MapViewer:
 
@@ -39,30 +36,12 @@ class MapViewer:
             'TEL': {'x': 0.32, 'y': 0.22},   # Tuni
             'OGL': {'x': 0.42, 'y': 0.32},   # Ongole
             'NLPR': {'x': 0.27, 'y': 0.18},  # Nellore
-
-            # Intermediate stations Vijayawada-Gudur
-            'BPQ': {'x': 0.58, 'y': 0.53},   # Bhimavaram
-            'TPG': {'x': 0.53, 'y': 0.48},   # Tadepalligudem
-            'ELR': {'x': 0.48, 'y': 0.43},   # Eluru
-            'RYP': {'x': 0.43, 'y': 0.38},   # Rayapuram
-            'KVZ': {'x': 0.38, 'y': 0.33},   # Kovvur
-            'CHE': {'x': 0.33, 'y': 0.28},   # Chirala
-            'VKT': {'x': 0.28, 'y': 0.23},   # Venkatachalam
-
-            # Intermediate stations Thadi-Vijayawada
-            'SYL': {'x': 0.18, 'y': 0.57},   # Suryapet
-            'NSL': {'x': 0.23, 'y': 0.58},   # Nadikude South
-            'PGR': {'x': 0.28, 'y': 0.59},   # Piduguralla
-            'MAC': {'x': 0.33, 'y': 0.59},   # Macherla
-            'SAT': {'x': 0.38, 'y': 0.60},   # Sattenapalli
-            'PDL': {'x': 0.43, 'y': 0.60},   # Peddakurapadu
-            'CHR': {'x': 0.48, 'y': 0.60},   # Chebrolu
         }
-        self.map_path = 'andhra_pradesh_map.svg'
+        self.map_path = 'Vijayawada_Division_System_map_page-0001 (2).png'
         self.gps_pin_path = 'gps_pin.png'
-        self.base_marker_size = 50
-        self.max_image_size = (800, 600)
-        self.zoom_level = 1.5
+        self.base_marker_size = 20  # Reduced marker size for better visibility
+        self.max_image_size = (1024, 768)  # Adjusted for the map's aspect ratio
+        self.zoom_level = 1.0  # Default zoom level
 
     def get_station_coordinates(
             self, station_code: str) -> Optional[Dict[str, float]]:
@@ -70,23 +49,25 @@ class MapViewer:
         return self.station_locations.get(station_code)
 
     def load_map(self) -> Optional[Image.Image]:
-        """Load and convert SVG map to PIL Image"""
+        """Load the map image"""
         try:
-            # Read SVG file
-            with open(self.map_path, 'rb') as svg_file:
-                svg_data = svg_file.read()
+            # Set a reasonable limit for large images
+            Image.MAX_IMAGE_PIXELS = 178956970  # Safe limit for large images
 
-            # Convert SVG to PNG in memory
-            png_data = cairosvg.svg2png(bytestring=svg_data)
+            # Load and convert the image
+            image = Image.open(self.map_path).convert('RGBA')
 
-            # Create PIL Image from PNG data
-            image = Image.open(io.BytesIO(png_data))
+            # Resize if needed while maintaining aspect ratio
+            width, height = image.size
+            if width > self.max_image_size[0] or height > self.max_image_size[1]:
+                scale = min(
+                    self.max_image_size[0] / width,
+                    self.max_image_size[1] / height
+                )
+                new_size = (int(width * scale), int(height * scale))
+                image = image.resize(new_size, Image.Resampling.LANCZOS)
 
-            # Resize if needed
-            if image.size != self.max_image_size:
-                image = image.resize(self.max_image_size, Image.Resampling.LANCZOS)
-
-            return image.convert('RGBA')
+            return image
         except Exception as e:
             st.error(f"Error loading map: {str(e)}")
             return None
@@ -96,15 +77,14 @@ class MapViewer:
         try:
             gps_pin = Image.open(self.gps_pin_path).convert('RGBA')
             resized_pin = gps_pin.resize((size, size),
-                                         Image.Resampling.LANCZOS)
+                                       Image.Resampling.LANCZOS)
             return resized_pin
-
         except Exception as e:
             st.error(f"Error loading GPS pin: {str(e)}")
             return None
 
     def draw_train_marker(self, image: Image.Image,
-                          station_code: str) -> Image.Image:
+                         station_code: str) -> Image.Image:
         """Draw a GPS pin marker at the specified station"""
         station_pos = self.get_station_coordinates(station_code)
         if not station_pos:
@@ -130,7 +110,7 @@ class MapViewer:
         display_image = display_image.convert('RGB')
         draw = ImageDraw.Draw(display_image)
 
-        font_size = int(14 * self.zoom_level)
+        font_size = int(12 * self.zoom_level)  # Adjusted font size
         try:
             font = ImageFont.truetype("DejaVuSans.ttf", font_size)
         except:
@@ -138,11 +118,11 @@ class MapViewer:
 
         label_offset = marker_size // 2 + 5
         draw.text((x + label_offset, y - label_offset),
-                  station_code,
-                  fill='black',
-                  stroke_width=max(2, int(self.zoom_level)),
-                  stroke_fill='white',
-                  font=font)
+                 station_code,
+                 fill='black',
+                 stroke_width=2,
+                 stroke_fill='white',
+                 font=font)
 
         return display_image
 
