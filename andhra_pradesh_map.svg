@@ -1,28 +1,68 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg width="800" height="600" viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg">
     <!-- Background -->
-    <rect width="800" height="600" fill="#f8f9fa"/>
-    
-    <!-- Andhra Pradesh simplified outline -->
-    <path d="M200,100 L600,150 L650,300 L500,500 L200,450 Z" 
-          fill="none" 
-          stroke="#333" 
+    <rect width="800" height="600" fill="#e8ecef"/>
+
+    <!-- Bay of Bengal -->
+    <path d="M500,100 L800,150 L800,600 L400,600 L450,400 Z" 
+          fill="#a5d8ff" 
+          stroke="#7cc3ff" 
+          stroke-width="1"/>
+    <text x="650" y="350" font-size="14" fill="#2b8cff">Bay of Bengal</text>
+
+    <!-- Land mass with terrain effect -->
+    <path d="M50,50 L500,100 L450,400 L100,500 L50,300 Z" 
+          fill="#f1f1e6" 
+          stroke="#d4d4c7" 
           stroke-width="2"/>
-    
-    <!-- Key cities/points -->
-    <circle cx="400" cy="300" r="5" fill="red"/> <!-- Vijayawada -->
-    <text x="410" y="300" font-size="12">Vijayawada</text>
-    
-    <circle cx="300" cy="200" r="5" fill="red"/> <!-- Guntur -->
-    <text x="310" y="200" font-size="12">Guntur</text>
-    
-    <circle cx="500" cy="250" r="5" fill="red"/> <!-- Visakhapatnam -->
-    <text x="510" y="250" font-size="12">Visakhapatnam</text>
-    
-    <!-- Railways (simplified) -->
-    <path d="M300,200 L400,300 L500,250" 
+
+    <!-- Major water bodies -->
+    <path d="M200,200 Q300,180 350,250" 
           fill="none" 
-          stroke="#666" 
-          stroke-width="1" 
+          stroke="#a5d8ff" 
+          stroke-width="3"/>
+    <text x="250" y="190" font-size="12" fill="#2b8cff">Krishna River</text>
+
+    <path d="M150,300 Q250,280 300,350" 
+          fill="none" 
+          stroke="#a5d8ff" 
+          stroke-width="3"/>
+    <text x="200" y="290" font-size="12" fill="#2b8cff">Godavari River</text>
+
+    <!-- Major cities -->
+    <g id="major-cities">
+        <!-- Vijayawada -->
+        <circle cx="300" cy="250" r="5" fill="#ff4444"/>
+        <text x="310" y="250" font-size="12" fill="#333">Vijayawada</text>
+
+        <!-- Visakhapatnam -->
+        <circle cx="450" cy="150" r="5" fill="#ff4444"/>
+        <text x="460" y="150" font-size="12" fill="#333">Visakhapatnam</text>
+
+        <!-- Guntur -->
+        <circle cx="280" cy="270" r="5" fill="#ff4444"/>
+        <text x="290" y="270" font-size="12" fill="#333">Guntur</text>
+    </g>
+
+    <!-- Railway lines -->
+    <g id="railway-lines" stroke="#666" stroke-width="1.5" stroke-dasharray="5,3">
+        <!-- Main routes -->
+        <path d="M280,270 L300,250 L450,150" fill="none"/>
+        <path d="M200,350 L300,250 L400,200" fill="none"/>
+    </g>
+
+    <!-- State boundaries -->
+    <path d="M50,50 L500,100 L450,400 L100,500 L50,300 Z" 
+          fill="none" 
+          stroke="#999" 
+          stroke-width="1.5" 
           stroke-dasharray="5,5"/>
+
+    <!-- Legend -->
+    <g transform="translate(50, 520)">
+        <rect width="150" height="60" fill="white" stroke="#ccc"/>
+        <text x="10" y="20" font-size="10">● Cities</text>
+        <text x="10" y="35" font-size="10">～ Railways</text>
+        <text x="10" y="50" font-size="10">■ Water Bodies</text>
+    </g>
 </svg>
