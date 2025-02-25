@@ -39,24 +39,10 @@ try:
             # Convert to DataFrame
             df = pd.DataFrame(cached_data)
 
-            # Define expected columns
-            expected_columns = [
-                'Sr.',
-                'Train No.',
-                'FROM-TO',
-                'Start date',
-                'Scheduled [ Entry - Exit ]',
-                'Divisional Actual [ Entry - Exit ]',
-                'IC Entry Delay',
-                'Current Running Details',
-                'Event',
-                'Sch. Date',
-                'Act. Date',
-                'Delay',
-                'Exit Time for NLT Status'
-            ]
-
             if not df.empty:
+                # Skip first two rows (0 and 1) and reset index
+                df = df.iloc[2:].reset_index(drop=True)
+
                 # Safe conversion of NaN values to None
                 def safe_convert(value):
                     if pd.isna(value) or pd.isnull(value):
@@ -66,13 +52,16 @@ try:
                 # Apply safe conversion to all elements
                 df = df.applymap(safe_convert)
 
+                # Drop unwanted columns
+                columns_to_drop = ['Sr.', 'Exit Time for NLT Status']
+                df = df.drop(columns=columns_to_drop, errors='ignore')
+
                 # Show the data
                 st.dataframe(
                     df,
                     use_container_width=True,
                     height=600,
                     column_config={
-                        "Sr.": st.column_config.NumberColumn("Sr.", help="Serial Number"),
                         "Train No.": st.column_config.TextColumn("Train No.", help="Train Number"),
                         "FROM-TO": st.column_config.TextColumn("FROM-TO", help="Source to Destination"),
                         "Delay": st.column_config.NumberColumn("Delay", help="Delay in Minutes")
