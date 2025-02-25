@@ -49,11 +49,13 @@ class OfflineMapHandler:
         """
         return (13.5, 19.5, 77.5, 84.5)  # Andhra Pradesh region bounds
 
+    @staticmethod
     @st.cache_data(ttl=3600)  # Cache for 1 hour
-    def create_offline_map(self, _center: Tuple[float, float], _zoom: int = 8) -> Optional[folium.Map]:
+    def create_offline_map(_self, _center: Tuple[float, float], _zoom: int = 8) -> Optional[folium.Map]:
         """
         Create a folium map with offline tile layer.
         Using underscore prefix for arguments to prevent Streamlit from hashing them.
+        Static method with _self parameter to avoid instance hashing issues.
         """
         try:
             logger.info("Creating offline map from cache or initializing new map")
@@ -66,13 +68,13 @@ class OfflineMapHandler:
             )
 
             # Prepare image if needed
-            if not self.prepare_map_image():
+            if not _self.prepare_map_image():
                 return None
 
             # Add custom tile layer
-            bounds = self.get_map_bounds()
+            bounds = _self.get_map_bounds()
             folium.raster_layers.ImageOverlay(
-                image=self.map_path,
+                image=_self.map_path,
                 bounds=[[bounds[0], bounds[2]], [bounds[1], bounds[3]]],
                 opacity=0.8,
                 name="Offline Map"
