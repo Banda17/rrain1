@@ -3,6 +3,7 @@ from PIL import Image
 import logging
 import folium
 from typing import Tuple, Optional
+import streamlit as st
 
 logger = logging.getLogger(__name__)
 
@@ -11,6 +12,7 @@ class OfflineMapHandler:
         self.map_path = map_path
         self.cache_dir = "map_cache"
 
+    @st.cache_data(ttl=3600)  # Cache for 1 hour
     def prepare_map_image(self) -> bool:
         """
         Prepare and validate the map image for offline use.
@@ -39,6 +41,7 @@ class OfflineMapHandler:
             logger.error(f"Error preparing map image: {str(e)}")
             return False
 
+    @st.cache_data(ttl=3600)  # Cache for 1 hour
     def get_map_bounds(self) -> Tuple[float, float, float, float]:
         """
         Get the map bounds for Andhra Pradesh region.
@@ -46,11 +49,14 @@ class OfflineMapHandler:
         """
         return (13.5, 19.5, 77.5, 84.5)  # Andhra Pradesh region bounds
 
+    @st.cache_data(ttl=3600)  # Cache for 1 hour
     def create_offline_map(self, center: Tuple[float, float], zoom: int = 8) -> Optional[folium.Map]:
         """
         Create a folium map with offline tile layer
         """
         try:
+            logger.info("Creating offline map from cache or initializing new map")
+
             # Create base map
             m = folium.Map(
                 location=center,
@@ -81,6 +87,7 @@ class OfflineMapHandler:
             # Add layer control
             folium.LayerControl().add_to(m)
 
+            logger.info("Map created successfully")
             return m
 
         except Exception as e:

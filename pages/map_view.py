@@ -24,33 +24,41 @@ AP_CENTER = [16.5167, 80.6167]  # Centered around Vijayawada
 # Initialize offline map handler
 map_handler = OfflineMapHandler('Vijayawada_Division_System_map_page-0001 (2).png')
 
-# Station coordinates with actual GPS locations
-stations = {
-    'BZA': {'name': 'Vijayawada', 'lat': 16.5167, 'lon': 80.6167},
-    'GNT': {'name': 'Guntur', 'lat': 16.3067, 'lon': 80.4365},
-    'VSKP': {'name': 'Visakhapatnam', 'lat': 17.6868, 'lon': 83.2185},
-    'TUNI': {'name': 'Tuni', 'lat': 17.3572, 'lon': 82.5483},
-    'RJY': {'name': 'Rajahmundry', 'lat': 17.0005, 'lon': 81.7799},
-    'NLDA': {'name': 'Nalgonda', 'lat': 17.0575, 'lon': 79.2690},
-    'MTM': {'name': 'Mangalagiri', 'lat': 16.4307, 'lon': 80.5525},
-    'NDL': {'name': 'Nidadavolu', 'lat': 16.9107, 'lon': 81.6717},
-    'ANV': {'name': 'Anakapalle', 'lat': 17.6910, 'lon': 83.0037},
-    'VZM': {'name': 'Vizianagaram', 'lat': 18.1066, 'lon': 83.4205},
-    'SKM': {'name': 'Srikakulam', 'lat': 18.2949, 'lon': 83.8935},
-    'PLH': {'name': 'Palasa', 'lat': 18.7726, 'lon': 84.4162}
-}
-
-# Create DataFrame for station selection
-stations_df = pd.DataFrame([
-    {
-        'Select': False,
-        'Station Code': code,
-        'Name': info['name'],
-        'Latitude': info['lat'],
-        'Longitude': info['lon']
+@st.cache_data(ttl=3600)  # Cache station data for 1 hour
+def get_station_data():
+    """Get cached station coordinate data"""
+    return {
+        'BZA': {'name': 'Vijayawada', 'lat': 16.5167, 'lon': 80.6167},
+        'GNT': {'name': 'Guntur', 'lat': 16.3067, 'lon': 80.4365},
+        'VSKP': {'name': 'Visakhapatnam', 'lat': 17.6868, 'lon': 83.2185},
+        'TUNI': {'name': 'Tuni', 'lat': 17.3572, 'lon': 82.5483},
+        'RJY': {'name': 'Rajahmundry', 'lat': 17.0005, 'lon': 81.7799},
+        'NLDA': {'name': 'Nalgonda', 'lat': 17.0575, 'lon': 79.2690},
+        'MTM': {'name': 'Mangalagiri', 'lat': 16.4307, 'lon': 80.5525},
+        'NDL': {'name': 'Nidadavolu', 'lat': 16.9107, 'lon': 81.6717},
+        'ANV': {'name': 'Anakapalle', 'lat': 17.6910, 'lon': 83.0037},
+        'VZM': {'name': 'Vizianagaram', 'lat': 18.1066, 'lon': 83.4205},
+        'SKM': {'name': 'Srikakulam', 'lat': 18.2949, 'lon': 83.8935},
+        'PLH': {'name': 'Palasa', 'lat': 18.7726, 'lon': 84.4162}
     }
-    for code, info in stations.items()
-])
+
+@st.cache_data(ttl=3600)  # Cache DataFrame creation
+def create_station_dataframe(stations):
+    """Create cached DataFrame for station selection"""
+    return pd.DataFrame([
+        {
+            'Select': False,
+            'Station Code': code,
+            'Name': info['name'],
+            'Latitude': info['lat'],
+            'Longitude': info['lon']
+        }
+        for code, info in stations.items()
+    ])
+
+# Get cached station data
+stations = get_station_data()
+stations_df = create_station_dataframe(stations)
 
 # Controls
 st.subheader("Station Selection")
@@ -74,7 +82,7 @@ edited_df = st.data_editor(
 selected_stations = edited_df[edited_df['Select']]
 
 # Create the map with offline support
-m = map_handler.create_offline_map(center=AP_CENTER)
+m = map_handler.create_offline_map(center=tuple(AP_CENTER))
 
 if not m:
     st.error("Failed to load offline map. Please check the map file.")
