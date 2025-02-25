@@ -3,8 +3,6 @@ from PIL import Image
 import logging
 import folium
 from typing import Tuple, Optional
-import streamlit as st
-import time
 
 logger = logging.getLogger(__name__)
 
@@ -12,15 +10,12 @@ class OfflineMapHandler:
     def __init__(self, map_path: str):
         self.map_path = map_path
         self.cache_dir = "map_cache"
-        self.performance_metrics = {'load_time': 0, 'render_time': 0}
 
-    @st.cache_data(ttl=3600)  # Cache for 1 hour
     def prepare_map_image(self) -> bool:
         """
         Prepare and validate the map image for offline use.
         Returns True if successful, False otherwise.
         """
-        start_time = time.time()
         try:
             if not os.path.exists(self.map_path):
                 logger.error(f"Map file not found: {self.map_path}")
@@ -32,21 +27,18 @@ class OfflineMapHandler:
                 width, height = img.size
                 logger.info(f"Map dimensions: {width}x{height}")
 
-                # Verify image format and optimize
+                # Verify image format
                 if img.format not in ['PNG', 'JPEG']:
                     logger.warning(f"Converting image from {img.format} to PNG")
                     img = img.convert('RGB')
-                    img.save(self.map_path.replace(os.path.splitext(self.map_path)[1], '.png'), 
-                            'PNG', optimize=True)
+                    img.save(self.map_path.replace(os.path.splitext(self.map_path)[1], '.png'), 'PNG')
 
-            self.performance_metrics['load_time'] = time.time() - start_time
             return True
 
         except Exception as e:
             logger.error(f"Error preparing map image: {str(e)}")
             return False
 
-    @st.cache_data(ttl=3600)  # Cache for 1 hour
     def get_map_bounds(self) -> Tuple[float, float, float, float]:
         """
         Get the map bounds for Andhra Pradesh region.
@@ -54,35 +46,17 @@ class OfflineMapHandler:
         """
         return (13.5, 19.5, 77.5, 84.5)  # Andhra Pradesh region bounds
 
-    @st.cache_data(ttl=3600)  # Cache for 1 hour
-    def _create_base_map(self, _center: Tuple[float, float], _zoom: int = 8) -> Optional[folium.Map]:
-        """
-        Create a folium map with offline tile layer.
-        Using underscore prefix for arguments to prevent Streamlit from hashing them.
-        """
-        try:
-            logger.info("Creating base map from cache")
-            return folium.Map(
-                location=_center,
-                zoom_start=_zoom,
-                tiles=None,
-                prefer_canvas=True  # Use canvas renderer for better performance
-            )
-        except Exception as e:
-            logger.error(f"Error creating base map: {str(e)}")
-            return None
-
     def create_offline_map(self, center: Tuple[float, float], zoom: int = 8) -> Optional[folium.Map]:
         """
-        Create and configure the offline map with all layers
+        Create a folium map with offline tile layer
         """
         try:
-            start_time = time.time()
-
-            # Get base map from cache
-            m = self._create_base_map(_center=center, _zoom=zoom)
-            if not m:
-                return None
+            # Create base map
+            m = folium.Map(
+                location=center,
+                zoom_start=zoom,
+                tiles=None
+            )
 
             # Prepare image if needed
             if not self.prepare_map_image():
@@ -107,14 +81,8 @@ class OfflineMapHandler:
             # Add layer control
             folium.LayerControl().add_to(m)
 
-            self.performance_metrics['render_time'] = time.time() - start_time
-            logger.info(f"Map created in {self.performance_metrics['render_time']:.2f}s")
             return m
 
         except Exception as e:
             logger.error(f"Error creating offline map: {str(e)}")
             return None
-
-    def get_performance_metrics(self) -> dict:
-        """Get current performance metrics"""
-        return self.performance_metrics

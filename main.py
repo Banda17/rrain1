@@ -3,8 +3,9 @@ import pandas as pd
 import time
 from datetime import datetime, timedelta
 from data_handler import DataHandler
+from ai_analyzer import AIAnalyzer
 from visualizer import Visualizer
-from utils import format_time_difference, create_status_badge
+from utils import format_time_difference, create_status_badge, show_ai_insights
 from database import init_db
 from train_schedule import TrainSchedule
 import logging
@@ -94,6 +95,7 @@ def initialize_session_state():
     """Initialize all session state variables with proper typing"""
     state_configs = {
         'data_handler': {'default': DataHandler(), 'type': DataHandler},
+        'ai_analyzer': {'default': AIAnalyzer(), 'type': AIAnalyzer},
         'visualizer': {'default': Visualizer(), 'type': Visualizer},
         'train_schedule': {'default': TrainSchedule(), 'type': TrainSchedule},
         'last_update': {'default': None, 'type': Optional[datetime]},

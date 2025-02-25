@@ -4,12 +4,6 @@ from streamlit_folium import folium_static
 import pandas as pd
 import os
 from map_utils import OfflineMapHandler
-import time
-import logging
-
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 # Page configuration
 st.set_page_config(
@@ -30,42 +24,33 @@ AP_CENTER = [16.5167, 80.6167]  # Centered around Vijayawada
 # Initialize offline map handler
 map_handler = OfflineMapHandler('Vijayawada_Division_System_map_page-0001 (2).png')
 
-@st.cache_data(ttl=3600)  # Cache station data for 1 hour
-def get_station_data():
-    """Get cached station coordinate data"""
-    return {
-        'BZA': {'name': 'Vijayawada', 'lat': 16.5167, 'lon': 80.6167},
-        'GNT': {'name': 'Guntur', 'lat': 16.3067, 'lon': 80.4365},
-        'VSKP': {'name': 'Visakhapatnam', 'lat': 17.6868, 'lon': 83.2185},
-        'TUNI': {'name': 'Tuni', 'lat': 17.3572, 'lon': 82.5483},
-        'RJY': {'name': 'Rajahmundry', 'lat': 17.0005, 'lon': 81.7799},
-        'NLDA': {'name': 'Nalgonda', 'lat': 17.0575, 'lon': 79.2690},
-        'MTM': {'name': 'Mangalagiri', 'lat': 16.4307, 'lon': 80.5525},
-        'NDL': {'name': 'Nidadavolu', 'lat': 16.9107, 'lon': 81.6717},
-        'ANV': {'name': 'Anakapalle', 'lat': 17.6910, 'lon': 83.0037},
-        'VZM': {'name': 'Vizianagaram', 'lat': 18.1066, 'lon': 83.4205},
-        'SKM': {'name': 'Srikakulam', 'lat': 18.2949, 'lon': 83.8935},
-        'PLH': {'name': 'Palasa', 'lat': 18.7726, 'lon': 84.4162}
+# Station coordinates with actual GPS locations
+stations = {
+    'BZA': {'name': 'Vijayawada', 'lat': 16.5167, 'lon': 80.6167},
+    'GNT': {'name': 'Guntur', 'lat': 16.3067, 'lon': 80.4365},
+    'VSKP': {'name': 'Visakhapatnam', 'lat': 17.6868, 'lon': 83.2185},
+    'TUNI': {'name': 'Tuni', 'lat': 17.3572, 'lon': 82.5483},
+    'RJY': {'name': 'Rajahmundry', 'lat': 17.0005, 'lon': 81.7799},
+    'NLDA': {'name': 'Nalgonda', 'lat': 17.0575, 'lon': 79.2690},
+    'MTM': {'name': 'Mangalagiri', 'lat': 16.4307, 'lon': 80.5525},
+    'NDL': {'name': 'Nidadavolu', 'lat': 16.9107, 'lon': 81.6717},
+    'ANV': {'name': 'Anakapalle', 'lat': 17.6910, 'lon': 83.0037},
+    'VZM': {'name': 'Vizianagaram', 'lat': 18.1066, 'lon': 83.4205},
+    'SKM': {'name': 'Srikakulam', 'lat': 18.2949, 'lon': 83.8935},
+    'PLH': {'name': 'Palasa', 'lat': 18.7726, 'lon': 84.4162}
+}
+
+# Create DataFrame for station selection
+stations_df = pd.DataFrame([
+    {
+        'Select': False,
+        'Station Code': code,
+        'Name': info['name'],
+        'Latitude': info['lat'],
+        'Longitude': info['lon']
     }
-
-@st.cache_data(ttl=3600)  # Cache DataFrame creation
-def create_station_dataframe(_stations):
-    """Create cached DataFrame for station selection.
-    Using underscore prefix for argument to prevent Streamlit from hashing it."""
-    return pd.DataFrame([
-        {
-            'Select': False,
-            'Station Code': code,
-            'Name': info['name'],
-            'Latitude': info['lat'],
-            'Longitude': info['lon']
-        }
-        for code, info in _stations.items()
-    ])
-
-# Get cached station data
-stations = get_station_data()
-stations_df = create_station_dataframe(stations)
+    for code, info in stations.items()
+])
 
 # Controls
 st.subheader("Station Selection")
@@ -89,8 +74,7 @@ edited_df = st.data_editor(
 selected_stations = edited_df[edited_df['Select']]
 
 # Create the map with offline support
-start_time = time.time()
-m = map_handler.create_offline_map(center=tuple(AP_CENTER))
+m = map_handler.create_offline_map(center=AP_CENTER)
 
 if not m:
     st.error("Failed to load offline map. Please check the map file.")
@@ -98,10 +82,7 @@ if not m:
 
 # Add markers only for selected stations
 if not selected_stations.empty:
-    # Batch process markers for better performance
-    marker_features = []
-    line_coordinates = []
-
+    # Add markers for selected stations
     for _, station in selected_stations.iterrows():
         # Create custom popup content
         popup_content = f"""
@@ -112,23 +93,18 @@ if not selected_stations.empty:
         </div>
         """
 
-        marker = folium.Marker(
+        folium.Marker(
             [station['Latitude'], station['Longitude']],
             popup=folium.Popup(popup_content, max_width=200),
             tooltip=station['Station Code'],
             icon=folium.Icon(color='red', icon='info-sign')
-        )
-        marker_features.append(marker)
-        line_coordinates.append([station['Latitude'], station['Longitude']])
-
-    # Add all markers in batch
-    for marker in marker_features:
-        marker.add_to(m)
+        ).add_to(m)
 
     # Add railway lines between selected stations
-    if len(line_coordinates) > 1:
+    if len(selected_stations) > 1:
+        station_points = [[row['Latitude'], row['Longitude']] for _, row in selected_stations.iterrows()]
         folium.PolyLine(
-            line_coordinates,
+            station_points,
             weight=2,
             color='gray',
             opacity=0.8,
@@ -138,15 +114,6 @@ if not selected_stations.empty:
 # Display the map
 st.subheader("Interactive Map")
 folium_static(m, width=1000, height=600)
-
-# Show performance metrics
-metrics = map_handler.get_performance_metrics()
-st.sidebar.markdown("### Performance Metrics")
-st.sidebar.info(f"""
-- Map Load Time: {metrics['load_time']:.2f}s
-- Render Time: {metrics['render_time']:.2f}s
-- Total Time: {time.time() - start_time:.2f}s
-""")
 
 # Show selection summary
 if not selected_stations.empty:

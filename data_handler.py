@@ -88,21 +88,11 @@ class DataHandler:
                 logger.error(f"Missing required columns: {str(e)}")
                 return pd.DataFrame(columns=required_cols)
 
-            # Fill NaN values with appropriate defaults
-            df = df.fillna({
-                'Train Name': 'Unknown',
-                'Station': 'Unknown',
-                'Time': 'Not Available',
-                'Status': 'UNKNOWN'
-            })
-
             # Vectorized string cleaning
             df = df.apply(lambda x: x.str.strip() if x.dtype == 'object' else x)
 
-            # Efficient datetime conversion with error handling
+            # Efficient datetime conversion
             df['Time'] = pd.to_datetime(df['Time'], format='%Y-%m-%d %H:%M:%S', errors='coerce')
-            # Replace NaT (Not a Time) values with None
-            df['Time'] = df['Time'].where(df['Time'].notna(), None)
 
             self.performance_metrics['process_time'] = time.time() - start_time
             return df
@@ -193,22 +183,18 @@ class DataHandler:
             records = []
 
             for _, row in self.data.iterrows():
-                # Handle None/NaT values
-                time_actual = pd.to_datetime(row['Time']) if pd.notna(row['Time']) else None
+                time_actual = pd.to_datetime(row['Time'])
                 time_scheduled = time_actual  # Simplified for now
+                status, delay = self.get_timing_status(time_actual, time_scheduled)
 
-                # Only create record if we have valid time
-                if time_actual is not None:
-                    status, delay = self.get_timing_status(time_actual, time_scheduled)
-
-                    records.append(TrainDetails(
-                        train_id=str(row['Train Name']),
-                        station=str(row['Station']),
-                        time_actual=time_actual,
-                        time_scheduled=time_scheduled,
-                        delay=delay,
-                        status=status
-                    ))
+                records.append(TrainDetails(
+                    train_id=str(row['Train Name']),
+                    station=str(row['Station']),
+                    time_actual=time_actual,
+                    time_scheduled=time_scheduled,
+                    delay=delay,
+                    status=status
+                ))
 
                 # Commit in batches
                 if len(records) >= batch_size:
