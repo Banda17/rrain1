@@ -24,13 +24,6 @@ AP_CENTER = [16.5167, 80.6167]  # Centered around Vijayawada
 # Initialize offline map handler
 map_handler = OfflineMapHandler('Vijayawada_Division_System_map_page-0001 (2).png')
 
-# Create the map with offline support
-m = map_handler.create_offline_map(center=AP_CENTER)
-
-if not m:
-    st.error("Failed to load offline map. Please check the map file.")
-    st.stop()
-
 # Station coordinates with actual GPS locations
 stations = {
     'BZA': {'name': 'Vijayawada', 'lat': 16.5167, 'lon': 80.6167},
@@ -47,77 +40,88 @@ stations = {
     'PLH': {'name': 'Palasa', 'lat': 18.7726, 'lon': 84.4162}
 }
 
+# Create DataFrame for station selection
+stations_df = pd.DataFrame([
+    {
+        'Select': False,
+        'Station Code': code,
+        'Name': info['name'],
+        'Latitude': info['lat'],
+        'Longitude': info['lon']
+    }
+    for code, info in stations.items()
+])
+
 # Controls
-col1, col2 = st.columns([1, 2])
-with col1:
-    show_coords = st.checkbox("Show GPS Coordinates", value=True)
-    show_station_list = st.checkbox("Show Station List", value=True)
+st.subheader("Station Selection")
+st.markdown("Select stations to display on the map:")
 
-# Add markers for each station
-for code, info in stations.items():
-    # Create custom popup content
-    popup_content = f"""
-    <div style='font-family: Arial; font-size: 12px;'>
-        <b>{code} - {info['name']}</b><br>
-        Lat: {info['lat']:.4f}<br>
-        Lon: {info['lon']:.4f}
-    </div>
-    """
+# Make the dataframe interactive with checkboxes
+edited_df = st.data_editor(
+    stations_df,
+    hide_index=True,
+    column_config={
+        "Select": st.column_config.CheckboxColumn(
+            "Select",
+            help="Select to show on map",
+            default=False
+        )
+    },
+    disabled=["Station Code", "Name", "Latitude", "Longitude"]
+)
 
-    folium.Marker(
-        [info['lat'], info['lon']],
-        popup=folium.Popup(popup_content, max_width=200),
-        tooltip=code,
-        icon=folium.Icon(color='red', icon='info-sign')
-    ).add_to(m)
+# Get selected stations
+selected_stations = edited_df[edited_df['Select']]
 
-# Add railway lines connecting stations
-station_points = [[info['lat'], info['lon']] for info in stations.values()]
-folium.PolyLine(
-    station_points,
-    weight=2,
-    color='gray',
-    opacity=0.8,
-    dash_array='5, 10'
-).add_to(m)
+# Create the map with offline support
+m = map_handler.create_offline_map(center=AP_CENTER)
 
-# Add layer control
-folium.LayerControl().add_to(m)
+if not m:
+    st.error("Failed to load offline map. Please check the map file.")
+    st.stop()
+
+# Add markers only for selected stations
+if not selected_stations.empty:
+    # Add markers for selected stations
+    for _, station in selected_stations.iterrows():
+        # Create custom popup content
+        popup_content = f"""
+        <div style='font-family: Arial; font-size: 12px;'>
+            <b>{station['Station Code']} - {station['Name']}</b><br>
+            Lat: {station['Latitude']:.4f}<br>
+            Lon: {station['Longitude']:.4f}
+        </div>
+        """
+
+        folium.Marker(
+            [station['Latitude'], station['Longitude']],
+            popup=folium.Popup(popup_content, max_width=200),
+            tooltip=station['Station Code'],
+            icon=folium.Icon(color='red', icon='info-sign')
+        ).add_to(m)
+
+    # Add railway lines between selected stations
+    if len(selected_stations) > 1:
+        station_points = [[row['Latitude'], row['Longitude']] for _, row in selected_stations.iterrows()]
+        folium.PolyLine(
+            station_points,
+            weight=2,
+            color='gray',
+            opacity=0.8,
+            dash_array='5, 10'
+        ).add_to(m)
 
 # Display the map
+st.subheader("Interactive Map")
 folium_static(m, width=1000, height=600)
 
-# Show station list if enabled
-if show_station_list:
-    st.subheader("Station Coordinates")
+# Show selection summary
+if not selected_stations.empty:
+    st.success(f"Showing {len(selected_stations)} selected stations on the map")
+else:
+    st.info("Select stations from the table above to display them on the map")
 
-    # Create DataFrame for display
-    stations_df = pd.DataFrame([
-        {
-            'Station Code': code,
-            'Name': info['name'],
-            'Latitude': info['lat'],
-            'Longitude': info['lon']
-        }
-        for code, info in stations.items()
-    ])
-
-    if show_coords:
-        st.dataframe(
-            stations_df,
-            use_container_width=True,
-            height=400
-        )
-    else:
-        st.dataframe(
-            stations_df[['Station Code', 'Name']],
-            use_container_width=True,
-            height=400
-        )
-
-    st.info(f"Showing {len(stations)} stations")
-
-# Add instructions for coordinate updates
+# Add instructions
 st.markdown("""
 ### About GPS Coordinates
 - Latitude: North-South position (-90° to 90°)

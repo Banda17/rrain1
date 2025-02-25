@@ -35,12 +35,12 @@ class MapViewer:
             # Additional important stations
             'TEL': {'x': 0.32, 'y': 0.22},   # Tuni
             'OGL': {'x': 0.42, 'y': 0.32},   # Ongole
-            'NLPR': {'x': 0.27, 'y': 0.18},  # Nellore
+            'NLR': {'x': 0.27, 'y': 0.18},  # Nellore
         }
         self.map_path = 'Vijayawada_Division_System_map_page-0001 (2).png'
         self.gps_pin_path = 'gps_pin.png'
-        self.base_marker_size = 20  # Reduced marker size for better visibility
-        self.max_image_size = (1024, 768)  # Adjusted for the map's aspect ratio
+        self.base_marker_size = 15  # Reduced marker size for better visibility
+        self.max_image_size = (1920, 1080)  # Adjusted for the map's aspect ratio
         self.zoom_level = 1.0  # Default zoom level
 
     def get_station_coordinates(
