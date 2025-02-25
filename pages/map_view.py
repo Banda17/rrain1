@@ -43,8 +43,9 @@ def get_station_data():
     }
 
 @st.cache_data(ttl=3600)  # Cache DataFrame creation
-def create_station_dataframe(stations):
-    """Create cached DataFrame for station selection"""
+def create_station_dataframe(_stations):
+    """Create cached DataFrame for station selection.
+    Using underscore prefix for argument to prevent Streamlit from hashing it."""
     return pd.DataFrame([
         {
             'Select': False,
@@ -53,7 +54,7 @@ def create_station_dataframe(stations):
             'Latitude': info['lat'],
             'Longitude': info['lon']
         }
-        for code, info in stations.items()
+        for code, info in _stations.items()
     ])
 
 # Get cached station data
@@ -82,7 +83,7 @@ edited_df = st.data_editor(
 selected_stations = edited_df[edited_df['Select']]
 
 # Create the map with offline support
-m = map_handler.create_offline_map(center=tuple(AP_CENTER))
+m = map_handler.create_offline_map(_center=tuple(AP_CENTER))
 
 if not m:
     st.error("Failed to load offline map. Please check the map file.")
