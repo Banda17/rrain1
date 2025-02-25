@@ -18,10 +18,10 @@ def create_status_badge(status: str) -> str:
         "ON TIME": "green",
         "UNKNOWN": "gray"
     }
-    
+
     status_type = status.split()[0]
     color = color_map.get(status_type, "gray")
-    
+
     return f"""
     <span style='
         background-color: {color};
@@ -33,30 +33,3 @@ def create_status_badge(status: str) -> str:
         {status}
     </span>
     """
-
-def show_ai_insights(insights: Dict):
-    """Display AI insights in a formatted way"""
-    st.subheader("AI Analysis Insights")
-    
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.metric(
-            "Average Delay",
-            f"{insights['average_delay']} min",
-            delta=None
-        )
-    
-    with col2:
-        st.metric(
-            "Reliability Score",
-            f"{insights['reliability_score']}%",
-            delta=None
-        )
-    
-    with col3:
-        st.metric(
-            "Anomalies Detected",
-            insights['anomaly_count'],
-            delta=None
-        )
