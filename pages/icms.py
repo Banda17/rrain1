@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from data_handler import DataHandler
 import time
+import numpy as np
 
 # Page configuration
 st.set_page_config(
@@ -43,9 +44,14 @@ try:
                 df.columns = df.iloc[0]
                 df = df.iloc[1:].reset_index(drop=True)
 
-                # Convert NaN to None in the DataFrame
-                df = df.replace({pd.NA: None, pd.NaT: None})
-                df = df.where(pd.notna(df), None)
+                # Safe conversion of NaN values to None
+                def safe_convert(value):
+                    if pd.isna(value) or pd.isnull(value):
+                        return None
+                    return value
+
+                # Apply safe conversion to all elements
+                df = df.applymap(safe_convert)
 
                 # Show the data
                 st.subheader("ICMS Records")
@@ -65,15 +71,17 @@ try:
                     st.write("Column Information:")
                     for column in df.columns:
                         non_null_count = df[column].notna().sum()
-                        unique_count = df[column].nunique()
+                        unique_count = len([x for x in df[column].unique() if x is not None])
                         st.write(f"- {column}: {unique_count} unique values, {non_null_count} non-null values")
 
                 with col2:
                     st.write("Data Sample:")
                     if not df.empty:
-                        # Convert the first row to a dictionary with None values
-                        sample_dict = df.iloc[0].replace({pd.NA: None, pd.NaT: None}).to_dict()
-                        st.write(sample_dict)
+                        # Convert the first row to a dictionary safely
+                        sample = df.iloc[0]
+                        sample_dict = {k: None if pd.isna(v) else v for k, v in sample.items()}
+                        # Use write instead of json for safer display
+                        st.write("Sample Record:", sample_dict)
         else:
             st.warning("No data available in cache")
 
