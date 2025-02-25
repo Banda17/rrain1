@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+from data_handler import DataHandler
 import time
 
 # Page configuration
