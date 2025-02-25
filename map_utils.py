@@ -54,34 +54,44 @@ class OfflineMapHandler:
         """
         return (13.5, 19.5, 77.5, 84.5)  # Andhra Pradesh region bounds
 
-    @staticmethod
     @st.cache_data(ttl=3600)  # Cache for 1 hour
-    def create_offline_map(_self, _center: Tuple[float, float], _zoom: int = 8) -> Optional[folium.Map]:
+    def _create_base_map(self, _center: Tuple[float, float], _zoom: int = 8) -> Optional[folium.Map]:
         """
-        Create a folium map with offline tile layer
+        Create a folium map with offline tile layer.
         Using underscore prefix for arguments to prevent Streamlit from hashing them.
-        Static method with _self parameter to avoid instance hashing issues.
         """
         try:
-            start_time = time.time()
-            logger.info("Creating offline map from cache or initializing new map")
-
-            # Create base map
-            m = folium.Map(
+            logger.info("Creating base map from cache")
+            return folium.Map(
                 location=_center,
                 zoom_start=_zoom,
                 tiles=None,
                 prefer_canvas=True  # Use canvas renderer for better performance
             )
+        except Exception as e:
+            logger.error(f"Error creating base map: {str(e)}")
+            return None
+
+    def create_offline_map(self, center: Tuple[float, float], zoom: int = 8) -> Optional[folium.Map]:
+        """
+        Create and configure the offline map with all layers
+        """
+        try:
+            start_time = time.time()
+
+            # Get base map from cache
+            m = self._create_base_map(_center=center, _zoom=zoom)
+            if not m:
+                return None
 
             # Prepare image if needed
-            if not _self.prepare_map_image():
+            if not self.prepare_map_image():
                 return None
 
             # Add custom tile layer
-            bounds = _self.get_map_bounds()
+            bounds = self.get_map_bounds()
             folium.raster_layers.ImageOverlay(
-                image=_self.map_path,
+                image=self.map_path,
                 bounds=[[bounds[0], bounds[2]], [bounds[1], bounds[3]]],
                 opacity=0.8,
                 name="Offline Map"
@@ -97,8 +107,8 @@ class OfflineMapHandler:
             # Add layer control
             folium.LayerControl().add_to(m)
 
-            _self.performance_metrics['render_time'] = time.time() - start_time
-            logger.info(f"Map created in {_self.performance_metrics['render_time']:.2f}s")
+            self.performance_metrics['render_time'] = time.time() - start_time
+            logger.info(f"Map created in {self.performance_metrics['render_time']:.2f}s")
             return m
 
         except Exception as e:

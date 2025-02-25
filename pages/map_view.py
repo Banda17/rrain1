@@ -90,7 +90,7 @@ selected_stations = edited_df[edited_df['Select']]
 
 # Create the map with offline support
 start_time = time.time()
-m = map_handler.create_offline_map(_center=tuple(AP_CENTER))
+m = map_handler.create_offline_map(center=tuple(AP_CENTER))
 
 if not m:
     st.error("Failed to load offline map. Please check the map file.")
