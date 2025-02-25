@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-from data_handler import DataHandler
 import time
 
 # Page configuration
@@ -43,6 +42,10 @@ try:
                 df.columns = df.iloc[0]
                 df = df.iloc[1:].reset_index(drop=True)
 
+                # Convert NaN to None in the DataFrame
+                df = df.replace({pd.NA: None, pd.NaT: None})
+                df = df.where(pd.notna(df), None)
+
                 # Show the data
                 st.subheader("ICMS Records")
                 st.dataframe(
@@ -67,9 +70,9 @@ try:
                 with col2:
                     st.write("Data Sample:")
                     if not df.empty:
-                        # Convert the first row to a dictionary while preserving NaN
-                        sample_dict = df.iloc[0].fillna('NaN').to_dict()
-                        st.write(sample_dict)  # Using st.write instead of st.json to handle NaN
+                        # Convert the first row to a dictionary with None values
+                        sample_dict = df.iloc[0].replace({pd.NA: None, pd.NaT: None}).to_dict()
+                        st.write(sample_dict)
         else:
             st.warning("No data available in cache")
 
