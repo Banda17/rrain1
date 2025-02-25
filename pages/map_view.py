@@ -4,6 +4,12 @@ from streamlit_folium import folium_static
 import pandas as pd
 import os
 from map_utils import OfflineMapHandler
+import time
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Page configuration
 st.set_page_config(
@@ -83,6 +89,7 @@ edited_df = st.data_editor(
 selected_stations = edited_df[edited_df['Select']]
 
 # Create the map with offline support
+start_time = time.time()
 m = map_handler.create_offline_map(_center=tuple(AP_CENTER))
 
 if not m:
@@ -91,7 +98,10 @@ if not m:
 
 # Add markers only for selected stations
 if not selected_stations.empty:
-    # Add markers for selected stations
+    # Batch process markers for better performance
+    marker_features = []
+    line_coordinates = []
+
     for _, station in selected_stations.iterrows():
         # Create custom popup content
         popup_content = f"""
@@ -102,18 +112,23 @@ if not selected_stations.empty:
         </div>
         """
 
-        folium.Marker(
+        marker = folium.Marker(
             [station['Latitude'], station['Longitude']],
             popup=folium.Popup(popup_content, max_width=200),
             tooltip=station['Station Code'],
             icon=folium.Icon(color='red', icon='info-sign')
-        ).add_to(m)
+        )
+        marker_features.append(marker)
+        line_coordinates.append([station['Latitude'], station['Longitude']])
+
+    # Add all markers in batch
+    for marker in marker_features:
+        marker.add_to(m)
 
     # Add railway lines between selected stations
-    if len(selected_stations) > 1:
-        station_points = [[row['Latitude'], row['Longitude']] for _, row in selected_stations.iterrows()]
+    if len(line_coordinates) > 1:
         folium.PolyLine(
-            station_points,
+            line_coordinates,
             weight=2,
             color='gray',
             opacity=0.8,
@@ -123,6 +138,15 @@ if not selected_stations.empty:
 # Display the map
 st.subheader("Interactive Map")
 folium_static(m, width=1000, height=600)
+
+# Show performance metrics
+metrics = map_handler.get_performance_metrics()
+st.sidebar.markdown("### Performance Metrics")
+st.sidebar.info(f"""
+- Map Load Time: {metrics['load_time']:.2f}s
+- Render Time: {metrics['render_time']:.2f}s
+- Total Time: {time.time() - start_time:.2f}s
+""")
 
 # Show selection summary
 if not selected_stations.empty:

@@ -4,6 +4,7 @@ import logging
 import folium
 from typing import Tuple, Optional
 import streamlit as st
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -11,6 +12,7 @@ class OfflineMapHandler:
     def __init__(self, map_path: str):
         self.map_path = map_path
         self.cache_dir = "map_cache"
+        self.performance_metrics = {'load_time': 0, 'render_time': 0}
 
     @st.cache_data(ttl=3600)  # Cache for 1 hour
     def prepare_map_image(self) -> bool:
@@ -18,6 +20,7 @@ class OfflineMapHandler:
         Prepare and validate the map image for offline use.
         Returns True if successful, False otherwise.
         """
+        start_time = time.time()
         try:
             if not os.path.exists(self.map_path):
                 logger.error(f"Map file not found: {self.map_path}")
@@ -29,12 +32,14 @@ class OfflineMapHandler:
                 width, height = img.size
                 logger.info(f"Map dimensions: {width}x{height}")
 
-                # Verify image format
+                # Verify image format and optimize
                 if img.format not in ['PNG', 'JPEG']:
                     logger.warning(f"Converting image from {img.format} to PNG")
                     img = img.convert('RGB')
-                    img.save(self.map_path.replace(os.path.splitext(self.map_path)[1], '.png'), 'PNG')
+                    img.save(self.map_path.replace(os.path.splitext(self.map_path)[1], '.png'), 
+                            'PNG', optimize=True)
 
+            self.performance_metrics['load_time'] = time.time() - start_time
             return True
 
         except Exception as e:
@@ -53,18 +58,20 @@ class OfflineMapHandler:
     @st.cache_data(ttl=3600)  # Cache for 1 hour
     def create_offline_map(_self, _center: Tuple[float, float], _zoom: int = 8) -> Optional[folium.Map]:
         """
-        Create a folium map with offline tile layer.
+        Create a folium map with offline tile layer
         Using underscore prefix for arguments to prevent Streamlit from hashing them.
         Static method with _self parameter to avoid instance hashing issues.
         """
         try:
+            start_time = time.time()
             logger.info("Creating offline map from cache or initializing new map")
 
             # Create base map
             m = folium.Map(
                 location=_center,
                 zoom_start=_zoom,
-                tiles=None
+                tiles=None,
+                prefer_canvas=True  # Use canvas renderer for better performance
             )
 
             # Prepare image if needed
@@ -90,9 +97,14 @@ class OfflineMapHandler:
             # Add layer control
             folium.LayerControl().add_to(m)
 
-            logger.info("Map created successfully")
+            _self.performance_metrics['render_time'] = time.time() - start_time
+            logger.info(f"Map created in {_self.performance_metrics['render_time']:.2f}s")
             return m
 
         except Exception as e:
             logger.error(f"Error creating offline map: {str(e)}")
             return None
+
+    def get_performance_metrics(self) -> dict:
+        """Get current performance metrics"""
+        return self.performance_metrics
