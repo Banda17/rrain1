@@ -43,9 +43,6 @@ try:
                 df.columns = df.iloc[0]
                 df = df.iloc[1:].reset_index(drop=True)
 
-                # Replace NaN values with None
-                df = df.where(pd.notna(df), None)
-
                 # Show the data
                 st.subheader("ICMS Records")
                 st.dataframe(
@@ -63,17 +60,16 @@ try:
                 with col1:
                     st.write("Column Information:")
                     for column in df.columns:
-                        non_null_count = df[column].count()
+                        non_null_count = df[column].notna().sum()
                         unique_count = df[column].nunique()
                         st.write(f"- {column}: {unique_count} unique values, {non_null_count} non-null values")
 
                 with col2:
                     st.write("Data Sample:")
                     if not df.empty:
-                        sample_dict = df.iloc[0].to_dict()
-                        # Replace NaN with None in the sample
-                        sample_dict = {k: None if pd.isna(v) else v for k, v in sample_dict.items()}
-                        st.json(sample_dict)
+                        # Convert the first row to a dictionary while preserving NaN
+                        sample_dict = df.iloc[0].fillna('NaN').to_dict()
+                        st.write(sample_dict)  # Using st.write instead of st.json to handle NaN
         else:
             st.warning("No data available in cache")
 
