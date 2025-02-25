@@ -36,28 +36,47 @@ try:
         cached_data = data_handler.get_cached_data()
 
         if cached_data:
-            # Convert to DataFrame and set first row as headers
+            # Convert to DataFrame
             df = pd.DataFrame(cached_data)
-            if not df.empty:
-                # Set the first row as column headers
-                df.columns = df.iloc[0]
-                df = df.iloc[1:].reset_index(drop=True)
 
+            # Define expected columns
+            expected_columns = [
+                'Sr.',
+                'Train No.',
+                'FROM-TO',
+                'Start date',
+                'Scheduled [ Entry - Exit ]',
+                'Divisional Actual [ Entry - Exit ]',
+                'IC Entry Delay',
+                'Current Running Details',
+                'Event',
+                'Sch. Date',
+                'Act. Date',
+                'Delay',
+                'Exit Time for NLT Status'
+            ]
+
+            if not df.empty:
                 # Safe conversion of NaN values to None
                 def safe_convert(value):
                     if pd.isna(value) or pd.isnull(value):
                         return None
-                    return value
+                    return str(value) if value is not None else None
 
                 # Apply safe conversion to all elements
                 df = df.applymap(safe_convert)
 
                 # Show the data
-                st.subheader("ICMS Records")
                 st.dataframe(
                     df,
                     use_container_width=True,
-                    height=600
+                    height=600,
+                    column_config={
+                        "Sr.": st.column_config.NumberColumn("Sr.", help="Serial Number"),
+                        "Train No.": st.column_config.TextColumn("Train No.", help="Train Number"),
+                        "FROM-TO": st.column_config.TextColumn("FROM-TO", help="Source to Destination"),
+                        "Delay": st.column_config.NumberColumn("Delay", help="Delay in Minutes")
+                    }
                 )
         else:
             st.warning("No data available in cache")
