@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 from data_handler import DataHandler
 import time
-import numpy as np
 
 # Page configuration
 st.set_page_config(
@@ -60,28 +59,6 @@ try:
                     use_container_width=True,
                     height=600
                 )
-
-                # Show data statistics
-                st.subheader("Data Statistics")
-                st.write(f"Total Records: {len(df)}")
-
-                # Display column statistics
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.write("Column Information:")
-                    for column in df.columns:
-                        non_null_count = df[column].notna().sum()
-                        unique_count = len([x for x in df[column].unique() if x is not None])
-                        st.write(f"- {column}: {unique_count} unique values, {non_null_count} non-null values")
-
-                with col2:
-                    st.write("Data Sample:")
-                    if not df.empty:
-                        # Convert the first row to a dictionary safely
-                        sample = df.iloc[0]
-                        sample_dict = {k: None if pd.isna(v) else v for k, v in sample.items()}
-                        # Use write instead of json for safer display
-                        st.write("Sample Record:", sample_dict)
         else:
             st.warning("No data available in cache")
 
