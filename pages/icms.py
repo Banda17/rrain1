@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from data_handler import DataHandler
 import time
+import re
 
 # Page configuration
 st.set_page_config(
@@ -56,15 +57,40 @@ try:
                 columns_to_drop = ['Sr.', 'Exit Time for NLT Status']
                 df = df.drop(columns=columns_to_drop, errors='ignore')
 
-                # Show the data
+                # Function to check if a value is positive or contains (+)
+                def is_positive_or_plus(value):
+                    if value is None:
+                        return False
+                    if isinstance(value, str):
+                        # Check for numbers in brackets with +
+                        bracket_match = re.search(r'\(.*?\+.*?\)', value)
+                        if bracket_match:
+                            return True
+                        # Try to convert to number if possible
+                        try:
+                            num = float(value.replace('(', '').replace(')', '').strip())
+                            return num > 0
+                        except:
+                            return False
+                    return False
+
+                # Filter rows where Delay column has positive values or (+)
+                if 'Delay' in df.columns:
+                    filtered_df = df[df['Delay'].apply(is_positive_or_plus)]
+                    st.write(f"Showing {len(filtered_df)} entries with positive delays")
+                else:
+                    filtered_df = df
+                    st.warning("Delay column not found in data")
+
+                # Show the filtered data
                 st.dataframe(
-                    df,
+                    filtered_df,
                     use_container_width=True,
                     height=600,
                     column_config={
                         "Train No.": st.column_config.TextColumn("Train No.", help="Train Number"),
                         "FROM-TO": st.column_config.TextColumn("FROM-TO", help="Source to Destination"),
-                        "Delay": st.column_config.NumberColumn("Delay", help="Delay in Minutes")
+                        "Delay": st.column_config.TextColumn("Delay", help="Delay in Minutes")
                     }
                 )
         else:
