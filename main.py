@@ -181,14 +181,12 @@ initialize_session_state()
 # Main page title
 st.title("ICMS Data - Vijayawada Division")
 
-# Create a placeholder for the refresh animation
-refresh_placeholder = st.empty()
-
 try:
     data_handler = st.session_state['icms_data_handler']
 
     # Set refreshing state to True and show animation
     st.session_state['is_refreshing'] = True
+    refresh_placeholder = st.empty() # Moved here
     create_pulsing_refresh_animation(refresh_placeholder, "Loading ICMS data...")
 
     # Load data with feedback
@@ -270,6 +268,11 @@ try:
                             return False
                     return False
 
+                # Refresh animation placeholder right before displaying the table
+                refresh_table_placeholder = st.empty()
+                create_pulsing_refresh_animation(refresh_table_placeholder, "Refreshing Table...")
+
+
                 # Filter rows where Delay column has positive values or (+)
                 if 'Delay' in df.columns:
                     filtered_df = df[df['Delay'].apply(is_positive_or_plus)]
@@ -289,6 +292,7 @@ try:
                         "Delay": st.column_config.TextColumn("Delay", help="Delay in Minutes")
                     }
                 )
+                refresh_table_placeholder.empty() # Clear the placeholder after table display
         else:
             st.warning("No data available in cache")
 
@@ -315,7 +319,6 @@ st.caption("Auto-refreshing every 4 minutes")
 # Removed the old progress bar and replaced it with a countdown timer.
 show_countdown_progress(240, 0.1) #Countdown for 4 minutes
 show_refresh_timestamp() #Shows refresh timestamp
-
 
 
 # Refresh the page
