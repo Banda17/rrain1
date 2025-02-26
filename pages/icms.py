@@ -64,7 +64,7 @@ try:
                     return str(value) if value is not None else None
 
                 # Apply safe conversion to all elements
-                df = df.applymap(safe_convert)
+                df = df.map(safe_convert)
 
                 # Drop unwanted columns
                 columns_to_drop = ['Sr.', 'Exit Time for NLT Status']
@@ -95,9 +95,19 @@ try:
                     filtered_df = df
                     st.warning("Delay column not found in data")
 
-                # Show the filtered data - removed height parameter to show all rows without scrolling
+                # Function to highlight cells red
+                def highlight_positive_delay(val):
+                    """Apply red background to positive delay values"""
+                    if isinstance(val, str) and ('+' in val or is_positive_or_plus(val)):
+                        return 'background-color: #ffcccc; color: #cc0000; font-weight: bold'
+                    return ''
+
+                # Apply styling to DataFrame
+                styled_df = filtered_df.style.applymap(highlight_positive_delay, subset=['Delay'])
+
+                # Show the filtered data with red highlighting
                 st.dataframe(
-                    filtered_df,
+                    styled_df,
                     use_container_width=True,
                     column_config={
                         "Train No.": st.column_config.TextColumn("Train No.", help="Train Number"),
