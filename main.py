@@ -11,6 +11,7 @@ import logging
 from typing import Optional, Dict
 import re
 from animation_utils import create_pulsing_refresh_animation, show_countdown_progress, show_refresh_timestamp
+from map_component import render_gps_map
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -134,6 +135,10 @@ def initialize_session_state():
         'is_refreshing': {
             'default': False,
             'type': bool
+        },
+        'map_stations': {  # New state variable for map stations
+            'default': [],
+            'type': list
         }
     }
 
@@ -200,6 +205,23 @@ def handle_timing_status_change():
         'timing_status_select', 'Late')
     logger.debug(
         f"Timing status changed to: {st.session_state['filter_status']}")
+
+
+def extract_stations_from_data(df):
+    """Extract unique stations from the data for the map"""
+    stations = []
+    if df is not None and not df.empty:
+        # Try different column names that might contain station information
+        station_columns = ['Station', 'station', 'STATION', 'Station Name', 'station_name']
+        for col in station_columns:
+            if col in df.columns:
+                # Extract unique values and convert to list
+                stations = df[col].dropna().unique().tolist()
+                break
+
+    # Store in session state for use in the map
+    st.session_state['map_stations'] = stations
+    return stations
 
 
 @st.cache_data(ttl=300)
@@ -274,10 +296,15 @@ try:
                 # Get and print all column names for debugging
                 logger.debug(f"Available columns: {df.columns.tolist()}")
 
+                # Extract stations for map
+                stations = extract_stations_from_data(df)
+
                 # Drop unwanted columns - use exact column names with proper spacing
                 columns_to_drop = [
                     'Sr.',
                     'Exit Time for NLT Status',
+                    'FROM-TO',
+                    'Start date',
                     # Try different column name variations
                     'Scheduled [ Entry - Exit ]',
                     'Scheduled [Entry - Exit]',
@@ -300,66 +327,78 @@ try:
                         df = df.drop(columns=[col])
                         logger.debug(f"Dropped column: {col}")
 
-                # Refresh animation placeholder right before displaying the table
-                refresh_table_placeholder = st.empty()
-                create_pulsing_refresh_animation(refresh_table_placeholder, "Refreshing Table...")
+                # Create a two-column layout for the table and map
+                table_col, map_col = st.columns([3, 2])
 
+                with table_col:
+                    # Refresh animation placeholder right before displaying the table
+                    refresh_table_placeholder = st.empty()
+                    create_pulsing_refresh_animation(refresh_table_placeholder, "Refreshing Table...")
 
-                # Function to check if a value is positive or contains (+)
-                def is_positive_or_plus(value):
-                    if value is None:
-                        return False
-                    if isinstance(value, str):
-                        # Check for numbers in brackets with +
-                        bracket_match = re.search(r'\(.*?\+.*?\)', value)
-                        if bracket_match:
-                            return True
-                        # Try to convert to number if possible
-                        try:
-                            num = float(
-                                value.replace('(', '').replace(')',
-                                                                '').strip())
-                            return num > 0
-                        except:
+                    # Function to check if a value is positive or contains (+)
+                    def is_positive_or_plus(value):
+                        if value is None:
                             return False
-                    return False
+                        if isinstance(value, str):
+                            # Check for numbers in brackets with +
+                            bracket_match = re.search(r'\(.*?\+.*?\)', value)
+                            if bracket_match:
+                                return True
+                            # Try to convert to number if possible
+                            try:
+                                num = float(
+                                    value.replace('(', '').replace(')',
+                                                                    '').strip())
+                                return num > 0
+                            except:
+                                return False
+                        return False
 
-                # Filter rows where Delay column has positive values or (+)
-                if 'Delay' in df.columns:
-                    filtered_df = df[df['Delay'].apply(is_positive_or_plus)]
-                    st.write(
-                        f"Showing {len(filtered_df)} entries with positive delays"
-                    )
-                else:
-                    filtered_df = df
-                    st.warning("Delay column not found in data")
-
-                # Apply red styling only to the Delay column
-                def highlight_delay(df):
-                    # Create a DataFrame of styles with same shape as the input DataFrame
-                    styles = pd.DataFrame('', index=df.index, columns=df.columns)
-
-                    # Apply red color only to the 'Delay' column if it exists
+                    # Filter rows where Delay column has positive values or (+)
                     if 'Delay' in df.columns:
-                        styles['Delay'] = 'color: red; font-weight: bold'
+                        filtered_df = df[df['Delay'].apply(is_positive_or_plus)]
+                        st.write(
+                            f"Showing {len(filtered_df)} entries with positive delays"
+                        )
+                    else:
+                        filtered_df = df
+                        st.warning("Delay column not found in data")
 
-                    return styles
+                    # Apply red styling only to the Delay column
+                    def highlight_delay(df):
+                        # Create a DataFrame of styles with same shape as the input DataFrame
+                        styles = pd.DataFrame('', index=df.index, columns=df.columns)
 
-                # Apply styling to the dataframe
-                styled_df = filtered_df.style.apply(highlight_delay, axis=None)
+                        # Apply red color only to the 'Delay' column if it exists
+                        if 'Delay' in df.columns:
+                            styles['Delay'] = 'color: red; font-weight: bold'
 
-                # Show the filtered data with red Delay column
-                st.dataframe(
-                    styled_df,
-                    use_container_width=True,
-                    column_config={
-                        "Train No.": st.column_config.TextColumn("Train No.", help="Train Number"),
-                        "FROM-TO": st.column_config.TextColumn("FROM-TO", help="Source to Destination"),
-                        "IC Entry Delay": st.column_config.TextColumn("IC Entry Delay", help="Entry Delay"),
-                        "Delay": st.column_config.TextColumn("Delay", help="Delay in Minutes")
-                    }
-                )
-                refresh_table_placeholder.empty() # Clear the placeholder after table display
+                        return styles
+
+                    # Apply styling to the dataframe
+                    styled_df = filtered_df.style.apply(highlight_delay, axis=None)
+
+                    # Show the filtered data with red Delay column
+                    st.dataframe(
+                        styled_df,
+                        use_container_width=True,
+                        column_config={
+                            "Train No.": st.column_config.TextColumn("Train No.", help="Train Number"),
+                            "FROM-TO": st.column_config.TextColumn("FROM-TO", help="Source to Destination"),
+                            "IC Entry Delay": st.column_config.TextColumn("IC Entry Delay", help="Entry Delay"),
+                            "Delay": st.column_config.TextColumn("Delay", help="Delay in Minutes")
+                        }
+                    )
+                    refresh_table_placeholder.empty() # Clear the placeholder after table display
+
+                # Render map in the right column
+                with map_col:
+                    # Render the map with stations from the data
+                    render_gps_map(
+                        selected_stations=stations[:10],  # Limit to first 10 stations to avoid clutter
+                        map_title="Division GPS Map",
+                        height=550
+                    )
         else:
             st.warning("No data available in cache")
 
