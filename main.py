@@ -12,7 +12,6 @@ from typing import Optional, Dict
 import re
 from animation_utils import create_pulsing_refresh_animation, show_countdown_progress, show_refresh_timestamp
 from map_component import render_gps_map
-from map_viewer import MapViewer
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -157,10 +156,6 @@ def initialize_session_state():
         # Override the spreadsheet URL for ICMS data
         data_handler.spreadsheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRO2ZV-BOcL11_5NhlrOnn5Keph3-cVp7Tyr1t6RxsoDvxZjdOyDsmRkdvesJLbSnZwY8v3CATt1Of9/pub?gid=155911658&single=true&output=csv"
         st.session_state['icms_data_handler'] = data_handler
-
-    # Initialize map_viewer if not in session state
-    if 'map_viewer' not in st.session_state:
-        st.session_state['map_viewer'] = MapViewer()
 
 
 def update_selected_train_details(selected):
@@ -413,21 +408,11 @@ try:
                         use_container_width=True
                     )
 
-                    # Get selected stations and update selected train
+                    # Get selected stations for map
                     if station_column:
                         selected_rows = edited_df[edited_df['Select']]
                         selected_stations = selected_rows[station_column].dropna().tolist()
                         st.session_state['selected_stations'] = selected_stations
-
-                        # If there's a selected row, update selected train details for map
-                        if not selected_rows.empty:
-                            first_selected = selected_rows.iloc[0]
-                            # Create a train object for map_viewer
-                            train_details = {
-                                'train': first_selected.get('Train No.', ''),
-                                'station': first_selected.get(station_column, '')
-                            }
-                            st.session_state['selected_train'] = train_details
 
                         if selected_stations:
                             st.success(f"Selected {len(selected_stations)} stations for map view")
@@ -436,9 +421,15 @@ try:
 
                 # Render map in the right column
                 with map_col:
-                    # Use the MapViewer to display the map with selected train
-                    st.session_state['map_viewer'].render(st.session_state.get('selected_train'))
+                    # Use selected stations if available, otherwise use first 10 stations
+                    display_stations = st.session_state['selected_stations'] if st.session_state['selected_stations'] else stations[:10]
 
+                    # Render the map with stations from the data
+                    render_gps_map(
+                        selected_stations=display_stations,
+                        map_title="Division GPS Map",
+                        height=550
+                    )
         else:
             st.warning("No data available in cache")
 
