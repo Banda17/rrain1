@@ -45,9 +45,6 @@ try:
     refresh_placeholder.empty()
 
     if success:
-        # Show last update time
-        if data_handler.last_update:
-            st.info(f"Last updated: {data_handler.last_update.strftime('%Y-%m-%d %H:%M:%S')}")
 
         # Get cached data
         cached_data = data_handler.get_cached_data()
