@@ -239,7 +239,7 @@ try:
 
     # Set refreshing state to True and show animation
     st.session_state['is_refreshing'] = True
-    refresh_placeholder = st.empty() # Moved here
+    refresh_placeholder = st.empty()
     create_pulsing_refresh_animation(refresh_placeholder, "Loading ICMS data...")
 
     # Load data with feedback
@@ -293,7 +293,7 @@ try:
                     'Scheduled [Entry-Exit]',
                     'scheduled[Entry-Exit]',
                     'DivisionalActual[ Entry - Exit ]',
-                    'Divisional Actual [Entry - Exit]', 
+                    'Divisional Actual [Entry - Exit]',
                     'Divisional Actual[ Entry-Exit ]',
                     'Divisional Actual[ Entry - Exit ]',
                     'DivisionalActual[ Entry-Exit ]',
@@ -385,13 +385,12 @@ try:
                         except Exception as e:
                             logger.error(f"Error handling selection: {str(e)}")
 
-                    refresh_table_placeholder.empty() # Clear the placeholder after table display
+                    refresh_table_placeholder.empty()
 
-                # Display the map in the second column
                 with col_map:
                     st.subheader("Station Map")
 
-                    # Define station coordinates with actual GPS locations - borrowed from map_view.py
+                    # Define station coordinates with actual GPS locations
                     stations = {
                         'BZA': {'name': 'Vijayawada', 'lat': 16.5167, 'lon': 80.6167},
                         'GNT': {'name': 'Guntur', 'lat': 16.3067, 'lon': 80.4365},
@@ -419,8 +418,9 @@ try:
                         for code, info in stations.items()
                     ])
 
-                    # Add a message explaining the interface
-                    st.caption("Select stations to display on the map:")
+                    # Add a more prominent title for the selection table
+                    st.markdown("### Station Selection")
+                    st.markdown("Select stations below to display on the map:")
 
                     # Make the dataframe interactive with checkboxes
                     edited_df = st.data_editor(
@@ -452,6 +452,10 @@ try:
 
                     # Get the currently selected train station from table selection (if any)
                     selected_train = st.session_state.get('selected_train')
+
+                    # Add a divider between selection and map
+                    st.markdown("---")
+                    st.markdown("### Map View")
 
                     # Render the map with both the manually selected stations and any selected train
                     base_map = map_viewer.load_map()
@@ -512,6 +516,7 @@ try:
                                 """)
                     else:
                         st.error("Unable to load the base map. Please check the map file path.")
+
         else:
             st.warning("No data available in cache")
 
@@ -536,8 +541,8 @@ st.caption("Auto-refreshing every 4 minutes")
 
 
 # Removed the old progress bar and replaced it with a countdown timer.
-show_countdown_progress(240, 0.1) #Countdown for 4 minutes
-show_refresh_timestamp() #Shows refresh timestamp
+show_countdown_progress(240, 0.1)
+show_refresh_timestamp()
 
 
 # Refresh the page
