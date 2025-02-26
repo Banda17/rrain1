@@ -89,7 +89,7 @@ class OfflineMapHandler:
             folium.raster_layers.ImageOverlay(
                 image=self.map_path,
                 bounds=[[bounds[0], bounds[2]], [bounds[1], bounds[3]]],
-                opacity=0.7,
+                opacity=0.9,  # Changed from 0.7 to 0.9 to make the image more opaque
                 name="Offline Map"
             ).add_to(m)
 
