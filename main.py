@@ -11,6 +11,7 @@ import logging
 from typing import Optional, Dict
 import re
 from animation_utils import create_pulsing_refresh_animation, show_countdown_progress, show_refresh_timestamp
+from map_viewer import MapViewer
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -134,6 +135,10 @@ def initialize_session_state():
         'is_refreshing': {
             'default': False,
             'type': bool
+        },
+        'map_viewer': {
+            'default': MapViewer(),
+            'type': MapViewer
         }
     }
 
@@ -271,13 +276,11 @@ try:
                 # Apply safe conversion to all elements
                 df = df.applymap(safe_convert)
 
-                # Get and print all column names for debugging
-                logger.debug(f"Available columns: {df.columns.tolist()}")
-
                 # Drop unwanted columns - use exact column names with proper spacing
                 columns_to_drop = [
                     'Sr.',
                     'Exit Time for NLT Status',
+                    'FROM-TO',
                     # Try different column name variations
                     'Scheduled [ Entry - Exit ]',
                     'Scheduled [Entry - Exit]',
@@ -300,69 +303,110 @@ try:
                         df = df.drop(columns=[col])
                         logger.debug(f"Dropped column: {col}")
 
-                # Refresh animation placeholder right before displaying the table
-                refresh_table_placeholder = st.empty()
-                create_pulsing_refresh_animation(refresh_table_placeholder, "Refreshing Table...")
+                # Split the display into two columns - table and map
+                col_table, col_map = st.columns([2, 1])
+
+                with col_table:
+                    # Refresh animation placeholder right before displaying the table
+                    refresh_table_placeholder = st.empty()
+                    create_pulsing_refresh_animation(refresh_table_placeholder, "Refreshing Table...")
 
 
-                # Function to check if a value is positive or contains (+)
-                def is_positive_or_plus(value):
-                    if value is None:
-                        return False
-                    if isinstance(value, str):
-                        # Check for numbers in brackets with +
-                        bracket_match = re.search(r'\(.*?\+.*?\)', value)
-                        if bracket_match:
-                            return True
-                        # Try to convert to number if possible
-                        try:
-                            num = float(
-                                value.replace('(', '').replace(')',
-                                                                '').strip())
-                            return num > 0
-                        except:
+                    # Function to check if a value is positive or contains (+)
+                    def is_positive_or_plus(value):
+                        if value is None:
                             return False
-                    return False
+                        if isinstance(value, str):
+                            # Check for numbers in brackets with +
+                            bracket_match = re.search(r'\(.*?\+.*?\)', value)
+                            if bracket_match:
+                                return True
+                            # Try to convert to number if possible
+                            try:
+                                num = float(
+                                    value.replace('(', '').replace(')',
+                                                                    '').strip())
+                                return num > 0
+                            except:
+                                return False
+                        return False
 
-                # Filter rows where Delay column has positive values or (+)
-                if 'Delay' in df.columns:
-                    filtered_df = df[df['Delay'].apply(is_positive_or_plus)]
-                    st.write(
-                        f"Showing {len(filtered_df)} entries with positive delays"
+                    # Filter rows where Delay column has positive values or (+)
+                    if 'Delay' in df.columns:
+                        filtered_df = df[df['Delay'].apply(is_positive_or_plus)]
+                        st.write(
+                            f"Showing {len(filtered_df)} entries with positive delays"
+                        )
+                    else:
+                        filtered_df = df
+                        st.warning("Delay column not found in data")
+
+                    # Function to highlight cells red
+                    def highlight_positive_delay(val):
+                        """Apply red background to positive delay values"""
+                        if isinstance(val, str) and ('+' in val or is_positive_or_plus(val)):
+                            return 'background-color: #ffcccc; color: #cc0000; font-weight: bold'
+                        return ''
+
+                    # Apply styling to DataFrame
+                    styled_df = filtered_df.style.applymap(highlight_positive_delay, subset=['Delay'])
+
+                    # Create a variable to store selected row for map interaction
+                    selection = None
+
+                    # Show the filtered data with red highlighting
+                    selection = st.dataframe(
+                        styled_df,
+                        use_container_width=True,
+                        column_config={
+                            "Train No.":
+                            st.column_config.TextColumn("Train No.",
+                                                        help="Train Number"),
+                            "FROM-TO":
+                            st.column_config.TextColumn(
+                                "FROM-TO", help="Source to Destination"),
+                            "IC Entry Delay":
+                            st.column_config.TextColumn("IC Entry Delay",
+                                                        help="Entry Delay"),
+                            "Delay":
+                            st.column_config.TextColumn("Delay",
+                                                        help="Delay in Minutes")
+                        }
                     )
-                else:
-                    filtered_df = df
-                    st.warning("Delay column not found in data")
 
-                # Function to highlight cells red
-                def highlight_positive_delay(val):
-                    """Apply red background to positive delay values"""
-                    if isinstance(val, str) and ('+' in val or is_positive_or_plus(val)):
-                        return 'background-color: #ffcccc; color: #cc0000; font-weight: bold'
-                    return ''
+                    # Update selected train if user clicks on a row
+                    if selection is not None:
+                        try:
+                            selected_row = selection.get('selected_rows', [])
+                            if selected_row:
+                                update_selected_train_details(selected_row[0])
+                        except Exception as e:
+                            logger.error(f"Error handling selection: {str(e)}")
 
-                # Apply styling to DataFrame
-                styled_df = filtered_df.style.applymap(highlight_positive_delay, subset=['Delay'])
+                    refresh_table_placeholder.empty() # Clear the placeholder after table display
 
-                # Show the filtered data with red highlighting
-                st.dataframe(
-                    styled_df,
-                    use_container_width=True,
-                    column_config={
-                        "Train No.":
-                        st.column_config.TextColumn("Train No.",
-                                                    help="Train Number"),
-                        "FROM-TO":
-                        st.column_config.TextColumn(
-                            "FROM-TO", help="Source to Destination"),
-                        "IC Entry Delay":
-                        st.column_config.TextColumn("IC Entry Delay",
-                                                    help="Entry Delay"),
-                        "Delay":
-                        st.column_config.TextColumn("Delay",
-                                                    help="Delay in Minutes")
-                    })
-                refresh_table_placeholder.empty() # Clear the placeholder after table display
+                # Display the map in the second column
+                with col_map:
+                    st.subheader("Station Map")
+
+                    # Initialize map viewer if not already in session state
+                    map_viewer = st.session_state['map_viewer']
+
+                    # Render the map with selected train
+                    map_viewer.render(selected_train=st.session_state.get('selected_train'))
+
+                    # Show instruction
+                    st.caption("Click on a row in the table to highlight the station on the map.")
+
+                    # Show controls for map
+                    with st.expander("Map Controls", expanded=False):
+                        st.checkbox("Show Coordinates", value=False, key="show_coords")
+                        st.slider("Zoom Level", min_value=0.5, max_value=2.0, value=1.0, step=0.1, key="map_zoom",
+                                 help="Adjust the zoom level of the map")
+
+                        if st.button("Reset Map View"):
+                            st.session_state['selected_train'] = None
+                            st.rerun()
         else:
             st.warning("No data available in cache")
 
