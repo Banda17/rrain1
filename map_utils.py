@@ -53,9 +53,14 @@ class OfflineMapHandler:
         # Adjusted to ensure Vijayawada point on the map aligns with actual GPS coordinates
         return (14.5, 19.0, 78.0, 84.0)  # Calibrated bounds for Vijayawada Division
 
-    def create_offline_map(self, center: Tuple[float, float], zoom: int = 8) -> Optional[folium.Map]:
+    def create_offline_map(self, center: Tuple[float, float], zoom: int = 8, custom_bounds: Optional[Tuple[float, float, float, float]] = None) -> Optional[folium.Map]:
         """
         Create a folium map with offline tile layer
+
+        Args:
+            center: Center coordinates (lat, lon)
+            zoom: Initial zoom level
+            custom_bounds: Optional custom bounds (min_lat, max_lat, min_lon, max_lon)
         """
         try:
             # Create base map
@@ -69,8 +74,8 @@ class OfflineMapHandler:
             if not self.prepare_map_image():
                 return None
 
-            # Add custom tile layer
-            bounds = self.get_map_bounds()
+            # Use custom bounds if provided, otherwise use default bounds
+            bounds = custom_bounds if custom_bounds else self.get_map_bounds()
 
             # Add a marker for the reference point (Vijayawada)
             folium.Marker(
