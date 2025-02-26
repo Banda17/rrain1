@@ -139,6 +139,10 @@ def initialize_session_state():
         'map_stations': {  # New state variable for map stations
             'default': [],
             'type': list
+        },
+        'selected_stations': {  # New state variable for selected stations
+            'default': [],
+            'type': list
         }
     }
 
@@ -375,27 +379,54 @@ try:
 
                         return styles
 
+                    # Add a "Select" column at the beginning of the DataFrame for checkboxes
+                    if 'Select' not in filtered_df.columns:
+                        filtered_df.insert(0, 'Select', False)
+
+                    # Get station column name
+                    station_column = next((col for col in filtered_df.columns if col in ['Station', 'station', 'STATION']), None)
+
                     # Apply styling to the dataframe
                     styled_df = filtered_df.style.apply(highlight_delay, axis=None)
 
-                    # Show the filtered data with red Delay column
-                    st.dataframe(
-                        styled_df,
-                        use_container_width=True,
+                    # Use data_editor to make the table interactive with checkboxes
+                    edited_df = st.data_editor(
+                        filtered_df,
+                        hide_index=True,
                         column_config={
+                            "Select": st.column_config.CheckboxColumn(
+                                "Select",
+                                help="Select to show on map",
+                                default=False
+                            ),
                             "Train No.": st.column_config.TextColumn("Train No.", help="Train Number"),
                             "FROM-TO": st.column_config.TextColumn("FROM-TO", help="Source to Destination"),
                             "IC Entry Delay": st.column_config.TextColumn("IC Entry Delay", help="Entry Delay"),
                             "Delay": st.column_config.TextColumn("Delay", help="Delay in Minutes")
-                        }
+                        },
+                        disabled=[col for col in filtered_df.columns if col != 'Select'],
+                        use_container_width=True
                     )
+
+                    # Get selected stations for map
+                    if station_column:
+                        selected_rows = edited_df[edited_df['Select']]
+                        selected_stations = selected_rows[station_column].dropna().tolist()
+                        st.session_state['selected_stations'] = selected_stations
+
+                        if selected_stations:
+                            st.success(f"Selected {len(selected_stations)} stations for map view")
+
                     refresh_table_placeholder.empty() # Clear the placeholder after table display
 
                 # Render map in the right column
                 with map_col:
+                    # Use selected stations if available, otherwise use first 10 stations
+                    display_stations = st.session_state['selected_stations'] if st.session_state['selected_stations'] else stations[:10]
+
                     # Render the map with stations from the data
                     render_gps_map(
-                        selected_stations=stations[:10],  # Limit to first 10 stations to avoid clutter
+                        selected_stations=display_stations,
                         map_title="Division GPS Map",
                         height=550
                     )
