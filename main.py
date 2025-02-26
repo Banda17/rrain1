@@ -10,6 +10,7 @@ from train_schedule import TrainSchedule
 import logging
 from typing import Optional, Dict
 import re
+from animation_utils import create_pulsing_refresh_animation, show_countdown_progress, show_refresh_timestamp
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -101,7 +102,8 @@ def initialize_session_state():
         'selected_train': {'default': None, 'type': Optional[Dict]},
         'selected_train_details': {'default': {}, 'type': Dict},
         'filter_status': {'default': 'Late', 'type': str},
-        'last_refresh': {'default': datetime.now(), 'type': datetime}
+        'last_refresh': {'default': datetime.now(), 'type': datetime},
+        'is_refreshing': {'default': False, 'type': bool}
     }
 
     for key, config in state_configs.items():
@@ -179,12 +181,23 @@ initialize_session_state()
 # Main page title
 st.title("ICMS Data - Vijayawada Division")
 
+# Create a placeholder for the refresh animation
+refresh_placeholder = st.empty()
+
 try:
     data_handler = st.session_state['icms_data_handler']
+
+    # Set refreshing state to True and show animation
+    st.session_state['is_refreshing'] = True
+    create_pulsing_refresh_animation(refresh_placeholder, "Loading ICMS data...")
 
     # Load data with feedback
     with st.spinner("Loading ICMS data..."):
         success, message = data_handler.load_data_from_drive()
+
+    # Clear the refresh animation when done
+    st.session_state['is_refreshing'] = False
+    refresh_placeholder.empty()
 
     if success:
         # Show last update time
@@ -298,6 +311,12 @@ st.session_state['last_refresh'] = now
 st.caption(f"Last refresh: {ist_time.strftime('%Y-%m-%d %H:%M:%S')} IST")
 st.caption("Auto-refreshing every 4 minutes")
 
-# Auto-refresh functionality - wait for 4 minutes and then refresh
-time.sleep(240)  # 4 minutes
+
+# Removed the old progress bar and replaced it with a countdown timer.
+show_countdown_progress(240, 0.1) #Countdown for 4 minutes
+show_refresh_timestamp() #Shows refresh timestamp
+
+
+
+# Refresh the page
 st.rerun()
