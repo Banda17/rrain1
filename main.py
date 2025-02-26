@@ -11,8 +11,6 @@ import logging
 from typing import Optional, Dict
 import re
 from animation_utils import create_pulsing_refresh_animation, show_countdown_progress, show_refresh_timestamp
-import folium
-from streamlit_folium import folium_static
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -136,10 +134,6 @@ def initialize_session_state():
         'is_refreshing': {
             'default': False,
             'type': bool
-        },
-        'selected_stations': {
-            'default': [],
-            'type': list
         }
     }
 
@@ -168,14 +162,14 @@ def update_selected_train_details(selected):
         # Extract values safely from pandas Series
         if isinstance(selected, pd.Series):
             station = selected.get('Station', '')
-            train_name = selected.get('Train No.', '')
+            train_name = selected.get('Train Name', '')
             sch_time = selected.get('Sch_Time', '')
             current_time = selected.get('Current Time', '')
             status = selected.get('Status', '')
             delay = selected.get('Delay', '')
         else:
             station = selected.get('Station', '')
-            train_name = selected.get('Train No.', '')
+            train_name = selected.get('Train Name', '')
             sch_time = selected.get('Sch_Time', '')
             current_time = selected.get('Current Time', '')
             status = selected.get('Status', '')
@@ -236,7 +230,7 @@ try:
 
     # Set refreshing state to True and show animation
     st.session_state['is_refreshing'] = True
-    refresh_placeholder = st.empty()
+    refresh_placeholder = st.empty() # Moved here
     create_pulsing_refresh_animation(refresh_placeholder, "Loading ICMS data...")
 
     # Load data with feedback
@@ -248,6 +242,15 @@ try:
     refresh_placeholder.empty()
 
     if success:
+        # Show last update time
+        if data_handler.last_update:
+            # Convert last update to IST (UTC+5:30)
+            last_update_ist = data_handler.last_update + timedelta(hours=5,
+                                                                   minutes=30)
+            st.info(
+                f"Last updated: {last_update_ist.strftime('%Y-%m-%d %H:%M:%S')} IST"
+            )
+
         # Get cached data
         cached_data = data_handler.get_cached_data()
 
@@ -259,9 +262,6 @@ try:
                 # Skip first two rows (0 and 1) and reset index
                 df = df.iloc[2:].reset_index(drop=True)
 
-                # Add a Select column for checkboxes
-                df['Select'] = False
-
                 # Safe conversion of NaN values to None
                 def safe_convert(value):
                     if pd.isna(value) or pd.isnull(value):
@@ -269,13 +269,15 @@ try:
                     return str(value) if value is not None else None
 
                 # Apply safe conversion to all elements
-                df = df.map(safe_convert)
+                df = df.applymap(safe_convert)
+
+                # Get and print all column names for debugging
+                logger.debug(f"Available columns: {df.columns.tolist()}")
 
                 # Drop unwanted columns - use exact column names with proper spacing
                 columns_to_drop = [
                     'Sr.',
                     'Exit Time for NLT Status',
-                    'Start date',
                     # Try different column name variations
                     'Scheduled [ Entry - Exit ]',
                     'Scheduled [Entry - Exit]',
@@ -285,7 +287,7 @@ try:
                     'Scheduled [Entry-Exit]',
                     'scheduled[Entry-Exit]',
                     'DivisionalActual[ Entry - Exit ]',
-                    'Divisional Actual [Entry - Exit]',
+                    'Divisional Actual [Entry - Exit]', 
                     'Divisional Actual[ Entry-Exit ]',
                     'Divisional Actual[ Entry - Exit ]',
                     'DivisionalActual[ Entry-Exit ]',
@@ -298,181 +300,59 @@ try:
                         df = df.drop(columns=[col])
                         logger.debug(f"Dropped column: {col}")
 
-                # Split the display into two columns - table and map
-                col_table, col_map = st.columns([2, 1])
+                # Refresh animation placeholder right before displaying the table
+                refresh_table_placeholder = st.empty()
+                create_pulsing_refresh_animation(refresh_table_placeholder, "Refreshing Table...")
 
-                with col_table:
-                    # Refresh animation placeholder right before displaying the table
-                    refresh_table_placeholder = st.empty()
-                    create_pulsing_refresh_animation(refresh_table_placeholder, "Refreshing Table...")
 
-                    # Function to check if a value is positive or contains (+)
-                    def is_positive_or_plus(value):
-                        if value is None:
-                            return False
-                        if isinstance(value, str):
-                            # Check for numbers in brackets with +
-                            bracket_match = re.search(r'\(.*?\+.*?\)', value)
-                            if bracket_match:
-                                return True
-                            # Try to convert to number if possible
-                            try:
-                                num = float(
-                                    value.replace('(', '').replace(')',
-                                                                    '').strip())
-                                return num > 0
-                            except:
-                                return False
+                # Function to check if a value is positive or contains (+)
+                def is_positive_or_plus(value):
+                    if value is None:
                         return False
+                    if isinstance(value, str):
+                        # Check for numbers in brackets with +
+                        bracket_match = re.search(r'\(.*?\+.*?\)', value)
+                        if bracket_match:
+                            return True
+                        # Try to convert to number if possible
+                        try:
+                            num = float(
+                                value.replace('(', '').replace(')',
+                                                                '').strip())
+                            return num > 0
+                        except:
+                            return False
+                    return False
 
-                    # Filter rows where Delay column has positive values or (+)
-                    if 'Delay' in df.columns:
-                        filtered_df = df[df['Delay'].apply(is_positive_or_plus)]
-                        st.write(
-                            f"Showing {len(filtered_df)} entries with positive delays"
-                        )
-                    else:
-                        filtered_df = df
-                        st.warning("Delay column not found in data")
-
-                    # Function to highlight cells red
-                    def highlight_positive_delay(val):
-                        """Apply red background to positive delay values"""
-                        if isinstance(val, str) and ('+' in val or is_positive_or_plus(val)):
-                            return 'background-color: #ffcccc; color: #cc0000; font-weight: bold'
-                        return ''
-
-                    # Apply styling to DataFrame
-                    styled_df = filtered_df.style.applymap(highlight_positive_delay, subset=['Delay'])
-
-                    # Show the filtered data with checkbox column
-                    edited_df = st.data_editor(
-                        filtered_df,
-                        use_container_width=True,
-                        column_config={
-                            "Select": st.column_config.CheckboxColumn(
-                                "Select",
-                                help="Select to show on map",
-                                default=False
-                            ),
-                            "Train No.": st.column_config.TextColumn(
-                                "Train No.",
-                                help="Train Number"
-                            ),
-                            "IC Entry Delay": st.column_config.TextColumn(
-                                "IC Entry Delay",
-                                help="Entry Delay"
-                            ),
-                            "Delay": st.column_config.TextColumn(
-                                "Delay",
-                                help="Delay in Minutes"
-                            )
-                        }
+                # Filter rows where Delay column has positive values or (+)
+                if 'Delay' in df.columns:
+                    filtered_df = df[df['Delay'].apply(is_positive_or_plus)]
+                    st.write(
+                        f"Showing {len(filtered_df)} entries with positive delays"
                     )
+                else:
+                    filtered_df = df
+                    st.warning("Delay column not found in data")
 
-                    # Get selected stations for map display
-                    selected_rows = edited_df[edited_df['Select']]
-                    selected_stations = []
-
-                    if not selected_rows.empty:
-                        # Extract station codes from selected rows
-                        for _, row in selected_rows.iterrows():
-                            if 'Station' in row and row['Station']:
-                                selected_stations.append(row['Station'])
-
-                        # Update session state
-                        st.session_state['selected_stations'] = selected_stations
-                    else:
-                        st.session_state['selected_stations'] = []
-
-                    refresh_table_placeholder.empty()
-
-                with col_map:
-                    st.subheader("Interactive GPS Map")
-
-                    # Define Andhra Pradesh center coordinates
-                    AP_CENTER = (16.5167, 80.6167)  # Centered around Vijayawada
-
-                    # Define station coordinates with actual GPS locations
-                    stations = {
-                        'BZA': {'name': 'Vijayawada', 'lat': 16.5167, 'lon': 80.6167},
-                        'GNT': {'name': 'Guntur', 'lat': 16.3067, 'lon': 80.4365},
-                        'VSKP': {'name': 'Visakhapatnam', 'lat': 17.6868, 'lon': 83.2185},
-                        'TUNI': {'name': 'Tuni', 'lat': 17.3572, 'lon': 82.5483},
-                        'RJY': {'name': 'Rajahmundry', 'lat': 17.0005, 'lon': 81.7799},
-                        'NLDA': {'name': 'Nalgonda', 'lat': 17.0575, 'lon': 79.2690},
-                        'MTM': {'name': 'Mangalagiri', 'lat': 16.4307, 'lon': 80.5525},
-                        'NDL': {'name': 'Nidadavolu', 'lat': 16.9107, 'lon': 81.6717},
-                        'ANV': {'name': 'Anakapalle', 'lat': 17.6910, 'lon': 83.0037},
-                        'VZM': {'name': 'Vizianagaram', 'lat': 18.1066, 'lon': 83.4205},
-                        'SKM': {'name': 'Srikakulam', 'lat': 18.2949, 'lon': 83.8935},
-                        'PLH': {'name': 'Palasa', 'lat': 18.7726, 'lon': 84.4162}
-                    }
-
-                    try:
-                        # Debug information
-                        st.write(f"Selected stations: {st.session_state.get('selected_stations', [])}")
-
-                        # Create the map centered on Vijayawada
-                        m = folium.Map(
-                            location=AP_CENTER,
-                            zoom_start=7,
-                            tiles='OpenStreetMap'
-                        )
-
-                        # Add markers for selected stations
-                        selected_stations = st.session_state.get('selected_stations', [])
-
-                        if selected_stations:
-                            st.success(f"Showing {len(selected_stations)} selected stations on the map")
-
-                            # Add markers for selected stations
-                            for station_code in selected_stations:
-                                if station_code in stations:
-                                    station_info = stations[station_code]
-
-                                    # Create custom popup content
-                                    popup_content = f"""
-                                    <div style='font-family: Arial; font-size: 12px;'>
-                                        <b>{station_code} - {station_info['name']}</b><br>
-                                        Lat: {station_info['lat']:.4f}<br>
-                                        Lon: {station_info['lon']:.4f}
-                                    </div>
-                                    """
-
-                                    folium.Marker(
-                                        [station_info['lat'], station_info['lon']],
-                                        popup=folium.Popup(popup_content, max_width=200),
-                                        tooltip=station_code,
-                                        icon=folium.Icon(color='red', icon='info-sign')
-                                    ).add_to(m)
-
-                            # Add railway lines between selected stations if more than one
-                            if len(selected_stations) > 1:
-                                station_points = []
-                                for code in selected_stations:
-                                    if code in stations:
-                                        station_points.append([stations[code]['lat'], stations[code]['lon']])
-
-                                folium.PolyLine(
-                                    station_points,
-                                    weight=2,
-                                    color='gray',
-                                    opacity=0.8,
-                                    dash_array='5, 10'
-                                ).add_to(m)
-
-                        # Display the map
-                        folium_static(m, width=400, height=500)
-
-                        # Show info message if no stations selected
-                        if not selected_stations:
-                            st.info("Select stations from the table on the left to view them on the map")
-
-                    except Exception as e:
-                        st.error(f"Error rendering map: {str(e)}")
-                        st.exception(e)
-
+                # Show the filtered data - removed height parameter to show all rows without scrolling
+                st.dataframe(
+                    filtered_df,
+                    use_container_width=True,
+                    column_config={
+                        "Train No.":
+                        st.column_config.TextColumn("Train No.",
+                                                    help="Train Number"),
+                        "FROM-TO":
+                        st.column_config.TextColumn(
+                            "FROM-TO", help="Source to Destination"),
+                        "IC Entry Delay":
+                        st.column_config.TextColumn("IC Entry Delay",
+                                                    help="Entry Delay"),
+                        "Delay":
+                        st.column_config.TextColumn("Delay",
+                                                    help="Delay in Minutes")
+                    })
+                refresh_table_placeholder.empty() # Clear the placeholder after table display
         else:
             st.warning("No data available in cache")
 
@@ -497,8 +377,8 @@ st.caption("Auto-refreshing every 4 minutes")
 
 
 # Removed the old progress bar and replaced it with a countdown timer.
-show_countdown_progress(240, 0.1)
-show_refresh_timestamp()
+show_countdown_progress(240, 0.1) #Countdown for 4 minutes
+show_refresh_timestamp() #Shows refresh timestamp
 
 
 # Refresh the page
