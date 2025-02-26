@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 # Initialize database
 init_db()
 
+
 def parse_time(time_str: str) -> Optional[datetime]:
     """Parse time string in HH:MM format to datetime object"""
     try:
@@ -40,6 +41,7 @@ def parse_time(time_str: str) -> Optional[datetime]:
         logger.debug(f"Error parsing time {time_str}: {str(e)}")
         return None
 
+
 def calculate_time_difference(scheduled: str, actual: str) -> Optional[int]:
     """Calculate time difference in minutes between scheduled and actual times"""
     try:
@@ -61,6 +63,7 @@ def calculate_time_difference(scheduled: str, actual: str) -> Optional[int]:
         logger.debug(f"Error calculating time difference: {str(e)}")
         return None
 
+
 def format_delay_value(delay: Optional[int]) -> str:
     """Format delay value with appropriate indicator"""
     try:
@@ -76,31 +79,53 @@ def format_delay_value(delay: Optional[int]) -> str:
         logger.error(f"Error formatting delay value: {str(e)}")
         return "N/A"
 
+
 # Page configuration
-st.set_page_config(
-    page_title="Train Tracking System",
-    page_icon="🚂",
-    layout="wide",
-    initial_sidebar_state="collapsed"
-)
+st.set_page_config(page_title="Train Tracking System",
+                   page_icon="🚂",
+                   layout="wide",
+                   initial_sidebar_state="collapsed")
 
 # Add headers
 st.markdown("""
     <h1 style='text-align: center; color: #1f497d;'>South Central Railway</h1>
     <h2 style='text-align: center; color: #4f81bd;'>Vijayawada Division</h2>
     <hr>
-""", unsafe_allow_html=True)
+""",
+            unsafe_allow_html=True)
+
 
 def initialize_session_state():
     """Initialize all session state variables with proper typing"""
     state_configs = {
-        'data_handler': {'default': DataHandler(), 'type': DataHandler},
-        'visualizer': {'default': Visualizer(), 'type': Visualizer},
-        'train_schedule': {'default': TrainSchedule(), 'type': TrainSchedule},
-        'last_update': {'default': None, 'type': Optional[datetime]},
-        'selected_train': {'default': None, 'type': Optional[Dict]},
-        'selected_train_details': {'default': {}, 'type': Dict},
-        'filter_status': {'default': 'Late', 'type': str}
+        'data_handler': {
+            'default': DataHandler(),
+            'type': DataHandler
+        },
+        'visualizer': {
+            'default': Visualizer(),
+            'type': Visualizer
+        },
+        'train_schedule': {
+            'default': TrainSchedule(),
+            'type': TrainSchedule
+        },
+        'last_update': {
+            'default': None,
+            'type': Optional[datetime]
+        },
+        'selected_train': {
+            'default': None,
+            'type': Optional[Dict]
+        },
+        'selected_train_details': {
+            'default': {},
+            'type': Dict
+        },
+        'filter_status': {
+            'default': 'Late',
+            'type': str
+        }
     }
 
     for key, config in state_configs.items():
@@ -114,11 +139,13 @@ def initialize_session_state():
         data_handler.spreadsheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRO2ZV-BOcL11_5NhlrOnn5Keph3-cVp7Tyr1t6RxsoDvxZjdOyDsmRkdvesJLbSnZwY8v3CATt1Of9/pub?gid=155911658&single=true&output=csv"
         st.session_state['icms_data_handler'] = data_handler
 
+
 def update_selected_train_details(selected):
     """Update the selected train details in session state"""
     try:
         # Clear selection if selected is None or empty DataFrame
-        if selected is None or (isinstance(selected, pd.Series) and selected.empty):
+        if selected is None or (isinstance(selected, pd.Series)
+                                and selected.empty):
             st.session_state['selected_train'] = None
             st.session_state['selected_train_details'] = {}
             return
@@ -149,17 +176,22 @@ def update_selected_train_details(selected):
             'Current Status': status,
             'Delay': delay
         }
-        logger.debug(f"Updated selected train: {st.session_state['selected_train']}")
+        logger.debug(
+            f"Updated selected train: {st.session_state['selected_train']}")
 
     except Exception as e:
         logger.error(f"Error updating selected train details: {str(e)}")
         st.session_state['selected_train'] = None
         st.session_state['selected_train_details'] = {}
 
+
 def handle_timing_status_change():
     """Handle changes in timing status filter"""
-    st.session_state['filter_status'] = st.session_state.get('timing_status_select', 'Late')
-    logger.debug(f"Timing status changed to: {st.session_state['filter_status']}")
+    st.session_state['filter_status'] = st.session_state.get(
+        'timing_status_select', 'Late')
+    logger.debug(
+        f"Timing status changed to: {st.session_state['filter_status']}")
+
 
 @st.cache_data(ttl=300)
 def load_and_process_data():
@@ -171,6 +203,7 @@ def load_and_process_data():
         if cached_data:
             return True, status_table, pd.DataFrame(cached_data), message
     return False, None, None, message
+
 
 # Initialize session state
 initialize_session_state()
@@ -186,9 +219,21 @@ try:
         success, message = data_handler.load_data_from_drive()
 
     if success:
-        # Show last update time
+        # Show last update time and message
         if data_handler.last_update:
-            st.info(f"Last updated: {data_handler.last_update.strftime('%Y-%m-%d %H:%M:%S')}")
+            update_text = f"Last updated: {data_handler.last_update.strftime('%Y-%m-%d %H:%M:%S')}"
+
+            # If there was a warning in the message, display it as a warning
+            if message.startswith("Warning:"):
+                st.warning(f"{update_text} - {message}")
+            else:
+                st.info(update_text)
+        else:
+            # If no last_update but success is True, we're likely using cache
+            if "cache" in message.lower():
+                st.warning(message)
+            else:
+                st.info(message)
 
         # Get cached data
         cached_data = data_handler.get_cached_data()
@@ -278,7 +323,18 @@ try:
             st.warning("No data available in cache")
 
     else:
-        st.error(f"Error loading data: {message}")
+        # Display detailed error message
+        error_msg = message
+        last_error = data_handler.get_last_error()
+        if last_error and last_error not in error_msg:
+            error_msg = f"{error_msg}: {last_error}"
+
+        st.error(f"Error loading data: {error_msg}")
+
+        # Add a manual refresh button
+        if st.button("Retry loading data"):
+            st.cache_data.clear()
+            st.experimental_rerun()
 
 except Exception as e:
     st.error(f"An error occurred: {str(e)}")
