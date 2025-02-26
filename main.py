@@ -139,6 +139,10 @@ def initialize_session_state():
         'map_viewer': {
             'default': MapViewer(),
             'type': MapViewer
+        },
+        'selected_stations': {
+            'default': [],
+            'type': list
         }
     }
 
@@ -280,7 +284,6 @@ try:
                 columns_to_drop = [
                     'Sr.',
                     'Exit Time for NLT Status',
-                    'FROM-TO',
                     # Try different column name variations
                     'Scheduled [ Entry - Exit ]',
                     'Scheduled [Entry - Exit]',
@@ -310,7 +313,6 @@ try:
                     # Refresh animation placeholder right before displaying the table
                     refresh_table_placeholder = st.empty()
                     create_pulsing_refresh_animation(refresh_table_placeholder, "Refreshing Table...")
-
 
                     # Function to check if a value is positive or contains (+)
                     def is_positive_or_plus(value):
@@ -389,24 +391,127 @@ try:
                 with col_map:
                     st.subheader("Station Map")
 
-                    # Initialize map viewer if not already in session state
+                    # Define station coordinates with actual GPS locations - borrowed from map_view.py
+                    stations = {
+                        'BZA': {'name': 'Vijayawada', 'lat': 16.5167, 'lon': 80.6167},
+                        'GNT': {'name': 'Guntur', 'lat': 16.3067, 'lon': 80.4365},
+                        'VSKP': {'name': 'Visakhapatnam', 'lat': 17.6868, 'lon': 83.2185},
+                        'TUNI': {'name': 'Tuni', 'lat': 17.3572, 'lon': 82.5483},
+                        'RJY': {'name': 'Rajahmundry', 'lat': 17.0005, 'lon': 81.7799},
+                        'NLDA': {'name': 'Nalgonda', 'lat': 17.0575, 'lon': 79.2690},
+                        'MTM': {'name': 'Mangalagiri', 'lat': 16.4307, 'lon': 80.5525},
+                        'NDL': {'name': 'Nidadavolu', 'lat': 16.9107, 'lon': 81.6717},
+                        'ANV': {'name': 'Anakapalle', 'lat': 17.6910, 'lon': 83.0037},
+                        'VZM': {'name': 'Vizianagaram', 'lat': 18.1066, 'lon': 83.4205},
+                        'SKM': {'name': 'Srikakulam', 'lat': 18.2949, 'lon': 83.8935},
+                        'PLH': {'name': 'Palasa', 'lat': 18.7726, 'lon': 84.4162}
+                    }
+
+                    # Create DataFrame for station selection
+                    stations_df = pd.DataFrame([
+                        {
+                            'Select': code in st.session_state.get('selected_stations', []),
+                            'Station Code': code,
+                            'Name': info['name'],
+                            'Latitude': info['lat'],
+                            'Longitude': info['lon']
+                        }
+                        for code, info in stations.items()
+                    ])
+
+                    # Add a message explaining the interface
+                    st.caption("Select stations to display on the map:")
+
+                    # Make the dataframe interactive with checkboxes
+                    edited_df = st.data_editor(
+                        stations_df,
+                        hide_index=True,
+                        column_config={
+                            "Select": st.column_config.CheckboxColumn(
+                                "Select",
+                                help="Select to show on map",
+                                default=False
+                            )
+                        },
+                        disabled=["Station Code", "Name", "Latitude", "Longitude"],
+                        use_container_width=True,
+                        height=220
+                    )
+
+                    # Get selected stations for map display
+                    selected_stations_df = edited_df[edited_df['Select']]
+
+                    # Update session state with selected station codes for persistence
+                    if not selected_stations_df.empty:
+                        st.session_state['selected_stations'] = selected_stations_df['Station Code'].tolist()
+                    else:
+                        st.session_state['selected_stations'] = []
+
+                    # Initialize map viewer
                     map_viewer = st.session_state['map_viewer']
 
-                    # Render the map with selected train
-                    map_viewer.render(selected_train=st.session_state.get('selected_train'))
+                    # Get the currently selected train station from table selection (if any)
+                    selected_train = st.session_state.get('selected_train')
 
-                    # Show instruction
-                    st.caption("Click on a row in the table to highlight the station on the map.")
+                    # Render the map with both the manually selected stations and any selected train
+                    base_map = map_viewer.load_map()
 
-                    # Show controls for map
-                    with st.expander("Map Controls", expanded=False):
-                        st.checkbox("Show Coordinates", value=False, key="show_coords")
-                        st.slider("Zoom Level", min_value=0.5, max_value=2.0, value=1.0, step=0.1, key="map_zoom",
-                                 help="Adjust the zoom level of the map")
+                    if base_map:
+                        # Draw all station markers
+                        display_image = base_map.copy()
 
-                        if st.button("Reset Map View"):
-                            st.session_state['selected_train'] = None
-                            st.rerun()
+                        # First draw the stations selected from checkboxes
+                        for _, row in selected_stations_df.iterrows():
+                            station_code = row['Station Code']
+                            display_image = map_viewer.draw_train_marker(display_image, station_code)
+
+                        # Also highlight the station from the table selection (if different)
+                        if selected_train and selected_train.get('station'):
+                            station_code = selected_train['station']
+                            if station_code not in st.session_state.get('selected_stations', []):
+                                display_image = map_viewer.draw_train_marker(display_image, station_code)
+
+                        # Prepare and display the image
+                        display_image = display_image.convert('RGB')
+                        original_width, original_height = display_image.size
+
+                        # Calculate new dimensions maintaining aspect ratio
+                        max_height = 500  # Larger height for better visibility
+                        height_ratio = max_height / original_height
+                        new_width = int(original_width * height_ratio)
+                        new_height = max_height
+
+                        # Resize the image
+                        display_image = display_image.resize(
+                            (new_width, new_height),
+                            resample=2  # LANCZOS
+                        )
+
+                        # Display the map
+                        st.image(
+                            display_image,
+                            use_container_width=True,
+                            caption="Station Map - Vijayawada Division"
+                        )
+
+                        # Show summary of selected stations
+                        if not selected_stations_df.empty:
+                            st.success(f"Showing {len(selected_stations_df)} selected stations on the map")
+                        else:
+                            st.info("Select stations from the table above to display them on the map")
+
+                        # Show train information if a train is selected from the table
+                        if selected_train and selected_train.get('station'):
+                            with st.expander("🚂 Selected Train Information", expanded=True):
+                                st.markdown(f"""
+                                **Train Details:**
+                                - Train Number: {selected_train.get('train', '')}
+                                - Station: {selected_train.get('station', '')}
+                                - Status: {st.session_state['selected_train_details'].get('Current Status', '')}
+                                - Delay: {st.session_state['selected_train_details'].get('Delay', '')}
+                                """)
+                    else:
+                        st.error("Unable to load the base map. Please check the map file path.")
         else:
             st.warning("No data available in cache")
 
