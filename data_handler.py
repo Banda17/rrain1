@@ -5,7 +5,6 @@ from datetime import datetime
 from database import get_database_connection, TrainDetails
 import logging
 import time
-import requests
 
 # Configure logging with more detail
 logging.basicConfig(
@@ -49,89 +48,20 @@ class DataHandler:
         self.db_session = get_database_connection()
         self.spreadsheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRO2ZV-BOcL11_5NhlrOnn5Keph3-cVp7Tyr1t6RxsoDvxZjdOyDsmRkdvesJLbSnZwY8v3CATt1Of9/pub?gid=377625640&single=true&output=csv"
         self.performance_metrics = {'load_time': 0, 'process_time': 0}
-        self.last_error = None
 
     def _fetch_csv_data(self) -> pd.DataFrame:
-        """Fetch CSV data with enhanced error handling and performance tracking"""
+        """Fetch CSV data with performance tracking"""
         start_time = time.time()
         try:
-            # First, try to make a HEAD request to check if the URL is accessible
-            try:
-                head_response = requests.head(self.spreadsheet_url, timeout=5, allow_redirects=True)
-                status_code = head_response.status_code
-
-                # Log redirect information if present
-                if head_response.history:
-                    redirect_chain = " -> ".join([str(r.status_code) for r in head_response.history])
-                    logger.info(f"Redirect chain: {redirect_chain}")
-                    logger.info(f"Final URL after redirects: {head_response.url}")
-
-                if status_code != 200:
-                    error_msg = f"Error accessing spreadsheet: HTTP {status_code}"
-                    logger.error(error_msg)
-                    self.last_error = error_msg
-                    return pd.DataFrame()
-
-            except requests.exceptions.RequestException as e:
-                error_msg = f"Connection error checking spreadsheet URL: {str(e)}"
-                logger.error(error_msg)
-                self.last_error = error_msg
-                return pd.DataFrame()
-
             @st.cache_data(ttl=300, show_spinner=False)
             def fetch_data(url):
-                try:
-                    # Use a session to handle redirects properly
-                    session = requests.Session()
-
-                    # Configure session to follow redirects
-                    session.max_redirects = 5
-
-                    # Make the request with the session
-                    response = session.get(url, timeout=10)
-
-                    # Log redirect information
-                    if response.history:
-                        redirect_chain = " -> ".join([str(r.status_code) for r in response.history])
-                        logger.info(f"GET request redirect chain: {redirect_chain}")
-                        logger.info(f"Final URL after GET redirects: {response.url}")
-
-                    status_code = response.status_code
-                    if status_code != 200:
-                        error_msg = f"Error downloading CSV: HTTP {status_code}"
-                        logger.error(error_msg)
-                        self.last_error = error_msg
-                        return pd.DataFrame()
-
-                    # Try to parse the CSV data directly from the response content
-                    try:
-                        # Convert the response content to a string with UTF-8 encoding
-                        csv_content = response.content.decode('utf-8')
-
-                        # Use pandas to read the CSV from the string content
-                        return pd.read_csv(pd.io.common.StringIO(csv_content))
-                    except Exception as e:
-                        error_msg = f"Error parsing CSV data: {str(e)}"
-                        logger.error(error_msg)
-                        self.last_error = error_msg
-                        return pd.DataFrame()
-                except requests.exceptions.RequestException as e:
-                    error_msg = f"Error downloading CSV: {str(e)}"
-                    logger.error(error_msg)
-                    self.last_error = error_msg
-                    return pd.DataFrame()
+                return pd.read_csv(url)
 
             df = fetch_data(self.spreadsheet_url)
-            if df.empty:
-                logger.error("Received empty dataframe from CSV source")
-                return pd.DataFrame()
-
             self.performance_metrics['load_time'] = time.time() - start_time
             return df
         except Exception as e:
-            error_msg = f"Error fetching CSV data: {str(e)}"
-            logger.error(error_msg)
-            self.last_error = error_msg
+            logger.error(f"Error fetching CSV data: {str(e)}")
             return pd.DataFrame()
 
     def _process_raw_data(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -143,9 +73,7 @@ class DataHandler:
         try:
             # Ensure we have the required columns in the first row
             if not all(col in df.iloc[0].values for col in ['Train Name', 'Station', 'Time', 'Status']):
-                error_msg = "Required columns not found in data"
-                logger.error(error_msg)
-                self.last_error = error_msg
+                logger.error("Required columns not found in data")
                 return pd.DataFrame(columns=['Train Name', 'Station', 'Time', 'Status'])
 
             # Set the first row as headers and reset index
@@ -157,9 +85,7 @@ class DataHandler:
             try:
                 df = df[required_cols].copy()
             except KeyError as e:
-                error_msg = f"Missing required columns: {str(e)}"
-                logger.error(error_msg)
-                self.last_error = error_msg
+                logger.error(f"Missing required columns: {str(e)}")
                 return pd.DataFrame(columns=required_cols)
 
             # Vectorized string cleaning
@@ -171,9 +97,7 @@ class DataHandler:
             self.performance_metrics['process_time'] = time.time() - start_time
             return df
         except Exception as e:
-            error_msg = f"Error processing data: {str(e)}"
-            logger.error(error_msg)
-            self.last_error = error_msg
+            logger.error(f"Error processing data: {str(e)}")
             return pd.DataFrame(columns=['Train Name', 'Station', 'Time', 'Status'])
 
     def get_train_status_table(self) -> pd.DataFrame:
@@ -181,35 +105,25 @@ class DataHandler:
         return _fetch_status(self.db_session)
 
     def load_data_from_drive(self) -> Tuple[bool, str]:
-        """Load data from Google Sheets URL with improved error handling and caching"""
+        """Load data from Google Sheets URL with optimized caching"""
         try:
-            # Reset last error
-            self.last_error = None
-
             # Clear cache to ensure fresh data load
             st.cache_data.clear()
+
+            # Check cache first
+            if not self.should_update() and self.processed_data_cache:
+                logger.debug("Using processed data cache")
+                self.data = pd.DataFrame(self.processed_data_cache)
+                return True, "Using cached data"
 
             # Fetch and process data with performance tracking
             start_time = time.time()
 
             raw_data = self._fetch_csv_data()
             if raw_data.empty:
-                error_msg = self.last_error or "No data received from CSV - the source may be unavailable"
-                logger.warning(error_msg)
-                # Keep using existing cache if we already have data
-                if not self.data_cache:
-                    return False, error_msg
-                logger.info("Using existing cache since new data fetch failed")
-                return True, f"Warning: Using cached data. Data source error: {error_msg}"
+                return False, "No data received from CSV"
 
             self.data = self._process_raw_data(raw_data)
-            if self.data.empty:
-                error_msg = self.last_error or "Failed to process data"
-                logger.warning(error_msg)
-                if not self.data_cache:
-                    return False, error_msg
-                logger.info("Using existing cache since data processing failed")
-                return True, f"Warning: Using cached data. Processing error: {error_msg}"
 
             # Update caches efficiently
             self.data_cache = raw_data.to_dict('records')
@@ -227,13 +141,6 @@ class DataHandler:
         except Exception as e:
             error_msg = f"Error loading data: {str(e)}"
             logger.error(error_msg)
-            self.last_error = error_msg
-
-            # If we have cached data, continue using it rather than failing completely
-            if self.data_cache:
-                logger.info("Using existing cache due to error in data loading")
-                return True, f"Warning: Using cached data. Error: {error_msg}"
-
             return False, error_msg
 
     def should_update(self) -> bool:
@@ -353,7 +260,3 @@ class DataHandler:
     def get_performance_metrics(self) -> Dict[str, float]:
         """Get current performance metrics"""
         return self.performance_metrics
-
-    def get_last_error(self) -> str:
-        """Get the last error message"""
-        return self.last_error or ""

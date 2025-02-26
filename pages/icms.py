@@ -25,31 +25,13 @@ st.markdown("Integrated Coaching Management System Data View")
 try:
     data_handler = st.session_state['icms_data_handler']
 
-    # Add a manual refresh button
-    if st.button("Refresh Data"):
-        st.cache_data.clear()
-        st.info("Fetching fresh data...")
-
     # Load data
-    with st.spinner("Loading ICMS data..."):
-        success, message = data_handler.load_data_from_drive()
+    success, message = data_handler.load_data_from_drive()
 
     if success:
-        # Show last update time and message
+        # Show last update time
         if data_handler.last_update:
-            update_text = f"Last updated: {data_handler.last_update.strftime('%Y-%m-%d %H:%M:%S')}"
-
-            # If there was a warning in the message, display it as a warning
-            if message.startswith("Warning:"):
-                st.warning(f"{update_text} - {message}")
-            else:
-                st.info(update_text)
-        else:
-            # If no last_update but success is True, we're likely using cache
-            if "cache" in message.lower():
-                st.warning(message)
-            else:
-                st.info(message)
+            st.info(f"Last updated: {data_handler.last_update.strftime('%Y-%m-%d %H:%M:%S')}")
 
         # Get cached data
         cached_data = data_handler.get_cached_data()
@@ -113,19 +95,11 @@ try:
         else:
             st.warning("No data available in cache")
 
+        # Auto-refresh every 5 minutes
+        time.sleep(300)  # 5 minutes
+        st.rerun()
     else:
-        # Display detailed error message
-        error_msg = message
-        last_error = data_handler.get_last_error()
-        if last_error and last_error not in error_msg:
-            error_msg = f"{error_msg}: {last_error}"
-
-        st.error(f"Error loading data: {error_msg}")
-
-        # Add a manual refresh button
-        if st.button("Retry loading data"):
-            st.cache_data.clear()
-            st.experimental_rerun()
+        st.error(f"Error loading data: {message}")
 
 except Exception as e:
     st.error(f"An error occurred: {str(e)}")
