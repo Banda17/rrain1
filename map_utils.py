@@ -10,6 +10,8 @@ class OfflineMapHandler:
     def __init__(self, map_path: str):
         self.map_path = map_path
         self.cache_dir = "map_cache"
+        # Define Vijayawada GPS coordinates
+        self.vijayawada_coords = (16.5167, 80.6167)
 
     def prepare_map_image(self) -> bool:
         """
@@ -41,10 +43,15 @@ class OfflineMapHandler:
 
     def get_map_bounds(self) -> Tuple[float, float, float, float]:
         """
-        Get the map bounds for Andhra Pradesh region.
+        Get calibrated map bounds for Vijayawada Division map.
+        Adjusted to make Vijayawada point coincide with actual GPS coordinates.
+
         Returns (min_lat, max_lat, min_lon, max_lon)
         """
-        return (13.5, 19.5, 77.5, 84.5)  # Andhra Pradesh region bounds
+        # These bounds are calibrated to align Vijayawada on the map image with its GPS coordinates
+        # South-West corner (bottom-left) and North-East corner (top-right)
+        # Adjusted to ensure Vijayawada point on the map aligns with actual GPS coordinates
+        return (14.5, 19.0, 78.0, 84.0)  # Calibrated bounds for Vijayawada Division
 
     def create_offline_map(self, center: Tuple[float, float], zoom: int = 8) -> Optional[folium.Map]:
         """
@@ -64,10 +71,20 @@ class OfflineMapHandler:
 
             # Add custom tile layer
             bounds = self.get_map_bounds()
+
+            # Add a marker for the reference point (Vijayawada)
+            folium.Marker(
+                self.vijayawada_coords,
+                popup="Vijayawada (Reference Point)",
+                tooltip="Vijayawada",
+                icon=folium.Icon(color='blue', icon='info-sign')
+            ).add_to(m)
+
+            # Add the image overlay with calibrated bounds
             folium.raster_layers.ImageOverlay(
                 image=self.map_path,
                 bounds=[[bounds[0], bounds[2]], [bounds[1], bounds[3]]],
-                opacity=0.8,
+                opacity=0.7,
                 name="Offline Map"
             ).add_to(m)
 

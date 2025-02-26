@@ -37,6 +37,12 @@ def render_gps_map(
         'PLH': {'name': 'Palasa', 'lat': 18.7726, 'lon': 84.4162},
         'GDR': {'name': 'Gudur', 'lat': 14.1483, 'lon': 79.8538},
         'TADI': {'name': 'Thadi', 'lat': 16.7520, 'lon': 79.9841},
+        # Add more station coordinates from bhanu.json as needed
+        'VNEC': {'name': 'Venkachalam', 'lat': 16.4805, 'lon': 80.5487},
+        'GALA': {'name': 'Galakollu', 'lat': 16.4355, 'lon': 80.5842},
+        'MBD': {'name': 'Mustabad', 'lat': 16.3980, 'lon': 80.6120},
+        'GWM': {'name': 'Gunadala West', 'lat': 16.5310, 'lon': 80.6050},
+        'PAVP': {'name': 'Pavuluru', 'lat': 16.5532, 'lon': 80.5892},
     }
 
     # If no stations selected, use all stations
