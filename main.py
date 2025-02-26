@@ -11,7 +11,6 @@ import logging
 from typing import Optional, Dict
 import re
 from animation_utils import create_pulsing_refresh_animation, show_countdown_progress, show_refresh_timestamp
-from map_viewer import MapViewer
 import folium
 from streamlit_folium import folium_static
 
@@ -169,14 +168,14 @@ def update_selected_train_details(selected):
         # Extract values safely from pandas Series
         if isinstance(selected, pd.Series):
             station = selected.get('Station', '')
-            train_name = selected.get('Train Name', '')
+            train_name = selected.get('Train No.', '')
             sch_time = selected.get('Sch_Time', '')
             current_time = selected.get('Current Time', '')
             status = selected.get('Status', '')
             delay = selected.get('Delay', '')
         else:
             station = selected.get('Station', '')
-            train_name = selected.get('Train Name', '')
+            train_name = selected.get('Train No.', '')
             sch_time = selected.get('Sch_Time', '')
             current_time = selected.get('Current Time', '')
             status = selected.get('Status', '')
@@ -219,7 +218,6 @@ def load_and_process_data():
         if cached_data:
             return True, status_table, pd.DataFrame(cached_data), message
     return False, None, None, message
-
 
 # Initialize session state
 initialize_session_state()
@@ -271,7 +269,7 @@ try:
                     return str(value) if value is not None else None
 
                 # Apply safe conversion to all elements
-                df = df.applymap(safe_convert)
+                df = df.map(safe_convert)
 
                 # Drop unwanted columns - use exact column names with proper spacing
                 columns_to_drop = [
@@ -393,7 +391,7 @@ try:
                     st.subheader("Interactive GPS Map")
 
                     # Define Andhra Pradesh center coordinates
-                    AP_CENTER = [16.5167, 80.6167]  # Centered around Vijayawada
+                    AP_CENTER = (16.5167, 80.6167)  # Centered around Vijayawada
 
                     # Define station coordinates with actual GPS locations
                     stations = {
@@ -411,61 +409,69 @@ try:
                         'PLH': {'name': 'Palasa', 'lat': 18.7726, 'lon': 84.4162}
                     }
 
-                    # Create the map centered on Vijayawada
-                    m = folium.Map(
-                        location=AP_CENTER,
-                        zoom_start=7,
-                        tiles='OpenStreetMap'
-                    )
+                    try:
+                        # Debug information
+                        st.write(f"Selected stations: {st.session_state.get('selected_stations', [])}")
 
-                    # Add markers for selected stations
-                    selected_stations = st.session_state.get('selected_stations', [])
+                        # Create the map centered on Vijayawada
+                        m = folium.Map(
+                            location=AP_CENTER,
+                            zoom_start=7,
+                            tiles='OpenStreetMap'
+                        )
 
-                    if selected_stations:
                         # Add markers for selected stations
-                        for station_code in selected_stations:
-                            if station_code in stations:
-                                station_info = stations[station_code]
+                        selected_stations = st.session_state.get('selected_stations', [])
 
-                                # Create custom popup content
-                                popup_content = f"""
-                                <div style='font-family: Arial; font-size: 12px;'>
-                                    <b>{station_code} - {station_info['name']}</b><br>
-                                    Lat: {station_info['lat']:.4f}<br>
-                                    Lon: {station_info['lon']:.4f}
-                                </div>
-                                """
+                        if selected_stations:
+                            st.success(f"Showing {len(selected_stations)} selected stations on the map")
 
-                                folium.Marker(
-                                    [station_info['lat'], station_info['lon']],
-                                    popup=folium.Popup(popup_content, max_width=200),
-                                    tooltip=station_code,
-                                    icon=folium.Icon(color='red', icon='info-sign')
+                            # Add markers for selected stations
+                            for station_code in selected_stations:
+                                if station_code in stations:
+                                    station_info = stations[station_code]
+
+                                    # Create custom popup content
+                                    popup_content = f"""
+                                    <div style='font-family: Arial; font-size: 12px;'>
+                                        <b>{station_code} - {station_info['name']}</b><br>
+                                        Lat: {station_info['lat']:.4f}<br>
+                                        Lon: {station_info['lon']:.4f}
+                                    </div>
+                                    """
+
+                                    folium.Marker(
+                                        [station_info['lat'], station_info['lon']],
+                                        popup=folium.Popup(popup_content, max_width=200),
+                                        tooltip=station_code,
+                                        icon=folium.Icon(color='red', icon='info-sign')
+                                    ).add_to(m)
+
+                            # Add railway lines between selected stations if more than one
+                            if len(selected_stations) > 1:
+                                station_points = []
+                                for code in selected_stations:
+                                    if code in stations:
+                                        station_points.append([stations[code]['lat'], stations[code]['lon']])
+
+                                folium.PolyLine(
+                                    station_points,
+                                    weight=2,
+                                    color='gray',
+                                    opacity=0.8,
+                                    dash_array='5, 10'
                                 ).add_to(m)
 
-                        # Add railway lines between selected stations if more than one
-                        if len(selected_stations) > 1:
-                            station_points = []
-                            for code in selected_stations:
-                                if code in stations:
-                                    station_points.append([stations[code]['lat'], stations[code]['lon']])
+                        # Display the map
+                        folium_static(m, width=400, height=500)
 
-                            folium.PolyLine(
-                                station_points,
-                                weight=2,
-                                color='gray',
-                                opacity=0.8,
-                                dash_array='5, 10'
-                            ).add_to(m)
+                        # Show info message if no stations selected
+                        if not selected_stations:
+                            st.info("Select stations from the table on the left to view them on the map")
 
-                    # Display the map
-                    folium_static(m, width=400, height=500)
-
-                    # Show info message if no stations selected
-                    if not selected_stations:
-                        st.info("Select stations from the table on the left to view them on the map")
-                    else:
-                        st.success(f"Showing {len(selected_stations)} selected stations on the map")
+                    except Exception as e:
+                        st.error(f"Error rendering map: {str(e)}")
+                        st.exception(e)
 
         else:
             st.warning("No data available in cache")
@@ -489,9 +495,11 @@ st.session_state['last_refresh'] = now
 st.caption(f"Last refresh: {ist_time.strftime('%Y-%m-%d %H:%M:%S')} IST")
 st.caption("Auto-refreshing every 4 minutes")
 
+
 # Removed the old progress bar and replaced it with a countdown timer.
 show_countdown_progress(240, 0.1)
 show_refresh_timestamp()
+
 
 # Refresh the page
 st.rerun()
