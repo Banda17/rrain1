@@ -139,10 +139,6 @@ def initialize_session_state():
         'map_viewer': {
             'default': MapViewer(),
             'type': MapViewer
-        },
-        'selected_stations': {
-            'default': [],
-            'type': list
         }
     }
 
@@ -251,15 +247,6 @@ try:
     refresh_placeholder.empty()
 
     if success:
-        # Show last update time
-        if data_handler.last_update:
-            # Convert last update to IST (UTC+5:30)
-            last_update_ist = data_handler.last_update + timedelta(hours=5,
-                                                                   minutes=30)
-            st.info(
-                f"Last updated: {last_update_ist.strftime('%Y-%m-%d %H:%M:%S')} IST"
-            )
-
         # Get cached data
         cached_data = data_handler.get_cached_data()
 
@@ -284,6 +271,8 @@ try:
                 columns_to_drop = [
                     'Sr.',
                     'Exit Time for NLT Status',
+                    'FROM-TO',
+                    'Start date',
                     # Try different column name variations
                     'Scheduled [ Entry - Exit ]',
                     'Scheduled [Entry - Exit]',
@@ -364,9 +353,6 @@ try:
                             "Train No.":
                             st.column_config.TextColumn("Train No.",
                                                         help="Train Number"),
-                            "FROM-TO":
-                            st.column_config.TextColumn(
-                                "FROM-TO", help="Source to Destination"),
                             "IC Entry Delay":
                             st.column_config.TextColumn("IC Entry Delay",
                                                         help="Entry Delay"),
@@ -388,64 +374,7 @@ try:
                     refresh_table_placeholder.empty()
 
                 with col_map:
-                    st.subheader("Station Map")
-
-                    # Define station coordinates with actual GPS locations
-                    stations = {
-                        'BZA': {'name': 'Vijayawada', 'lat': 16.5167, 'lon': 80.6167},
-                        'GNT': {'name': 'Guntur', 'lat': 16.3067, 'lon': 80.4365},
-                        'VSKP': {'name': 'Visakhapatnam', 'lat': 17.6868, 'lon': 83.2185},
-                        'TUNI': {'name': 'Tuni', 'lat': 17.3572, 'lon': 82.5483},
-                        'RJY': {'name': 'Rajahmundry', 'lat': 17.0005, 'lon': 81.7799},
-                        'NLDA': {'name': 'Nalgonda', 'lat': 17.0575, 'lon': 79.2690},
-                        'MTM': {'name': 'Mangalagiri', 'lat': 16.4307, 'lon': 80.5525},
-                        'NDL': {'name': 'Nidadavolu', 'lat': 16.9107, 'lon': 81.6717},
-                        'ANV': {'name': 'Anakapalle', 'lat': 17.6910, 'lon': 83.0037},
-                        'VZM': {'name': 'Vizianagaram', 'lat': 18.1066, 'lon': 83.4205},
-                        'SKM': {'name': 'Srikakulam', 'lat': 18.2949, 'lon': 83.8935},
-                        'PLH': {'name': 'Palasa', 'lat': 18.7726, 'lon': 84.4162}
-                    }
-
-                    # Create DataFrame for station selection
-                    stations_df = pd.DataFrame([
-                        {
-                            'Select': code in st.session_state.get('selected_stations', []),
-                            'Station Code': code,
-                            'Name': info['name'],
-                            'Latitude': info['lat'],
-                            'Longitude': info['lon']
-                        }
-                        for code, info in stations.items()
-                    ])
-
-                    # Add a more prominent title for the selection table
-                    st.markdown("### Station Selection")
-                    st.markdown("Select stations below to display on the map:")
-
-                    # Make the dataframe interactive with checkboxes
-                    edited_df = st.data_editor(
-                        stations_df,
-                        hide_index=True,
-                        column_config={
-                            "Select": st.column_config.CheckboxColumn(
-                                "Select",
-                                help="Select to show on map",
-                                default=False
-                            )
-                        },
-                        disabled=["Station Code", "Name", "Latitude", "Longitude"],
-                        use_container_width=True,
-                        height=220
-                    )
-
-                    # Get selected stations for map display
-                    selected_stations_df = edited_df[edited_df['Select']]
-
-                    # Update session state with selected station codes for persistence
-                    if not selected_stations_df.empty:
-                        st.session_state['selected_stations'] = selected_stations_df['Station Code'].tolist()
-                    else:
-                        st.session_state['selected_stations'] = []
+                    st.subheader("GPS Map View")
 
                     # Initialize map viewer
                     map_viewer = st.session_state['map_viewer']
@@ -453,27 +382,17 @@ try:
                     # Get the currently selected train station from table selection (if any)
                     selected_train = st.session_state.get('selected_train')
 
-                    # Add a divider between selection and map
-                    st.markdown("---")
-                    st.markdown("### Map View")
-
-                    # Render the map with both the manually selected stations and any selected train
+                    # Render the map with the selected train
                     base_map = map_viewer.load_map()
 
                     if base_map:
                         # Draw all station markers
                         display_image = base_map.copy()
 
-                        # First draw the stations selected from checkboxes
-                        for _, row in selected_stations_df.iterrows():
-                            station_code = row['Station Code']
-                            display_image = map_viewer.draw_train_marker(display_image, station_code)
-
-                        # Also highlight the station from the table selection (if different)
+                        # Highlight the station from the table selection (if any)
                         if selected_train and selected_train.get('station'):
                             station_code = selected_train['station']
-                            if station_code not in st.session_state.get('selected_stations', []):
-                                display_image = map_viewer.draw_train_marker(display_image, station_code)
+                            display_image = map_viewer.draw_train_marker(display_image, station_code)
 
                         # Prepare and display the image
                         display_image = display_image.convert('RGB')
@@ -495,14 +414,8 @@ try:
                         st.image(
                             display_image,
                             use_container_width=True,
-                            caption="Station Map - Vijayawada Division"
+                            caption="GPS Map - Vijayawada Division"
                         )
-
-                        # Show summary of selected stations
-                        if not selected_stations_df.empty:
-                            st.success(f"Showing {len(selected_stations_df)} selected stations on the map")
-                        else:
-                            st.info("Select stations from the table above to display them on the map")
 
                         # Show train information if a train is selected from the table
                         if selected_train and selected_train.get('station'):
@@ -514,6 +427,8 @@ try:
                                 - Status: {st.session_state['selected_train_details'].get('Current Status', '')}
                                 - Delay: {st.session_state['selected_train_details'].get('Delay', '')}
                                 """)
+                        else:
+                            st.info("Click on a train in the table to see its location on the map")
                     else:
                         st.error("Unable to load the base map. Please check the map file path.")
 
