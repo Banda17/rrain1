@@ -77,7 +77,7 @@ try:
                 # Filter rows where Delay column has positive values or (+)
                 if 'Delay' in df.columns:
                     filtered_df = df[df['Delay'].apply(is_positive_or_plus)]
-                    st.write(f"Showing {len(filtered_df)} entries with positive delays")
+                    st.write(f"Showing {len(filtered_df)} entries")
                 else:
                     filtered_df = df
                     st.warning("Delay column not found in data")

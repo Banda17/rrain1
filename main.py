@@ -9,6 +9,7 @@ from database import init_db
 from train_schedule import TrainSchedule
 import logging
 from typing import Optional, Dict
+import re
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -106,6 +107,13 @@ def initialize_session_state():
         if key not in st.session_state:
             st.session_state[key] = config['default']
 
+    # Initialize ICMS data handler if not in session state
+    if 'icms_data_handler' not in st.session_state:
+        data_handler = DataHandler()
+        # Override the spreadsheet URL for ICMS data
+        data_handler.spreadsheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRO2ZV-BOcL11_5NhlrOnn5Keph3-cVp7Tyr1t6RxsoDvxZjdOyDsmRkdvesJLbSnZwY8v3CATt1Of9/pub?gid=155911658&single=true&output=csv"
+        st.session_state['icms_data_handler'] = data_handler
+
 def update_selected_train_details(selected):
     """Update the selected train details in session state"""
     try:
@@ -156,10 +164,10 @@ def handle_timing_status_change():
 @st.cache_data(ttl=300)
 def load_and_process_data():
     """Cache data loading and processing"""
-    success, message = st.session_state['data_handler'].load_data_from_drive()
+    success, message = st.session_state['icms_data_handler'].load_data_from_drive()
     if success:
-        status_table = st.session_state['data_handler'].get_train_status_table()
-        cached_data = st.session_state['data_handler'].get_cached_data()
+        status_table = st.session_state['icms_data_handler'].get_train_status_table()
+        cached_data = st.session_state['icms_data_handler'].get_cached_data()
         if cached_data:
             return True, status_table, pd.DataFrame(cached_data), message
     return False, None, None, message
@@ -167,173 +175,93 @@ def load_and_process_data():
 # Initialize session state
 initialize_session_state()
 
-# Train List Section
-st.title("🚂 Train List")
+# Main page title
+st.title("ICMS Data - Vijayawada Division")
 
 try:
-    # Load data with caching
-    success, status_table, cached_data, message = load_and_process_data()
+    data_handler = st.session_state['icms_data_handler']
 
-    if success and cached_data is not None and not cached_data.empty:
-        # Initialize DataFrame with first row as header
-        df = pd.DataFrame(cached_data)
-        df.columns = df.iloc[0]
-        df = df.iloc[1:].reset_index(drop=True)
+    # Load data with feedback
+    with st.spinner("Loading ICMS data..."):
+        success, message = data_handler.load_data_from_drive()
 
-        # Create mask for numeric train names
-        numeric_mask = df['Train Name'].str.match(r'^\d.*', na=False)
+    if success:
+        # Show last update time
+        if data_handler.last_update:
+            st.info(f"Last updated: {data_handler.last_update.strftime('%Y-%m-%d %H:%M:%S')}")
 
-        # Create new DataFrame with only required data
-        columns_needed = ['Train Name', 'Station', 'Time', 'Status']
-        filtered_df = df.loc[numeric_mask, columns_needed].copy()
+        # Get cached data
+        cached_data = data_handler.get_cached_data()
 
-        # Convert Time column to show only the time part (HH:MM)
-        def extract_time(time_str):
-            try:
-                return time_str.split()[0] if time_str else ''
-            except Exception as e:
-                logger.error(f"Error extracting time from {time_str}: {str(e)}")
-                return time_str
+        if cached_data:
+            # Convert to DataFrame
+            df = pd.DataFrame(cached_data)
 
-        # Apply the time extraction to the Time column
-        filtered_df['Time_Display'] = filtered_df['Time'].apply(extract_time)
+            if not df.empty:
+                # Skip first two rows (0 and 1) and reset index
+                df = df.iloc[2:].reset_index(drop=True)
 
-        # Add scheduled time column
-        def get_scheduled_time_with_logging(row):
-            train_name = str(row['Train Name'])
-            station = str(row['Station'])
-            scheduled_time = st.session_state['train_schedule'].get_scheduled_time(
-                train_name, station
-            )
-            if scheduled_time and scheduled_time.strip():
-                try:
-                    time_part = scheduled_time.split()[0]
-                    return time_part
-                except Exception as e:
-                    logger.error(f"Error parsing scheduled time {scheduled_time}: {str(e)}")
-                    return scheduled_time
-            return 'Not Available'
+                # Safe conversion of NaN values to None
+                def safe_convert(value):
+                    if pd.isna(value) or pd.isnull(value):
+                        return None
+                    return str(value) if value is not None else None
 
-        # Add Sch_Time column
-        filtered_df['Sch_Time'] = filtered_df.apply(
-            get_scheduled_time_with_logging,
-            axis=1
-        )
+                # Apply safe conversion to all elements
+                df = df.applymap(safe_convert)
 
-        # Calculate time difference
-        filtered_df['Delay'] = filtered_df.apply(
-            lambda row: format_delay_value(
-                calculate_time_difference(
-                    row['Sch_Time'], 
-                    row['Time_Display']
+                # Drop unwanted columns
+                columns_to_drop = [
+                    'Sr.', 
+                    'Exit Time for NLT Status', 
+                    'Scheduled [ Entry - Exit ]', 
+                    'Divisional Actual [ Entry - Exit ]'
+                ]
+                df = df.drop(columns=columns_to_drop, errors='ignore')
+
+                # Function to check if a value is positive or contains (+)
+                def is_positive_or_plus(value):
+                    if value is None:
+                        return False
+                    if isinstance(value, str):
+                        # Check for numbers in brackets with +
+                        bracket_match = re.search(r'\(.*?\+.*?\)', value)
+                        if bracket_match:
+                            return True
+                        # Try to convert to number if possible
+                        try:
+                            num = float(value.replace('(', '').replace(')', '').strip())
+                            return num > 0
+                        except:
+                            return False
+                    return False
+
+                # Filter rows where Delay column has positive values or (+)
+                if 'Delay' in df.columns:
+                    filtered_df = df[df['Delay'].apply(is_positive_or_plus)]
+                    st.write(f"Showing {len(filtered_df)} entries with positive delays")
+                else:
+                    filtered_df = df
+                    st.warning("Delay column not found in data")
+
+                # Show the filtered data - removed height parameter to show all rows without scrolling
+                st.dataframe(
+                    filtered_df,
+                    use_container_width=True,
+                    column_config={
+                        "Train No.": st.column_config.TextColumn("Train No.", help="Train Number"),
+                        "FROM-TO": st.column_config.TextColumn("FROM-TO", help="Source to Destination"),
+                        "IC Entry Delay": st.column_config.TextColumn("IC Entry Delay", help="Entry Delay"),
+                        "Delay": st.column_config.TextColumn("Delay", help="Delay in Minutes")
+                    }
                 )
-            ),
-            axis=1
-        )
-
-
-        # Add a background color based on condition
-        def style_delay(value):
-            if '⚠️' in value:
-                return 'background-color: #FFA07A;'  # Light Salmon
-            elif '⏰' in value:
-                return 'background-color: #8FBC8F;'  # Dark Sea Green
-            elif '✅' in value:
-                return 'background-color: #98FB98;'  # Pale Green
-            return ''
-
-        filtered_df.style.applymap(style_delay, subset=['Delay'])
-
-        # Add checkbox column
-        filtered_df['Select'] = False
-
-        # Both Time columns will show HH:MM format
-        column_order = ['Select', 'Train Name', 'Station', 'Sch_Time', 'Time_Display', 'Status', 'Delay']
-        display_df = filtered_df[column_order].copy()
-        display_df = display_df.rename(columns={'Time_Display': 'Current Time'})
-
-        # Show filtering info and controls
-        st.info(f"Found {len(display_df)} trains with numeric names")
-
-        # Add timing status filter
-        timing_status = st.selectbox(
-            "Filter by Timing Status",
-            ["All", "Late", "On Time", "Early"],
-            index=1,  # Default to "Late"
-            key='timing_status_select',
-            on_change=handle_timing_status_change,
-            help="Filter trains based on their arrival status"
-        )
-
-        # Apply timing status filter using session state
-        current_filter = st.session_state['filter_status']
-        if current_filter != "All":
-            if current_filter == "Late":
-                display_df = display_df[display_df['Delay'].str.contains('⚠️', na=False)]
-            elif current_filter == "Early":
-                display_df = display_df[display_df['Delay'].str.contains('⏰', na=False)]
-            elif current_filter == "On Time":
-                display_df = display_df[display_df['Delay'].str.contains('✅', na=False)]
-
-            st.info(f"Showing {len(display_df)} {current_filter.lower()} trains")
-
-        # Make the dataframe interactive
-        edited_df = st.data_editor(
-            display_df,
-            use_container_width=True,
-            height=400,
-            key="train_selector",
-            column_order=column_order,
-            disabled=["Train Name", "Station", "Sch_Time", "Current Time", "Status", "Delay"],
-            column_config={
-                "Select": st.column_config.CheckboxColumn(
-                    "Select",
-                    help="Select to highlight train",
-                    width="small",
-                    default=False
-                ),
-                "Current Time": st.column_config.TextColumn(
-                    "Current Time",
-                    help="Current time in 24-hour format"
-                ),
-                "Sch_Time": st.column_config.TextColumn(
-                    "Scheduled Time",
-                    help="Scheduled time in 24-hour format"
-                ),
-                "Delay": st.column_config.TextColumn(
-                    "Delay (mins)",
-                    help="Time difference between scheduled and actual time in minutes"
-                )
-            }
-        )
-
-        if len(edited_df) > 0:
-            # Get currently selected trains
-            selected_trains = edited_df[edited_df['Select']]
-
-            if selected_trains.empty:
-                # Clear selection
-                st.session_state['selected_train'] = None
-                st.session_state['selected_train_details'] = {}
-            else:
-                # Get the first selected train and update details
-                update_selected_train_details(selected_trains.iloc[0])
-
-        # Display the selected train details if available
-        if st.session_state['selected_train_details']:
-            selected_details = st.session_state['selected_train_details']
-            st.markdown(f"<p>{selected_details['Delay']}</p>", unsafe_allow_html=True)
-            st.write({
-                'Scheduled Time': selected_details['Scheduled Time'],
-                'Actual Time': selected_details['Actual Time'],
-                'Current Status': selected_details['Current Status'],
-            })
+        else:
+            st.warning("No data available in cache")
 
     else:
         st.error(f"Error loading data: {message}")
 
 except Exception as e:
-    logger.error(f"Error occurred: {str(e)}", exc_info=True)
     st.error(f"An error occurred: {str(e)}")
     st.exception(e)
 
