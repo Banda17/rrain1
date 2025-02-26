@@ -57,12 +57,21 @@ class DataHandler:
         try:
             # First, try to make a HEAD request to check if the URL is accessible
             try:
-                head_response = requests.head(self.spreadsheet_url, timeout=5)
-                if head_response.status_code != 200:
-                    error_msg = f"Error accessing spreadsheet: HTTP {head_response.status_code}"
+                head_response = requests.head(self.spreadsheet_url, timeout=5, allow_redirects=True)
+                status_code = head_response.status_code
+
+                # Log redirect information if present
+                if head_response.history:
+                    redirect_chain = " -> ".join([str(r.status_code) for r in head_response.history])
+                    logger.info(f"Redirect chain: {redirect_chain}")
+                    logger.info(f"Final URL after redirects: {head_response.url}")
+
+                if status_code != 200:
+                    error_msg = f"Error accessing spreadsheet: HTTP {status_code}"
                     logger.error(error_msg)
                     self.last_error = error_msg
                     return pd.DataFrame()
+
             except requests.exceptions.RequestException as e:
                 error_msg = f"Connection error checking spreadsheet URL: {str(e)}"
                 logger.error(error_msg)
@@ -72,16 +81,35 @@ class DataHandler:
             @st.cache_data(ttl=300, show_spinner=False)
             def fetch_data(url):
                 try:
-                    response = requests.get(url, timeout=10)
-                    if response.status_code != 200:
-                        error_msg = f"Error downloading CSV: HTTP {response.status_code}"
+                    # Use a session to handle redirects properly
+                    session = requests.Session()
+
+                    # Configure session to follow redirects
+                    session.max_redirects = 5
+
+                    # Make the request with the session
+                    response = session.get(url, timeout=10)
+
+                    # Log redirect information
+                    if response.history:
+                        redirect_chain = " -> ".join([str(r.status_code) for r in response.history])
+                        logger.info(f"GET request redirect chain: {redirect_chain}")
+                        logger.info(f"Final URL after GET redirects: {response.url}")
+
+                    status_code = response.status_code
+                    if status_code != 200:
+                        error_msg = f"Error downloading CSV: HTTP {status_code}"
                         logger.error(error_msg)
                         self.last_error = error_msg
                         return pd.DataFrame()
 
-                    # Try to parse the CSV data
+                    # Try to parse the CSV data directly from the response content
                     try:
-                        return pd.read_csv(url)
+                        # Convert the response content to a string with UTF-8 encoding
+                        csv_content = response.content.decode('utf-8')
+
+                        # Use pandas to read the CSV from the string content
+                        return pd.read_csv(pd.io.common.StringIO(csv_content))
                     except Exception as e:
                         error_msg = f"Error parsing CSV data: {str(e)}"
                         logger.error(error_msg)
