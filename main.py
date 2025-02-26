@@ -12,6 +12,8 @@ from typing import Optional, Dict
 import re
 from animation_utils import create_pulsing_refresh_animation, show_countdown_progress, show_refresh_timestamp
 from map_viewer import MapViewer
+import folium
+from streamlit_folium import folium_static
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -136,9 +138,9 @@ def initialize_session_state():
             'default': False,
             'type': bool
         },
-        'map_viewer': {
-            'default': MapViewer(),
-            'type': MapViewer
+        'selected_stations': {
+            'default': [],
+            'type': list
         }
     }
 
@@ -218,6 +220,7 @@ def load_and_process_data():
             return True, status_table, pd.DataFrame(cached_data), message
     return False, None, None, message
 
+
 # Initialize session state
 initialize_session_state()
 
@@ -258,6 +261,9 @@ try:
                 # Skip first two rows (0 and 1) and reset index
                 df = df.iloc[2:].reset_index(drop=True)
 
+                # Add a Select column for checkboxes
+                df['Select'] = False
+
                 # Safe conversion of NaN values to None
                 def safe_convert(value):
                     if pd.isna(value) or pd.isnull(value):
@@ -271,7 +277,6 @@ try:
                 columns_to_drop = [
                     'Sr.',
                     'Exit Time for NLT Status',
-                    'FROM-TO',
                     'Start date',
                     # Try different column name variations
                     'Scheduled [ Entry - Exit ]',
@@ -342,95 +347,125 @@ try:
                     # Apply styling to DataFrame
                     styled_df = filtered_df.style.applymap(highlight_positive_delay, subset=['Delay'])
 
-                    # Create a variable to store selected row for map interaction
-                    selection = None
-
-                    # Show the filtered data with red highlighting
-                    selection = st.dataframe(
-                        styled_df,
+                    # Show the filtered data with checkbox column
+                    edited_df = st.data_editor(
+                        filtered_df,
                         use_container_width=True,
                         column_config={
-                            "Train No.":
-                            st.column_config.TextColumn("Train No.",
-                                                        help="Train Number"),
-                            "IC Entry Delay":
-                            st.column_config.TextColumn("IC Entry Delay",
-                                                        help="Entry Delay"),
-                            "Delay":
-                            st.column_config.TextColumn("Delay",
-                                                        help="Delay in Minutes")
+                            "Select": st.column_config.CheckboxColumn(
+                                "Select",
+                                help="Select to show on map",
+                                default=False
+                            ),
+                            "Train No.": st.column_config.TextColumn(
+                                "Train No.",
+                                help="Train Number"
+                            ),
+                            "IC Entry Delay": st.column_config.TextColumn(
+                                "IC Entry Delay",
+                                help="Entry Delay"
+                            ),
+                            "Delay": st.column_config.TextColumn(
+                                "Delay",
+                                help="Delay in Minutes"
+                            )
                         }
                     )
 
-                    # Update selected train if user clicks on a row
-                    if selection is not None:
-                        try:
-                            selected_row = selection.get('selected_rows', [])
-                            if selected_row:
-                                update_selected_train_details(selected_row[0])
-                        except Exception as e:
-                            logger.error(f"Error handling selection: {str(e)}")
+                    # Get selected stations for map display
+                    selected_rows = edited_df[edited_df['Select']]
+                    selected_stations = []
+
+                    if not selected_rows.empty:
+                        # Extract station codes from selected rows
+                        for _, row in selected_rows.iterrows():
+                            if 'Station' in row and row['Station']:
+                                selected_stations.append(row['Station'])
+
+                        # Update session state
+                        st.session_state['selected_stations'] = selected_stations
+                    else:
+                        st.session_state['selected_stations'] = []
 
                     refresh_table_placeholder.empty()
 
                 with col_map:
-                    st.subheader("GPS Map View")
+                    st.subheader("Interactive GPS Map")
 
-                    # Initialize map viewer
-                    map_viewer = st.session_state['map_viewer']
+                    # Define Andhra Pradesh center coordinates
+                    AP_CENTER = [16.5167, 80.6167]  # Centered around Vijayawada
 
-                    # Get the currently selected train station from table selection (if any)
-                    selected_train = st.session_state.get('selected_train')
+                    # Define station coordinates with actual GPS locations
+                    stations = {
+                        'BZA': {'name': 'Vijayawada', 'lat': 16.5167, 'lon': 80.6167},
+                        'GNT': {'name': 'Guntur', 'lat': 16.3067, 'lon': 80.4365},
+                        'VSKP': {'name': 'Visakhapatnam', 'lat': 17.6868, 'lon': 83.2185},
+                        'TUNI': {'name': 'Tuni', 'lat': 17.3572, 'lon': 82.5483},
+                        'RJY': {'name': 'Rajahmundry', 'lat': 17.0005, 'lon': 81.7799},
+                        'NLDA': {'name': 'Nalgonda', 'lat': 17.0575, 'lon': 79.2690},
+                        'MTM': {'name': 'Mangalagiri', 'lat': 16.4307, 'lon': 80.5525},
+                        'NDL': {'name': 'Nidadavolu', 'lat': 16.9107, 'lon': 81.6717},
+                        'ANV': {'name': 'Anakapalle', 'lat': 17.6910, 'lon': 83.0037},
+                        'VZM': {'name': 'Vizianagaram', 'lat': 18.1066, 'lon': 83.4205},
+                        'SKM': {'name': 'Srikakulam', 'lat': 18.2949, 'lon': 83.8935},
+                        'PLH': {'name': 'Palasa', 'lat': 18.7726, 'lon': 84.4162}
+                    }
 
-                    # Render the map with the selected train
-                    base_map = map_viewer.load_map()
+                    # Create the map centered on Vijayawada
+                    m = folium.Map(
+                        location=AP_CENTER,
+                        zoom_start=7,
+                        tiles='OpenStreetMap'
+                    )
 
-                    if base_map:
-                        # Draw all station markers
-                        display_image = base_map.copy()
+                    # Add markers for selected stations
+                    selected_stations = st.session_state.get('selected_stations', [])
 
-                        # Highlight the station from the table selection (if any)
-                        if selected_train and selected_train.get('station'):
-                            station_code = selected_train['station']
-                            display_image = map_viewer.draw_train_marker(display_image, station_code)
+                    if selected_stations:
+                        # Add markers for selected stations
+                        for station_code in selected_stations:
+                            if station_code in stations:
+                                station_info = stations[station_code]
 
-                        # Prepare and display the image
-                        display_image = display_image.convert('RGB')
-                        original_width, original_height = display_image.size
+                                # Create custom popup content
+                                popup_content = f"""
+                                <div style='font-family: Arial; font-size: 12px;'>
+                                    <b>{station_code} - {station_info['name']}</b><br>
+                                    Lat: {station_info['lat']:.4f}<br>
+                                    Lon: {station_info['lon']:.4f}
+                                </div>
+                                """
 
-                        # Calculate new dimensions maintaining aspect ratio
-                        max_height = 500  # Larger height for better visibility
-                        height_ratio = max_height / original_height
-                        new_width = int(original_width * height_ratio)
-                        new_height = max_height
+                                folium.Marker(
+                                    [station_info['lat'], station_info['lon']],
+                                    popup=folium.Popup(popup_content, max_width=200),
+                                    tooltip=station_code,
+                                    icon=folium.Icon(color='red', icon='info-sign')
+                                ).add_to(m)
 
-                        # Resize the image
-                        display_image = display_image.resize(
-                            (new_width, new_height),
-                            resample=2  # LANCZOS
-                        )
+                        # Add railway lines between selected stations if more than one
+                        if len(selected_stations) > 1:
+                            station_points = []
+                            for code in selected_stations:
+                                if code in stations:
+                                    station_points.append([stations[code]['lat'], stations[code]['lon']])
 
-                        # Display the map
-                        st.image(
-                            display_image,
-                            use_container_width=True,
-                            caption="GPS Map - Vijayawada Division"
-                        )
+                            folium.PolyLine(
+                                station_points,
+                                weight=2,
+                                color='gray',
+                                opacity=0.8,
+                                dash_array='5, 10'
+                            ).add_to(m)
 
-                        # Show train information if a train is selected from the table
-                        if selected_train and selected_train.get('station'):
-                            with st.expander("🚂 Selected Train Information", expanded=True):
-                                st.markdown(f"""
-                                **Train Details:**
-                                - Train Number: {selected_train.get('train', '')}
-                                - Station: {selected_train.get('station', '')}
-                                - Status: {st.session_state['selected_train_details'].get('Current Status', '')}
-                                - Delay: {st.session_state['selected_train_details'].get('Delay', '')}
-                                """)
-                        else:
-                            st.info("Click on a train in the table to see its location on the map")
+                    # Display the map
+                    folium_static(m, width=400, height=500)
+
+                    # Show info message if no stations selected
+                    if not selected_stations:
+                        st.info("Select stations from the table on the left to view them on the map")
                     else:
-                        st.error("Unable to load the base map. Please check the map file path.")
+                        st.success(f"Showing {len(selected_stations)} selected stations on the map")
 
         else:
             st.warning("No data available in cache")
@@ -454,11 +489,9 @@ st.session_state['last_refresh'] = now
 st.caption(f"Last refresh: {ist_time.strftime('%Y-%m-%d %H:%M:%S')} IST")
 st.caption("Auto-refreshing every 4 minutes")
 
-
 # Removed the old progress bar and replaced it with a countdown timer.
 show_countdown_progress(240, 0.1)
 show_refresh_timestamp()
-
 
 # Refresh the page
 st.rerun()
