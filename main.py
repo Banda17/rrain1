@@ -334,31 +334,31 @@ try:
                     filtered_df = df
                     st.warning("Delay column not found in data")
 
-                # Apply red styling to the entire dataframe
-                def color_cells_red(val):
-                    return 'color: red'
+                # Apply red styling only to the Delay column
+                def highlight_delay(df):
+                    # Create a DataFrame of styles with same shape as the input DataFrame
+                    styles = pd.DataFrame('', index=df.index, columns=df.columns)
+
+                    # Apply red color only to the 'Delay' column if it exists
+                    if 'Delay' in df.columns:
+                        styles['Delay'] = 'color: red; font-weight: bold'
+
+                    return styles
 
                 # Apply styling to the dataframe
-                styled_df = filtered_df.style.applymap(color_cells_red)
+                styled_df = filtered_df.style.apply(highlight_delay, axis=None)
 
-                # Show the filtered data with red text
+                # Show the filtered data with red Delay column
                 st.dataframe(
                     styled_df,
                     use_container_width=True,
                     column_config={
-                        "Train No.":
-                        st.column_config.TextColumn("Train No.",
-                                                    help="Train Number"),
-                        "FROM-TO":
-                        st.column_config.TextColumn(
-                            "FROM-TO", help="Source to Destination"),
-                        "IC Entry Delay":
-                        st.column_config.TextColumn("IC Entry Delay",
-                                                    help="Entry Delay"),
-                        "Delay":
-                        st.column_config.TextColumn("Delay",
-                                                    help="Delay in Minutes")
-                    })
+                        "Train No.": st.column_config.TextColumn("Train No.", help="Train Number"),
+                        "FROM-TO": st.column_config.TextColumn("FROM-TO", help="Source to Destination"),
+                        "IC Entry Delay": st.column_config.TextColumn("IC Entry Delay", help="Entry Delay"),
+                        "Delay": st.column_config.TextColumn("Delay", help="Delay in Minutes")
+                    }
+                )
                 refresh_table_placeholder.empty() # Clear the placeholder after table display
         else:
             st.warning("No data available in cache")
