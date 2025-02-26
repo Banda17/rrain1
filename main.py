@@ -213,7 +213,6 @@ def load_and_process_data():
             return True, status_table, pd.DataFrame(cached_data), message
     return False, None, None, message
 
-
 # Initialize session state
 initialize_session_state()
 
@@ -224,7 +223,7 @@ st.title("ICMS Data - Vijayawada Division")
 col1, col2 = st.columns([2, 1])
 with col2:
     if st.button("🔄 Refresh Data Now", type="primary", use_container_width=True):
-        st.experimental_rerun()
+        st.rerun()
 
 try:
     data_handler = st.session_state['icms_data_handler']
@@ -318,7 +317,7 @@ try:
                         try:
                             num = float(
                                 value.replace('(', '').replace(')',
-                                                               '').strip())
+                                                                '').strip())
                             return num > 0
                         except:
                             return False
