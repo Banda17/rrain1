@@ -82,11 +82,10 @@ try:
                     filtered_df = df
                     st.warning("Delay column not found in data")
 
-                # Show the filtered data
+                # Show the filtered data - removed height parameter to show all rows without scrolling
                 st.dataframe(
                     filtered_df,
                     use_container_width=True,
-                    height=600,
                     column_config={
                         "Train No.": st.column_config.TextColumn("Train No.", help="Train Number"),
                         "FROM-TO": st.column_config.TextColumn("FROM-TO", help="Source to Destination"),
