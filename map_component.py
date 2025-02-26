@@ -52,73 +52,13 @@ def render_gps_map(
     # Create a container for the map
     st.subheader(map_title)
 
-    # Initialize session state for map bounds if not already set
-    if 'map_min_lat' not in st.session_state:
-        st.session_state.map_min_lat = 14.5
-    if 'map_max_lat' not in st.session_state:
-        st.session_state.map_max_lat = 19.0
-    if 'map_min_lon' not in st.session_state:
-        st.session_state.map_min_lon = 78.0
-    if 'map_max_lon' not in st.session_state:
-        st.session_state.map_max_lon = 84.0
-
-    # Add map position adjustment sliders
-    st.caption("Adjust map overlay position:")
-
-    # Create columns for a more compact UI
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.session_state.map_min_lat = st.slider(
-            "Min Latitude (Bottom)",
-            12.0, 16.0, st.session_state.map_min_lat, 0.1, 
-            key="min_lat_slider",
-            help="Adjust the bottom edge of the map"
-        )
-        st.session_state.map_min_lon = st.slider(
-            "Min Longitude (Left)",
-            76.0, 80.0, st.session_state.map_min_lon, 0.1,
-            key="min_lon_slider",
-            help="Adjust the left edge of the map"
-        )
-
-    with col2:
-        st.session_state.map_max_lat = st.slider(
-            "Max Latitude (Top)",
-            16.0, 22.0, st.session_state.map_max_lat, 0.1,
-            key="max_lat_slider",
-            help="Adjust the top edge of the map"
-        )
-        st.session_state.map_max_lon = st.slider(
-            "Max Longitude (Right)",
-            80.0, 86.0, st.session_state.map_max_lon, 0.1,
-            key="max_lon_slider",
-            help="Adjust the right edge of the map"
-        )
-
-    # Display current bounds
-    st.caption(f"Current bounds: [{st.session_state.map_min_lat}, {st.session_state.map_min_lon}] to [{st.session_state.map_max_lat}, {st.session_state.map_max_lon}]")
-
-    # Reset bounds button
-    if st.button("Reset to Default Bounds"):
-        st.session_state.map_min_lat = 14.5
-        st.session_state.map_max_lat = 19.0
-        st.session_state.map_min_lon = 78.0
-        st.session_state.map_max_lon = 84.0
-        st.rerun()
-
     # Initialize the map
     map_container = st.container()
 
     with map_container:
         try:
-            # Create a custom map bounds tuple from session state
-            custom_bounds = (
-                st.session_state.map_min_lat,
-                st.session_state.map_max_lat,
-                st.session_state.map_min_lon,
-                st.session_state.map_max_lon
-            )
+            # Create a custom map bounds tuple with user-specified values
+            custom_bounds = (12.2, 18.7, 78.3, 84.3)  # Fixed bounds as requested by user
 
             # Try to use OfflineMapHandler if map file is available
             map_handler = OfflineMapHandler('Vijayawada_Division_System_map_page-0001 (2).png')
