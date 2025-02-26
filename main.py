@@ -100,7 +100,8 @@ def initialize_session_state():
         'last_update': {'default': None, 'type': Optional[datetime]},
         'selected_train': {'default': None, 'type': Optional[Dict]},
         'selected_train_details': {'default': {}, 'type': Dict},
-        'filter_status': {'default': 'Late', 'type': str}
+        'filter_status': {'default': 'Late', 'type': str},
+        'last_refresh': {'default': datetime.now(), 'type': datetime}
     }
 
     for key, config in state_configs.items():
@@ -224,6 +225,7 @@ try:
                     'Scheduled[Entry - Exit]',
                     'Scheduled [ Entry-Exit ]',
                     'Scheduled [Entry-Exit]',
+                    'scheduled[Entry-Exit]',
                     'Divisional Actual [ Entry - Exit ]',
                     'Divisional Actual [Entry - Exit]', 
                     'Divisional Actual[ Entry - Exit ]',
@@ -287,3 +289,13 @@ except Exception as e:
 # Footer
 st.markdown("---")
 st.markdown("Train Tracking System")
+
+# Display refresh information
+now = datetime.now()
+st.session_state['last_refresh'] = now
+st.caption(f"Last refresh: {now.strftime('%Y-%m-%d %H:%M:%S')}")
+st.caption("Auto-refreshing every 4 minutes")
+
+# Auto-refresh functionality - wait for 4 minutes and then refresh
+time.sleep(240)  # 4 minutes
+st.rerun()
