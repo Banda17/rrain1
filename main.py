@@ -210,14 +210,33 @@ try:
                 # Apply safe conversion to all elements
                 df = df.applymap(safe_convert)
 
-                # Drop unwanted columns
+                # Get and print all column names for debugging
+                logger.debug(f"Available columns: {df.columns.tolist()}")
+
+                # Drop unwanted columns - use exact column names with proper spacing
                 columns_to_drop = [
-                    'Sr.', 
-                    'Exit Time for NLT Status', 
-                    'Scheduled [ Entry - Exit ]', 
-                    'Divisional Actual [ Entry - Exit ]'
+                    'Sr.',
+                    'Exit Time for NLT Status',
+                    # Try different column name variations
+                    'Scheduled [ Entry - Exit ]',
+                    'Scheduled [Entry - Exit]',
+                    'Scheduled[ Entry - Exit ]',
+                    'Scheduled[Entry - Exit]',
+                    'Scheduled [ Entry-Exit ]',
+                    'Scheduled [Entry-Exit]',
+                    'Divisional Actual [ Entry - Exit ]',
+                    'Divisional Actual [Entry - Exit]', 
+                    'Divisional Actual[ Entry - Exit ]',
+                    'Divisional Actual[Entry - Exit]',
+                    'Divisional Actual [ Entry-Exit ]',
+                    'Divisional Actual [Entry-Exit]'
                 ]
-                df = df.drop(columns=columns_to_drop, errors='ignore')
+
+                # Drop each column individually if it exists
+                for col in columns_to_drop:
+                    if col in df.columns:
+                        df = df.drop(columns=[col])
+                        logger.debug(f"Dropped column: {col}")
 
                 # Function to check if a value is positive or contains (+)
                 def is_positive_or_plus(value):
