@@ -292,8 +292,10 @@ st.markdown("Train Tracking System")
 
 # Display refresh information
 now = datetime.now()
+# Convert to IST (UTC+5:30)
+ist_time = now + timedelta(hours=5, minutes=30)
 st.session_state['last_refresh'] = now
-st.caption(f"Last refresh: {now.strftime('%Y-%m-%d %H:%M:%S')}")
+st.caption(f"Last refresh: {ist_time.strftime('%Y-%m-%d %H:%M:%S')} IST")
 st.caption("Auto-refreshing every 4 minutes")
 
 # Auto-refresh functionality - wait for 4 minutes and then refresh
