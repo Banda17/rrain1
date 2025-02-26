@@ -219,10 +219,10 @@ initialize_session_state()
 # Main page title
 st.title("ICMS Data - Vijayawada Division")
 
-# Add a refresh button at the top
-col1, col2 = st.columns([2, 1])
+# Add a refresh button at the top with just an icon
+col1, col2 = st.columns([10, 1])
 with col2:
-    if st.button("🔄 Refresh Data Now", type="primary", use_container_width=True):
+    if st.button("🔄", type="primary"):
         st.rerun()
 
 try:
@@ -245,7 +245,8 @@ try:
         # Show last update time
         if data_handler.last_update:
             # Convert last update to IST (UTC+5:30)
-            last_update_ist = data_handler.last_update + timedelta(hours=5, minutes=30)
+            last_update_ist = data_handler.last_update + timedelta(hours=5,
+                                                                   minutes=30)
             st.info(
                 f"Last updated: {last_update_ist.strftime('%Y-%m-%d %H:%M:%S')} IST"
             )
