@@ -334,9 +334,16 @@ try:
                     filtered_df = df
                     st.warning("Delay column not found in data")
 
-                # Show the filtered data - removed height parameter to show all rows without scrolling
+                # Apply red styling to the entire dataframe
+                def color_cells_red(val):
+                    return 'color: red'
+
+                # Apply styling to the dataframe
+                styled_df = filtered_df.style.applymap(color_cells_red)
+
+                # Show the filtered data with red text
                 st.dataframe(
-                    filtered_df,
+                    styled_df,
                     use_container_width=True,
                     column_config={
                         "Train No.":
