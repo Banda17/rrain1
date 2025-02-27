@@ -618,7 +618,7 @@ try:
 
                         return styles
 
-                    # Add a "Select" column at the beginning of the DataFrame for checkboxes
+                    # Add a "# Add a "Select" column at the beginning of the DataFrame for checkboxes
                     if 'Select' not in filtered_df.columns:
                         filtered_df.insert(0, 'Select', False)
 
@@ -702,18 +702,11 @@ try:
                                        index=0, horizontal=True)
 
                     if map_type == "Offline Map with GPS Markers":
-                        # Add controls for map adjustments
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            marker_opacity = st.slider("Marker Opacity", 0.1, 1.0, 0.8, 0.1)
-                        with col2:
-                            map_tilt = st.slider("Map Tilt/Rotation (degrees)", 0, 30, 0, 1)
-
                         # Use the MapViewer to render offline map with markers
                         if selected_station_codes:
-                            # Render offline map with GPS markers
+                            # Render offline map with GPS markers with fixed settings
                             display_image, displayed_stations = render_offline_map_with_markers(
-                                selected_station_codes, station_coords, marker_opacity)
+                                selected_station_codes, station_coords, marker_opacity=0.9)
 
                             if display_image is not None:
                                 # Resize for display if needed
@@ -722,19 +715,11 @@ try:
                                 height_ratio = max_height / original_height
                                 new_width = int(original_width * height_ratio)
 
-                                # Apply tilt/rotation if requested (using PIL Image rotation)
-                                if map_tilt > 0:
-                                    import math
-                                    from PIL import Image
-                                    # Apply rotation with expand=True to keep the full image visible
-                                    display_image = display_image.rotate(map_tilt, Image.Resampling.BICUBIC, expand=True)
-
-
                                 # Display the map
                                 st.image(
                                     display_image,
                                     use_container_width=True,
-                                    caption=f"Vijayawada Division System Map with Selected Stations (Tilt: {map_tilt}°)"
+                                    caption=f"Vijayawada Division System Map with Selected Stations"
                                 )
 
                                 # Show station count
@@ -747,56 +732,28 @@ try:
                             map_viewer = st.session_state['map_viewer']
                             base_map = map_viewer.load_map()
                             if base_map:
-                                # Apply tilt to base map if needed
-                                if map_tilt > 0:
-                                    from PIL import Image
-                                    base_map = base_map.rotate(map_tilt, Image.Resampling.BICUBIC, expand=True)
-
                                 st.image(
                                     base_map,
                                     use_container_width=True,
-                                    caption=f"Select stations from the table to display on the map (Tilt: {map_tilt}°)"
+                                    caption="Select stations from the table to display on the map"
                                 )
                                 st.info("Select stations from the table to display them on the map")
                             else:
                                 st.error("Unable to load the base map. Please check the map file path.")
                     else:
                         # Interactive GPS Map section
-                        # Add 3D controls for the interactive map
-                        st.caption("Map View Controls")
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            map_opacity = st.slider("Map Opacity", 0.1, 1.0, 0.8, 0.1)
-                        with col2:
-                            map_pitch = st.slider("Map Pitch (3D View)", 0, 60, 0, 5)
-
-                        # Create the base map with 3D capabilities
-                        import folium
-                        from folium.plugins import Draw
-
-                        # Define map options with pitch control if supported
-                        map_options = {
-                            'zoom': 7,
-                            'zoomControl': True,
-                        }
-
-                        # Add pitch control if requested
-                        if map_pitch > 0:
-                            map_options['pitch'] = map_pitch
-
-                        # Create the map with options
+                        # Create the map with standard settings
                         m = folium.Map(
                             location=[16.5167, 80.6167],  # Centered around Vijayawada
                             zoom_start=7,
-                            control_scale=True,
-                            **map_options
+                            control_scale=True
                         )
 
-                        # Add a basemap with adjustable opacity
+                        # Add a basemap with fixed opacity
                         folium.TileLayer(
                             tiles='OpenStreetMap',
                             attr='&copy; OpenStreetMap contributors',
-                            opacity=map_opacity
+                            opacity=0.8
                         ).add_to(m)
 
                         # Add markers efficiently
@@ -815,13 +772,13 @@ try:
                                 # Simple popup for better performance
                                 popup_content = f"<b>{normalized_code}</b><br>({lat:.4f}, {lon:.4f})"
 
-                                # Add marker with adjusted opacity in style
+                                # Add marker with fixed opacity
                                 folium.Marker(
                                     [lat, lon],
                                     popup=folium.Popup(popup_content, max_width=200),
                                     tooltip=normalized_code,
                                     icon=folium.Icon(color='red', icon='train', prefix='fa'),
-                                    opacity=map_opacity  # Apply opacity to marker
+                                    opacity=0.9  # Fixed opacity value
                                 ).add_to(m)
 
                                 displayed_stations.append(normalized_code)
@@ -833,12 +790,12 @@ try:
                                 valid_points,
                                 weight=2,
                                 color='gray',
-                                opacity=map_opacity * 0.8,  # Slightly more transparent than markers
+                                opacity=0.8,  # Fixed opacity value
                                 dash_array='5, 10'
                             ).add_to(m)
 
                         # Render the map
-                        st.subheader(f"Interactive Map (3D Pitch: {map_pitch}°)")
+                        st.subheader("Interactive Map")
                         folium_static(m, width=None, height=550)
 
                     # Add instructions in collapsible section for better UI performance

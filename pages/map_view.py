@@ -16,7 +16,7 @@ st.set_page_config(
 st.title("🗺️ Division Map View")
 st.markdown("""
 This interactive map shows the stations in Vijayawada Division with their GPS coordinates.
-Use the controls below to customize the view.
+Select stations from the table below to display them on the map.
 """)
 
 # Define Andhra Pradesh center coordinates
@@ -113,15 +113,8 @@ map_type = st.radio("Map Type", ["Offline Map with GPS Markers", "Interactive GP
                     index=0, horizontal=True)
 
 if map_type == "Offline Map with GPS Markers":
-    # Add controls for map adjustments
-    col1, col2 = st.columns(2)
-    with col1:
-        marker_opacity = st.slider("Marker Opacity", 0.1, 1.0, 0.8, 0.1)
-    with col2:
-        map_tilt = st.slider("Map Tilt/Rotation (degrees)", 0, 30, 0, 1)
-
     # Function to render offline map with markers
-    def render_offline_map_with_markers(selected_stations_df, marker_opacity=0.8):
+    def render_offline_map_with_markers(selected_stations_df):
         """Render an offline map with GPS markers for selected stations"""
         # Temporarily increase marker size
         original_marker_size = map_viewer.base_marker_size
@@ -166,42 +159,12 @@ if map_type == "Offline Map with GPS Markers":
         # Restore original marker size
         map_viewer.base_marker_size = original_marker_size
 
-        # Apply opacity to the image
-        def apply_marker_opacity(img, opacity):
-            """Apply opacity to the non-background pixels of an image"""
-            if opacity >= 1.0:  # No change needed if fully opaque
-                return img
-
-            # Convert to RGBA if not already
-            if img.mode != 'RGBA':
-                img = img.convert('RGBA')
-
-            # Create a copy to work with
-            result = img.copy()
-
-            # Get pixel data
-            pixdata = result.load()
-
-            # Adjust alpha channel for pixels that are not fully transparent
-            width, height = img.size
-            for y in range(height):
-                for x in range(width):
-                    r, g, b, a = pixdata[x, y]
-                    if a > 0:  # Only modify non-transparent pixels
-                        pixdata[x, y] = (r, g, b, int(a * opacity))
-
-            return result
-
-        if marker_opacity < 1.0:
-            display_image = apply_marker_opacity(display_image, marker_opacity)
-
         return display_image, displayed_stations
 
     # Use the function to render offline map with markers
     if not selected_stations.empty:
         # Render offline map with GPS markers
-        display_image, displayed_stations = render_offline_map_with_markers(
-            selected_stations, marker_opacity)
+        display_image, displayed_stations = render_offline_map_with_markers(selected_stations)
 
         if display_image is not None:
             # Resize for display if needed
@@ -211,16 +174,11 @@ if map_type == "Offline Map with GPS Markers":
             height_ratio = max_height / original_height
             new_width = int(original_width * height_ratio)
 
-            # Apply tilt/rotation if requested (using PIL Image rotation)
-            if map_tilt > 0:
-                # Apply rotation with expand=True to keep the full image visible
-                display_image = display_image.rotate(map_tilt, Image.Resampling.BICUBIC, expand=True)
-
             # Display the map
             st.image(
                 display_image,
                 use_container_width=True,
-                caption=f"Vijayawada Division System Map with Selected Stations (Tilt: {map_tilt}°)"
+                caption="Vijayawada Division System Map with Selected Stations"
             )
 
             # Show station count
@@ -232,52 +190,28 @@ if map_type == "Offline Map with GPS Markers":
         # Show empty map with message
         base_map = map_viewer.load_map()
         if base_map:
-            # Apply tilt to base map if needed
-            if map_tilt > 0:
-                from PIL import Image
-                base_map = base_map.rotate(map_tilt, Image.Resampling.BICUBIC, expand=True)
-
             st.image(
                 base_map,
                 use_container_width=True,
-                caption=f"Select stations from the table to display on the map (Tilt: {map_tilt}°)"
+                caption="Select stations from the table to display on the map"
             )
             st.info("Select stations from the table to display them on the map")
         else:
             st.error("Unable to load the base map. Please check the map file path.")
 else:
     # Interactive GPS Map section
-    # Add 3D controls for the interactive map
-    st.caption("Map View Controls")
-    col1, col2 = st.columns(2)
-    with col1:
-        map_opacity = st.slider("Map Opacity", 0.1, 1.0, 0.8, 0.1)
-    with col2:
-        map_pitch = st.slider("Map Pitch (3D View)", 0, 60, 0, 5)
-
-    # Define map options with pitch control if supported
-    map_options = {
-        'zoom': 7,
-        'zoomControl': True,
-    }
-
-    # Add pitch control if requested
-    if map_pitch > 0:
-        map_options['pitch'] = map_pitch
-
-    # Create the map with options
+    # Create the map
     m = folium.Map(
         location=[16.5167, 80.6167],  # Centered around Vijayawada
         zoom_start=7,
-        control_scale=True,
-        **map_options
+        control_scale=True
     )
 
-    # Add a basemap with adjustable opacity
+    # Add a basemap
     folium.TileLayer(
         tiles='OpenStreetMap',
         attr='&copy; OpenStreetMap contributors',
-        opacity=map_opacity
+        opacity=0.8
     ).add_to(m)
 
     # Add markers only for selected stations
@@ -299,7 +233,7 @@ else:
                 popup=folium.Popup(popup_content, max_width=200),
                 tooltip=station['Station Code'],
                 icon=folium.Icon(color='red', icon='train', prefix='fa'),
-                opacity=map_opacity  # Apply opacity to marker
+                opacity=0.9  # Fixed opacity
             ).add_to(m)
 
             # Add to points for railway line
@@ -311,12 +245,12 @@ else:
                 valid_points,
                 weight=2,
                 color='gray',
-                opacity=map_opacity * 0.8,  # Slightly more transparent than markers
+                opacity=0.8,  # Fixed opacity
                 dash_array='5, 10'
             ).add_to(m)
 
     # Display the map
-    st.subheader(f"Interactive Map (3D Pitch: {map_pitch}°)")
+    st.subheader("Interactive Map")
     folium_static(m, width=1000, height=600)
 
 # Add instructions in collapsible section
@@ -329,7 +263,6 @@ with st.expander("About GPS Coordinates"):
 
     ### Map Features
     - Switch between offline map and interactive GPS view
-    - Adjust opacity and rotation/tilt for better visualization
     - Railway lines automatically connect selected stations in sequence
     - Select multiple stations to see their connections
     """)
