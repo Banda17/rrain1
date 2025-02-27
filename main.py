@@ -452,8 +452,72 @@ try:
 
                 # Render map in the right column
                 with map_col:
-                    # Only show selected stations
+                    # Hardcoded station coordinates
+                    station_coords = {
+                        'BZA': {'lat': 16.5167, 'lon': 80.6167},  # Vijayawada
+                        'GNT': {'lat': 16.3067, 'lon': 80.4365},  # Guntur
+                        'VSKP': {'lat': 17.6868, 'lon': 83.2185},  # Visakhapatnam
+                        'TUNI': {'lat': 17.3572, 'lon': 82.5483},  # Tuni
+                        'RJY': {'lat': 17.0005, 'lon': 81.7799},  # Rajahmundry
+                        'NLDA': {'lat': 17.0575, 'lon': 79.2690},  # Nalgonda
+                        'MTM': {'lat': 16.4307, 'lon': 80.5525},  # Mangalagiri
+                        'NDL': {'lat': 16.9107, 'lon': 81.6717},  # Nidadavolu
+                        'ANV': {'lat': 17.6910, 'lon': 83.0037},  # Anakapalle
+                        'VZM': {'lat': 18.1066, 'lon': 83.4205},  # Vizianagaram
+                        'SKM': {'lat': 18.2949, 'lon': 83.8935},  # Srikakulam
+                        'PLH': {'lat': 18.7726, 'lon': 84.4162},   # Palasa
+                        'GDR': {'lat': 14.1487258, 'lon': 79.8456503},
+                        'MBL': {'lat': 14.2258343, 'lon': 79.8779689},
+                        'KMLP': {'lat': 14.2258344, 'lon': 79.8779689},
+                        'VKT': {'lat': 14.3267653, 'lon': 79.9270371},
+                        'VDE': {'lat': 14.4064058, 'lon': 79.9553191},
+                        'NLR': {'lat': 14.4530742, 'lon': 79.9868332},
+                        'PGU': {'lat': 14.4980222, 'lon': 79.9901535},
+                        'KJJ': {'lat': 14.5640002, 'lon': 79.9938934},
+                        'AXR': {'lat': 14.7101, 'lon': 79.9893},
+                        'BTTR': {'lat': 14.7743359, 'lon': 79.9667298},
+                        'SVPM': {'lat': 14.7949226, 'lon': 79.9624715},
+                        'KVZ': {'lat': 14.9242136, 'lon': 79.9788932},
+                        'TTU': {'lat': 15.0428954, 'lon': 80.0044243},
+                        'UPD': {'lat': 15.1671213, 'lon': 80.0131329},
+                        'SKM': {'lat': 15.252886, 'lon': 80.026428},
+                        'OGL': {'lat': 15.497849, 'lon': 80.0554939},
+                        'KRV': {'lat': 15.5527145, 'lon': 80.1134587},
+                        'ANB': {'lat': 15.596741, 'lon': 80.1362815},
+                        'RPRL': {'lat': 15.6171364, 'lon': 80.1677164},
+                        'UGD': {'lat': 15.6481768, 'lon': 80.1857879},
+                        'KVDV': {'lat': 15.7164922, 'lon': 80.2369806},
+                        'KPLL': {'lat': 15.7482165, 'lon': 80.2573225},
+                        'VTM': {'lat': 15.7797094, 'lon': 80.2739975},
+                        'JAQ': {'lat': 15.8122497, 'lon': 80.3030082},
+                        'CLX': {'lat': 15.830938, 'lon': 80.3517708},
+                        'IPPM': {'lat': 15.85281, 'lon': 80.3814662},
+                        'SPF': {'lat': 15.8752985, 'lon': 80.4140117},
+                        'BPP': {'lat': 15.9087804, 'lon': 80.4652035},
+                        'APL': {'lat': 15.9703661, 'lon': 80.5142194},
+                        'MCVM': {'lat': 16.0251057, 'lon': 80.5391888},
+                        'NDO': {'lat': 16.0673498, 'lon': 80.5553901},
+                        'MDKU': {'lat': 16.1233333, 'lon': 80.5799375},
+                        'TSR': {'lat': 16.1567184, 'lon': 80.5832601},
+                        'TEL': {'lat': 16.2435852, 'lon': 80.6376458},
+                        'KLX': {'lat': 16.2946856, 'lon': 80.6260305},
+                        'DIG': {'lat': 16.329159, 'lon': 80.6232471},
+                        'CLVR': {'lat': 16.3802036, 'lon': 80.6164899},
+                        'PVD': {'lat': 16.4150823, 'lon': 80.6107384},
+                        'KCC': {'lat': 16.4778294, 'lon': 80.600124}
+                    }
+
+                    # Get selected stations from the table
                     selected_stations = edited_df[edited_df['Select']]
+
+                    # Get the station codes from the selected stations
+                    selected_station_codes = []
+                    if not selected_stations.empty and station_column in selected_stations.columns:
+                        for _, row in selected_stations.iterrows():
+                            if station_column in row and row[station_column]:
+                                code = str(row[station_column]).strip()
+                                if code:
+                                    selected_station_codes.append(code)
 
                     # Define Andhra Pradesh center coordinates
                     AP_CENTER = [16.5167, 80.6167]  # Centered around Vijayawada
@@ -461,147 +525,77 @@ try:
                     # Create the map centered around Andhra Pradesh
                     m = folium.Map(location=AP_CENTER, zoom_start=7)
 
-                    # Add markers only for selected stations
-                    if not selected_stations.empty:
-                        for _, station in selected_stations.iterrows():
-                            # Try to find the appropriate column names
-                            station_code = station.get('Station Code', station.get('Station', ''))
-                            name = station.get('Name', station_code)
+                    # Debug information
+                    st.caption(f"Selected station codes: {selected_station_codes}")
 
-                            # Try different column name patterns for latitude and longitude
-                            lat_candidates = ['Latitude', 'lat', 'Lat']
-                            lon_candidates = ['Longitude', 'lon', 'Lon', 'Long']
+                    # Variables to track which stations are displayed
+                    displayed_stations = []
+                    valid_points = []
 
-                            lat = None
-                            lon = None
+                    # Add markers for all selected stations that have coordinates
+                    for code in selected_station_codes:
+                        # Normalize code for matching
+                        normalized_code = code.upper().strip()
 
-                            # Find latitude column
-                            for lat_col in lat_candidates:
-                                if lat_col in station and pd.notna(station[lat_col]):
-                                    try:
-                                        lat = float(station[lat_col])
-                                        break
-                                    except:
-                                        pass
+                        # Check if we have coordinates for this station
+                        if normalized_code in station_coords:
+                            # Get coordinates
+                            coords = station_coords[normalized_code]
+                            lat = coords['lat']
+                            lon = coords['lon']
 
-                            # Find longitude column
-                            for lon_col in lon_candidates:
-                                if lon_col in station and pd.notna(station[lon_col]):
-                                    try:
-                                        lon = float(station[lon_col])
-                                        break
-                                    except:
-                                        pass
+                            # Create popup content
+                            popup_content = f"""
+                            <div style='font-family: Arial; font-size: 12px;'>
+                                <b>{normalized_code}</b><br>
+                                Lat: {lat:.4f}<br>
+                                Lon: {lon:.4f}
+                            </div>
+                            """
 
-                            # Use hardcoded coordinates if not found in the data
-                            if lat is None or lon is None:
-                                # Dictionary of station coordinates
-                                station_coords = {
-                                    'BZA': {'lat': 16.5167, 'lon': 80.6167},  # Vijayawada
-                                    'GNT': {'lat': 16.3067, 'lon': 80.4365},  # Guntur
-                                    'VSKP': {'lat': 17.6868, 'lon': 83.2185},  # Visakhapatnam
-                                    'TUNI': {'lat': 17.3572, 'lon': 82.5483},  # Tuni
-                                    'RJY': {'lat': 17.0005, 'lon': 81.7799},  # Rajahmundry
-                                    'NLDA': {'lat': 17.0575, 'lon': 79.2690},  # Nalgonda
-                                    'MTM': {'lat': 16.4307, 'lon': 80.5525},  # Mangalagiri
-                                    'NDL': {'lat': 16.9107, 'lon': 81.6717},  # Nidadavolu
-                                    'ANV': {'lat': 17.6910, 'lon': 83.0037},  # Anakapalle
-                                    'VZM': {'lat': 18.1066, 'lon': 83.4205},  # Vizianagaram
-                                    'SKM': {'lat': 18.2949, 'lon': 83.8935},  # Srikakulam
-                                    'PLH': {'lat': 18.7726, 'lon': 84.4162}   # Palasa
-                                }
-
-                                if station_code in station_coords:
-                                    lat = station_coords[station_code]['lat']
-                                    lon = station_coords[station_code]['lon']
-
-                            # Only add marker if we have valid coordinates
-                            if lat is not None and lon is not None:
-                                popup_content = f"""
-                                <div style='font-family: Arial; font-size: 12px;'>
-                                    <b>{station_code} - {name}</b><br>
-                                    Lat: {lat:.4f}<br>
-                                    Lon: {lon:.4f}
-                                </div>
-                                """
-
-                                folium.Marker(
-                                    [lat, lon],
-                                    popup=folium.Popup(popup_content, max_width=200),
-                                    tooltip=station_code,
-                                    icon=folium.Icon(color='red', icon='info-sign')
-                                ).add_to(m)
-
-                        # Add railway lines between selected stations
-                        valid_points = []
-                        for _, station in selected_stations.iterrows():
-                            # Same as above, find lat/lon for each station
-                            lat = None
-                            lon = None
-
-                            # Try different column name patterns for latitude and longitude
-                            for lat_col in ['Latitude', 'lat', 'Lat']:
-                                if lat_col in station and pd.notna(station[lat_col]):
-                                    try:
-                                        lat = float(station[lat_col])
-                                        break
-                                    except:
-                                        pass
-
-                            for lon_col in ['Longitude', 'lon', 'Lon', 'Long']:
-                                if lon_col in station and pd.notna(station[lon_col]):
-                                    try:
-                                        lon = float(station[lon_col])
-                                        break
-                                    except:
-                                        pass
-
-                            # Use hardcoded coordinates if not found in the data
-                            station_code = station.get('Station Code', station.get('Station', ''))
-                            if lat is None or lon is None:
-                                station_coords = {
-                                    'BZA': {'lat': 16.5167, 'lon': 80.6167},
-                                    'GNT': {'lat': 16.3067, 'lon': 80.4365},
-                                    'VSKP': {'lat': 17.6868, 'lon': 83.2185},
-                                    'TUNI': {'lat': 17.3572, 'lon': 82.5483},
-                                    'RJY': {'lat': 17.0005, 'lon': 81.7799},
-                                    'NLDA': {'lat': 17.0575, 'lon': 79.2690},
-                                    'MTM': {'lat': 16.4307, 'lon': 80.5525},
-                                    'NDL': {'lat': 16.9107, 'lon': 81.6717},
-                                    'ANV': {'lat': 17.6910, 'lon': 83.0037},
-                                    'VZM': {'lat': 18.1066, 'lon': 83.4205},
-                                    'SKM': {'lat': 18.2949, 'lon': 83.8935},
-                                    'PLH': {'lat': 18.7726, 'lon': 84.4162}
-                                }
-
-                                if station_code in station_coords:
-                                    lat = station_coords[station_code]['lat']
-                                    lon = station_coords[station_code]['lon']
-
-                            if lat is not None and lon is not None:
-                                valid_points.append([lat, lon])
-
-                        if len(valid_points) > 1:
-                            folium.PolyLine(
-                                valid_points,
-                                weight=2,
-                                color='gray',
-                                opacity=0.8,
-                                dash_array='5, 10'
+                            # Add marker to map
+                            folium.Marker(
+                                [lat, lon],
+                                popup=folium.Popup(popup_content, max_width=200),
+                                tooltip=normalized_code,
+                                icon=folium.Icon(color='red', icon='train', prefix='fa')
                             ).add_to(m)
+
+                            # Add to tracking variables
+                            displayed_stations.append(normalized_code)
+                            valid_points.append([lat, lon])
+
+                    # Add railway lines if multiple stations
+                    if len(valid_points) > 1:
+                        folium.PolyLine(
+                            valid_points,
+                            weight=2,
+                            color='gray',
+                            opacity=0.8,
+                            dash_array='5, 10'
+                        ).add_to(m)
 
                     # Render the map
                     st.subheader("Interactive Map")
                     folium_static(m, width=None, height=550)
 
-                    # Show selection summary
-                    if not selected_stations.empty:
-                        valid_stations_count = sum(1 for _, row in selected_stations.iterrows()
-                                                  if any(col in row and pd.notna(row[col]) for col in
-                                                         ['Latitude', 'lat', 'Lat']))
-                        st.success(f"Showing {valid_stations_count} selected stations on the map")
+                    # Show status message
+                    if displayed_stations:
+                        st.success(f"Showing {len(displayed_stations)} stations on the map: {', '.join(displayed_stations)}")
                     else:
-                        st.info("Select stations from the table above to display them on the map")
+                        if selected_station_codes:
+                            st.warning(f"No coordinates found for selected stations: {', '.join(selected_station_codes)}")
+                        else:
+                            st.info("Select stations from the table to display them on the map")
+
+                    # Add instructions
+                    with st.expander("About GPS Coordinates"):
+                        st.markdown("""
+                        - Latitude: North-South position (-90° to 90°)
+                        - Longitude: East-West position (-180° to 180°)
+                        - Coordinates are in decimal degrees format
+                        - The map shows stations in the Vijayawada Division
+                        """)
 
             else:
                 st.warning("No data available in cache")
