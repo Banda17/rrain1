@@ -11,7 +11,10 @@ import logging
 from typing import Optional, Dict
 import re
 from animation_utils import create_pulsing_refresh_animation, show_countdown_progress, show_refresh_timestamp
-from map_component import render_gps_map
+import folium
+from folium.plugins import Draw
+from streamlit_folium import folium_static
+
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -450,18 +453,156 @@ try:
                 # Render map in the right column
                 with map_col:
                     # Only show selected stations
-                    display_stations = st.session_state['selected_stations']
+                    selected_stations = edited_df[edited_df['Select']]
 
-                    # Pass the selected rows DataFrame directly to the map component
-                    selected_df = edited_df[edited_df['Select']]
+                    # Define Andhra Pradesh center coordinates
+                    AP_CENTER = [16.5167, 80.6167]  # Centered around Vijayawada
 
-                    # Render the map with only selected stations
-                    render_gps_map(
-                        selected_stations=display_stations,
-                        map_title="Division GPS Map",
-                        height=550,
-                        selected_df=selected_df  # Pass the selected DataFrame directly
-                    )
+                    # Create the map centered around Andhra Pradesh
+                    m = folium.Map(location=AP_CENTER, zoom_start=7)
+
+                    # Add markers only for selected stations
+                    if not selected_stations.empty:
+                        for _, station in selected_stations.iterrows():
+                            # Try to find the appropriate column names
+                            station_code = station.get('Station Code', station.get('Station', ''))
+                            name = station.get('Name', station_code)
+
+                            # Try different column name patterns for latitude and longitude
+                            lat_candidates = ['Latitude', 'lat', 'Lat']
+                            lon_candidates = ['Longitude', 'lon', 'Lon', 'Long']
+
+                            lat = None
+                            lon = None
+
+                            # Find latitude column
+                            for lat_col in lat_candidates:
+                                if lat_col in station and pd.notna(station[lat_col]):
+                                    try:
+                                        lat = float(station[lat_col])
+                                        break
+                                    except:
+                                        pass
+
+                            # Find longitude column
+                            for lon_col in lon_candidates:
+                                if lon_col in station and pd.notna(station[lon_col]):
+                                    try:
+                                        lon = float(station[lon_col])
+                                        break
+                                    except:
+                                        pass
+
+                            # Use hardcoded coordinates if not found in the data
+                            if lat is None or lon is None:
+                                # Dictionary of station coordinates
+                                station_coords = {
+                                    'BZA': {'lat': 16.5167, 'lon': 80.6167},  # Vijayawada
+                                    'GNT': {'lat': 16.3067, 'lon': 80.4365},  # Guntur
+                                    'VSKP': {'lat': 17.6868, 'lon': 83.2185},  # Visakhapatnam
+                                    'TUNI': {'lat': 17.3572, 'lon': 82.5483},  # Tuni
+                                    'RJY': {'lat': 17.0005, 'lon': 81.7799},  # Rajahmundry
+                                    'NLDA': {'lat': 17.0575, 'lon': 79.2690},  # Nalgonda
+                                    'MTM': {'lat': 16.4307, 'lon': 80.5525},  # Mangalagiri
+                                    'NDL': {'lat': 16.9107, 'lon': 81.6717},  # Nidadavolu
+                                    'ANV': {'lat': 17.6910, 'lon': 83.0037},  # Anakapalle
+                                    'VZM': {'lat': 18.1066, 'lon': 83.4205},  # Vizianagaram
+                                    'SKM': {'lat': 18.2949, 'lon': 83.8935},  # Srikakulam
+                                    'PLH': {'lat': 18.7726, 'lon': 84.4162}   # Palasa
+                                }
+
+                                if station_code in station_coords:
+                                    lat = station_coords[station_code]['lat']
+                                    lon = station_coords[station_code]['lon']
+
+                            # Only add marker if we have valid coordinates
+                            if lat is not None and lon is not None:
+                                popup_content = f"""
+                                <div style='font-family: Arial; font-size: 12px;'>
+                                    <b>{station_code} - {name}</b><br>
+                                    Lat: {lat:.4f}<br>
+                                    Lon: {lon:.4f}
+                                </div>
+                                """
+
+                                folium.Marker(
+                                    [lat, lon],
+                                    popup=folium.Popup(popup_content, max_width=200),
+                                    tooltip=station_code,
+                                    icon=folium.Icon(color='red', icon='info-sign')
+                                ).add_to(m)
+
+                        # Add railway lines between selected stations
+                        valid_points = []
+                        for _, station in selected_stations.iterrows():
+                            # Same as above, find lat/lon for each station
+                            lat = None
+                            lon = None
+
+                            # Try different column name patterns for latitude and longitude
+                            for lat_col in ['Latitude', 'lat', 'Lat']:
+                                if lat_col in station and pd.notna(station[lat_col]):
+                                    try:
+                                        lat = float(station[lat_col])
+                                        break
+                                    except:
+                                        pass
+
+                            for lon_col in ['Longitude', 'lon', 'Lon', 'Long']:
+                                if lon_col in station and pd.notna(station[lon_col]):
+                                    try:
+                                        lon = float(station[lon_col])
+                                        break
+                                    except:
+                                        pass
+
+                            # Use hardcoded coordinates if not found in the data
+                            station_code = station.get('Station Code', station.get('Station', ''))
+                            if lat is None or lon is None:
+                                station_coords = {
+                                    'BZA': {'lat': 16.5167, 'lon': 80.6167},
+                                    'GNT': {'lat': 16.3067, 'lon': 80.4365},
+                                    'VSKP': {'lat': 17.6868, 'lon': 83.2185},
+                                    'TUNI': {'lat': 17.3572, 'lon': 82.5483},
+                                    'RJY': {'lat': 17.0005, 'lon': 81.7799},
+                                    'NLDA': {'lat': 17.0575, 'lon': 79.2690},
+                                    'MTM': {'lat': 16.4307, 'lon': 80.5525},
+                                    'NDL': {'lat': 16.9107, 'lon': 81.6717},
+                                    'ANV': {'lat': 17.6910, 'lon': 83.0037},
+                                    'VZM': {'lat': 18.1066, 'lon': 83.4205},
+                                    'SKM': {'lat': 18.2949, 'lon': 83.8935},
+                                    'PLH': {'lat': 18.7726, 'lon': 84.4162}
+                                }
+
+                                if station_code in station_coords:
+                                    lat = station_coords[station_code]['lat']
+                                    lon = station_coords[station_code]['lon']
+
+                            if lat is not None and lon is not None:
+                                valid_points.append([lat, lon])
+
+                        if len(valid_points) > 1:
+                            folium.PolyLine(
+                                valid_points,
+                                weight=2,
+                                color='gray',
+                                opacity=0.8,
+                                dash_array='5, 10'
+                            ).add_to(m)
+
+                    # Render the map
+                    st.subheader("Interactive Map")
+                    folium_static(m, width=None, height=550)
+
+                    # Show selection summary
+                    if not selected_stations.empty:
+                        valid_stations_count = sum(1 for _, row in selected_stations.iterrows()
+                                                  if any(col in row and pd.notna(row[col]) for col in
+                                                         ['Latitude', 'lat', 'Lat']))
+                        st.success(f"Showing {valid_stations_count} selected stations on the map")
+                    else:
+                        st.info("Select stations from the table above to display them on the map")
+
             else:
                 st.warning("No data available in cache")
 

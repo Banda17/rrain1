@@ -158,7 +158,7 @@ def render_gps_map(
                 map_handler = OfflineMapHandler('Vijayawada_Division_System_map_page-0001 (2).png')
                 # Convert list to tuple for center coordinates and pass custom bounds
                 m = map_handler.create_offline_map(
-                    center=(center_coordinates[0], center_coordinates[1]),
+                    center=(center_coordinates[0], center_coordinates[1]), 
                     custom_bounds=custom_bounds
                 )
 
@@ -182,7 +182,7 @@ def render_gps_map(
             map_handler = OfflineMapHandler('Vijayawada_Division_System_map_page-0001 (2).png')
             # Convert list to tuple for center coordinates and pass custom bounds
             m = map_handler.create_offline_map(
-                center=(center_coordinates[0], center_coordinates[1]),
+                center=(center_coordinates[0], center_coordinates[1]), 
                 custom_bounds=custom_bounds
             )
 
