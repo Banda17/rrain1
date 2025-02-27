@@ -15,7 +15,6 @@ import folium
 from folium.plugins import Draw
 from streamlit_folium import folium_static
 from map_viewer import MapViewer  # Import MapViewer for offline map handling
-from PIL import Image
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -344,6 +343,7 @@ def get_station_coordinates():
     }
 
 
+# Cache station code extraction function for better performance
 @st.cache_data(ttl=300)
 def extract_station_codes(selected_stations, station_column=None):
     """Extract station codes from selected DataFrame using optimized approach"""
@@ -396,7 +396,7 @@ def extract_station_codes(selected_stations, station_column=None):
 
 # Create a function to render the offline map with GPS markers
 @st.cache_data(ttl=60)
-def render_offline_map_with_markers(selected_station_codes, station_coords, marker_opacity=0.8, x_offset=0, y_offset=0):
+def render_offline_map_with_markers(selected_station_codes, station_coords, marker_opacity=0.8):
     """Render an offline map with GPS markers for selected stations"""
     # Get the map viewer from session state or create a new one
     map_viewer = st.session_state.get('map_viewer', MapViewer())
@@ -422,26 +422,9 @@ def render_offline_map_with_markers(selected_station_codes, station_coords, mark
     for code in selected_station_codes:
         normalized_code = code.upper().strip()
 
-        # Try to add using map_viewer first
+        # Check if we have the station in the map_viewer's station locations
         if normalized_code in map_viewer.station_locations:
-            # Get original coordinates
-            orig_coords = map_viewer.station_locations[normalized_code].copy()
-
-            # Apply position adjustments to temporary coordinates
-            adjusted_coords = {
-                'x': orig_coords['x'] + (x_offset / 1000),  # Small adjustment scale
-                'y': orig_coords['y'] + (y_offset / 1000)   # Small adjustment scale
-            }
-
-            # Temporarily modify the coordinates
-            map_viewer.station_locations[normalized_code] = adjusted_coords
-
-            # Draw marker with adjusted position
             display_image = map_viewer.draw_train_marker(display_image, normalized_code)
-
-            # Restore original coordinates
-            map_viewer.station_locations[normalized_code] = orig_coords
-
             displayed_stations.append(normalized_code)
         # If not in map_viewer, try to convert GPS coordinates to map coordinates
         elif normalized_code in station_coords:
@@ -449,28 +432,20 @@ def render_offline_map_with_markers(selected_station_codes, station_coords, mark
             # This is a simplified conversion - would need proper calibration for accuracy
             coords = station_coords[normalized_code]
 
-            # Add to map_viewer's station locations with position adjustment
-            adjusted_x = (coords['lon'] - 79.0) / 5.0 + (x_offset / 1000)
-            adjusted_y = (coords['lat'] - 14.0) / 5.0 + (y_offset / 1000)
-
-            # Temporarily add adjusted coordinates
+            # Add to map_viewer's station locations (temporary)
             map_viewer.station_locations[normalized_code] = {
-                'x': adjusted_x,
-                'y': adjusted_y
+                'x': (coords['lon'] - 79.0) / 5.0,  # Approximate conversion
+                'y': (coords['lat'] - 14.0) / 5.0   # Approximate conversion
             }
 
             # Draw the marker
             display_image = map_viewer.draw_train_marker(display_image, normalized_code)
-
-            # Remove temporary station location
-            del map_viewer.station_locations[normalized_code]
-
             displayed_stations.append(normalized_code)
 
     # Restore original marker size
     map_viewer.base_marker_size = original_marker_size
 
-    # Apply opacity to the image
+    #Apply opacity to the image
     def apply_marker_opacity(img, opacity):
         """Apply opacity to the non-background pixels of an image"""
         if opacity >= 1.0:  # No change needed if fully opaque
@@ -614,16 +589,20 @@ try:
                                 return True
                             # Try to convert to number if possible
                             try:
-                                num = float(value.replace('(', '').replace(')', '').strip())
+                                num = float(
+                                    value.replace('(', '').replace(')',
+                                                                    '').strip())
                                 return num > 0
                             except:
                                 return False
-                        returnFalse
+                        return False
 
                     # Filter rows where Delay column has positive values or (+)
                     if 'Delay' in df.columns:
                         filtered_df = df[df['Delay'].apply(is_positive_or_plus)]
-                        st.write(f"Showing {len(filtered_df)} entries with positive delays")
+                        st.write(
+                            f"Showing {len(filtered_df)} entries with positive delays"
+                        )
                     else:
                         filtered_df = df
                         st.warning("Delay column not found in data")
@@ -662,7 +641,7 @@ try:
                             "Train No.": st.column_config.TextColumn("Train No.", help="Train Number"),
                             "FROM-TO": st.column_config.TextColumn("FROM-TO", help="Source to Destination"),
                             "IC Entry Delay": st.column_config.TextColumn("IC Entry Delay", help="Entry Delay"),
-                            "Delay": st.column_config.TextColumn("Delay", help="Delay in Minutes")
+                            "Delay": st.column_config.TextColumn("Delay", help="Delayin Minutes")
                         },
                         disabled=[col for col in filtered_df.columns if col != 'Select'],
                         use_container_width=True
@@ -681,7 +660,7 @@ try:
                             all_stations = selected_rows[station_column].tolist()
                             st.caption(f"Debug - Raw station values: {all_stations}")
 
-                            # Clean and filter station values with improved handling
+                            #                            # Clean and filter station values with improved handling
                             selected_stations = []
                             for station in selected_rows[station_column].tolist():
                                 if station is not None:
@@ -719,7 +698,7 @@ try:
                         st.caption(f"Selected stations: {', '.join(selected_station_codes)}")
 
                     # Toggle between offline map and folium map
-                    map_type = st.radio("Map Type", ["Offline Map with GPS Markers", "Interactive GPS Map"],
+                    map_type = st.radio("Map Type", ["Offline Map with GPS Markers", "Interactive GPS Map"], 
                                        index=0, horizontal=True)
 
                     if map_type == "Offline Map with GPS Markers":
@@ -727,20 +706,14 @@ try:
                         col1, col2 = st.columns(2)
                         with col1:
                             marker_opacity = st.slider("Marker Opacity", 0.1, 1.0, 0.8, 0.1)
+                        with col2:
                             map_tilt = st.slider("Map Tilt/Rotation (degrees)", 0, 30, 0, 1)
-
-                        # Add new position adjustment controls
-                        col3, col4 = st.columns(2)
-                        with col3:
-                            x_offset = st.slider("Horizontal Position Adjustment", -100, 100, 0, 1)
-                        with col4:
-                            y_offset = st.slider("Vertical Position Adjustment", -100, 100, 0, 1)
 
                         # Use the MapViewer to render offline map with markers
                         if selected_station_codes:
                             # Render offline map with GPS markers
                             display_image, displayed_stations = render_offline_map_with_markers(
-                                selected_station_codes, station_coords, marker_opacity, x_offset, y_offset)
+                                selected_station_codes, station_coords, marker_opacity)
 
                             if display_image is not None:
                                 # Resize for display if needed
@@ -751,14 +724,17 @@ try:
 
                                 # Apply tilt/rotation if requested (using PIL Image rotation)
                                 if map_tilt > 0:
+                                    import math
+                                    from PIL import Image
                                     # Apply rotation with expand=True to keep the full image visible
                                     display_image = display_image.rotate(map_tilt, Image.Resampling.BICUBIC, expand=True)
+
 
                                 # Display the map
                                 st.image(
                                     display_image,
                                     use_container_width=True,
-                                    caption=f"Vijayawada Division System Map with Selected Stations (Tilt: {map_tilt}°, X-Offset: {x_offset}, Y-Offset: {y_offset})"
+                                    caption=f"Vijayawada Division System Map with Selected Stations (Tilt: {map_tilt}°)"
                                 )
 
                                 # Show station count
@@ -768,10 +744,12 @@ try:
                                 st.error("Unable to load the offline map. Please check the map file.")
                         else:
                             # Show empty map with message
+                            map_viewer = st.session_state['map_viewer']
                             base_map = map_viewer.load_map()
                             if base_map:
                                 # Apply tilt to base map if needed
                                 if map_tilt > 0:
+                                    from PIL import Image
                                     base_map = base_map.rotate(map_tilt, Image.Resampling.BICUBIC, expand=True)
 
                                 st.image(
@@ -791,6 +769,10 @@ try:
                             map_opacity = st.slider("Map Opacity", 0.1, 1.0, 0.8, 0.1)
                         with col2:
                             map_pitch = st.slider("Map Pitch (3D View)", 0, 60, 0, 5)
+
+                        # Create the base map with 3D capabilities
+                        import folium
+                        from folium.plugins import Draw
 
                         # Define map options with pitch control if supported
                         map_options = {
@@ -868,14 +850,14 @@ try:
                         """)
 
             else:
-                st.warning("No data available")
-        else:
-            st.warning("No cached data available")
+                st.warning("No data available in cache")
+
     else:
-        st.error(f"Failed to load data: {message}")
+        st.error(f"Error loading data: {message}")
+
 except Exception as e:
     st.error(f"An error occurred: {str(e)}")
-    logging.error("Error in main app", exc_info=True)
+    st.exception(e)
 
 # Footer
 st.markdown("---")
