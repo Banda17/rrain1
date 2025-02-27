@@ -239,6 +239,7 @@ def load_and_process_data():
             return True, status_table, pd.DataFrame(cached_data), message
     return False, None, None, message
 
+
 # Initialize session state
 initialize_session_state()
 
@@ -256,7 +257,7 @@ try:
 
     # Set refreshing state to True and show animation
     st.session_state['is_refreshing'] = True
-    refresh_placeholder = st.empty() # Moved here
+    refresh_placeholder = st.empty()  # Moved here
     create_pulsing_refresh_animation(refresh_placeholder, "Loading ICMS data...")
 
     # Load data with feedback
@@ -318,7 +319,7 @@ try:
                     'Scheduled [Entry-Exit]',
                     'scheduled[Entry-Exit]',
                     'DivisionalActual[ Entry - Exit ]',
-                    'Divisional Actual [Entry - Exit]', 
+                    'Divisional Actual [Entry - Exit]',
                     'Divisional Actual[ Entry-Exit ]',
                     'Divisional Actual[ Entry - Exit ]',
                     'DivisionalActual[ Entry-Exit ]',
@@ -421,24 +422,29 @@ try:
                             all_stations = selected_rows[station_column].tolist()
                             st.caption(f"Debug - Raw station values: {all_stations}")
 
-                            # Clean and filter station values
-                            selected_stations = [
-                                str(s).strip() for s in selected_rows[station_column].tolist() 
-                                if s is not None and str(s).strip() != ""
-                            ]
+                            # Clean and filter station values with improved handling
+                            selected_stations = []
+                            for station in selected_rows[station_column].tolist():
+                                if station is not None:
+                                    station_str = str(station).strip()
+                                    if station_str:
+                                        selected_stations.append(station_str)
+
+                            # Ensure unique station codes
+                            selected_stations = list(set(selected_stations))
 
                             # Store in session state
                             st.session_state['selected_stations'] = selected_stations
 
                             if selected_stations:
-                                st.success(f"Selected {len(selected_stations)} stations for map view: {selected_stations}")
+                                st.success(f"Selected {len(selected_stations)} stations for map view: {', '.join(selected_stations)}")
                             else:
                                 st.warning("No valid station codes found in selected rows")
                         else:
                             st.session_state['selected_stations'] = []
                             st.info("No rows selected. Please select stations using the checkboxes.")
 
-                    refresh_table_placeholder.empty() # Clear the placeholder after table display
+                    refresh_table_placeholder.empty()  # Clear the placeholder after table display
 
                 # Render map in the right column
                 with map_col:
@@ -451,8 +457,8 @@ try:
                         map_title="Division GPS Map",
                         height=550
                     )
-        else:
-            st.warning("No data available in cache")
+            else:
+                st.warning("No data available in cache")
 
     else:
         st.error(f"Error loading data: {message}")
@@ -475,8 +481,8 @@ st.caption("Auto-refreshing every 4 minutes")
 
 
 # Removed the old progress bar and replaced it with a countdown timer.
-show_countdown_progress(240, 0.1) #Countdown for 4 minutes
-show_refresh_timestamp() #Shows refresh timestamp
+show_countdown_progress(240, 0.1)  # Countdown for 4 minutes
+show_refresh_timestamp()  # Shows refresh timestamp
 
 
 # Refresh the page

@@ -101,13 +101,42 @@ def render_gps_map(
         # Add markers for selected stations
         selected_station_points = []
 
-        # Debug logs
-        st.write(f"Selected stations: {selected_stations}")
-        st.write(f"Available station codes: {list(stations.keys())[:5]}...")
+        # Create normalized lookup dictionary for case-insensitive matching
+        normalized_stations = {code.upper().strip(): info for code, info in stations.items()}
+        available_codes = list(normalized_stations.keys())
 
+        # Show debugging information
+        with st.expander("Debug - Station Codes"):
+            st.write(f"Selected stations (raw): {selected_stations}")
+            st.write(f"Available CSV station codes: {available_codes[:10]}... (total: {len(available_codes)})")
+
+            # Create a table to show station code matching
+            match_data = []
+            if selected_stations:
+                for code in selected_stations:
+                    normalized_code = code.upper().strip() if code else ""
+                    match_data.append({
+                        "Selected Code": code,
+                        "Normalized Code": normalized_code,
+                        "Found in CSV": normalized_code in normalized_stations,
+                        "Matching Coordinates": normalized_stations.get(normalized_code, {}).get('lat', 'N/A')
+                    })
+                st.table(match_data)
+
+        # Process each selected station
         for code in selected_stations:
-            if code in stations:
-                station = stations[code]
+            if not code:
+                continue
+
+            # Normalize the code for case-insensitive lookup
+            normalized_code = code.upper().strip()
+
+            if normalized_code in normalized_stations:
+                # Get station data from the normalized lookup
+                station_info = normalized_stations[normalized_code]
+                original_code = [k for k, v in stations.items() if k.upper().strip() == normalized_code][0]
+                station = stations[original_code]
+
                 popup_content = f"""
                 <div style='font-family: Arial; font-size: 12px;'>
                     <b>{code} - {station['name']}</b><br>
