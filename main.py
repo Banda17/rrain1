@@ -519,31 +519,44 @@ try:
 
                     # Try multiple ways to find station codes
                     if not selected_stations.empty:
-                        # Try using the previously identified station_column
-                        if station_column and station_column in selected_stations.columns:
-                            for _, row in selected_stations.iterrows():
-                                if pd.notna(row[station_column]):
-                                    code = str(row[station_column]).strip()
-                                    if code:
-                                        selected_station_codes.append(code)
+                        # Look for station code in 'Current Running Details' or 'Station' column
+                        potential_station_columns = ['Current Running Details', 'Station', 'Station Code', 'station', 'STATION']
 
-                        # If no station codes found, try looking for any column that might contain station codes
-                        if not selected_station_codes:
-                            station_keywords = ['Station', 'STATION', 'station', 'Station Code', 'StationCode']
-                            for col in selected_stations.columns:
-                                for keyword in station_keywords:
-                                    if keyword in col:
-                                        for _, row in selected_stations.iterrows():
-                                            if pd.notna(row[col]):
-                                                code = str(row[col]).strip()
-                                                if code:
+                        # Try each potential column
+                        for col_name in potential_station_columns:
+                            if col_name in selected_stations.columns:
+                                for _, row in selected_stations.iterrows():
+                                    if pd.notna(row[col_name]):
+                                        # Extract station code from text (may contain additional details)
+                                        text_value = str(row[col_name]).strip()
+
+                                        # Handle 'Current Running Details' column which might have format "NZD ..."
+                                        if col_name == 'Current Running Details':
+                                            # Extract first word which is likely the station code
+                                            parts = text_value.split()
+                                            if parts:
+                                                code = parts[0].strip()
+                                                if code and code not in selected_station_codes:
                                                     selected_station_codes.append(code)
-                                        # Break if we found some station codes
-                                        if selected_station_codes:
-                                            break
-                                # Break if we found some station codes
-                                if selected_station_codes:
-                                    break
+                                        else:
+                                            # For other columns, use the full value
+                                            if text_value and text_value not in selected_station_codes:
+                                                selected_station_codes.append(text_value)
+
+                        # If still no codes found, try a more generic approach with any column
+                        if not selected_station_codes:
+                            for col in selected_stations.columns:
+                                if any(keyword in col for keyword in ['station', 'Station', 'STATION', 'Running']):
+                                    for _, row in selected_stations.iterrows():
+                                        if pd.notna(row[col]):
+                                            text = str(row[col])
+                                            # Try to extract a station code (usually 2-5 uppercase letters)
+                                            words = text.split()
+                                            for word in words:
+                                                word = word.strip()
+                                                if 2 <= len(word) <= 5 and word.isupper():
+                                                    if word not in selected_station_codes:
+                                                        selected_station_codes.append(word)
 
                     # Debug the extracted station codes
                     st.write(f"Debug - Extracted Station Codes: {selected_station_codes}")
@@ -594,6 +607,28 @@ try:
                             # Add to tracking variables
                             displayed_stations.append(normalized_code)
                             valid_points.append([lat, lon])
+                        else:
+                            # Display warning for station codes without coordinates
+                            st.warning(f"No coordinates found for station code: {normalized_code}")
+
+                            # Try an alternative lookup approach
+                            for key in station_coords.keys():
+                                if key.upper().strip() == normalized_code:
+                                    coords = station_coords[key]
+                                    lat = coords['lat']
+                                    lon = coords['lon']
+
+                                    # Add marker to map
+                                    folium.Marker(
+                                        [lat, lon],
+                                        popup=folium.Popup(f"<b>{normalized_code}</b><br>Lat: {lat:.4f}<br>Lon: {lon:.4f}", max_width=200),
+                                        tooltip=normalized_code,
+                                        icon=folium.Icon(color='red', icon='train', prefix='fa')
+                                    ).add_to(m)
+
+                                    displayed_stations.append(normalized_code)
+                                    valid_points.append([lat, lon])
+                                    break
 
                     # Add railway lines if multiple stations
                     if len(valid_points) > 1:
