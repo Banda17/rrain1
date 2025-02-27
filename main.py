@@ -246,6 +246,7 @@ def load_and_process_data():
             return True, status_table, pd.DataFrame(cached_data), message
     return False, None, None, message
 
+
 # Cache station coordinates using Streamlit's cache_data decorator
 @st.cache_data(ttl=3600)  # Cache for 1 hour
 def get_station_coordinates():
@@ -341,6 +342,7 @@ def get_station_coordinates():
         'DVD': {'lat': 17.7030476, 'lon': 83.1485371}
     }
 
+
 # Cache station code extraction function for better performance
 @st.cache_data(ttl=300)
 def extract_station_codes(selected_stations, station_column=None):
@@ -391,9 +393,10 @@ def extract_station_codes(selected_stations, station_column=None):
 
     return selected_station_codes
 
+
 # Create a function to render the offline map with GPS markers
 @st.cache_data(ttl=60)
-def render_offline_map_with_markers(selected_station_codes, station_coords):
+def render_offline_map_with_markers(selected_station_codes, station_coords, marker_opacity=0.8):
     """Render an offline map with GPS markers for selected stations"""
     # Get the map viewer from session state or create a new one
     map_viewer = st.session_state.get('map_viewer', MapViewer())
@@ -441,6 +444,35 @@ def render_offline_map_with_markers(selected_station_codes, station_coords):
 
     # Restore original marker size
     map_viewer.base_marker_size = original_marker_size
+
+    #Apply opacity to the image
+    def apply_marker_opacity(img, opacity):
+        """Apply opacity to the non-background pixels of an image"""
+        if opacity >= 1.0:  # No change needed if fully opaque
+            return img
+
+        # Convert to RGBA if not already
+        if img.mode != 'RGBA':
+            img = img.convert('RGBA')
+
+        # Create a copy to work with
+        result = img.copy()
+
+        # Get pixel data
+        pixdata = result.load()
+
+        # Adjust alpha channel for pixels that are not fully transparent
+        width, height = img.size
+        for y in range(height):
+            for x in range(width):
+                r, g, b, a = pixdata[x, y]
+                if a > 0:  # Only modify non-transparent pixels
+                    pixdata[x, y] = (r, g, b, int(a * opacity))
+
+        return result
+
+    if marker_opacity < 1.0:
+        display_image = apply_marker_opacity(display_image, marker_opacity)
 
     return display_image, displayed_stations
 
@@ -670,11 +702,18 @@ try:
                                        index=0, horizontal=True)
 
                     if map_type == "Offline Map with GPS Markers":
+                        # Add controls for map adjustments
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            marker_opacity = st.slider("Marker Opacity", 0.1, 1.0, 0.8, 0.1)
+                        with col2:
+                            map_tilt = st.slider("Map Tilt/Rotation (degrees)", 0, 30, 0, 1)
+
                         # Use the MapViewer to render offline map with markers
                         if selected_station_codes:
                             # Render offline map with GPS markers
                             display_image, displayed_stations = render_offline_map_with_markers(
-                                selected_station_codes, station_coords)
+                                selected_station_codes, station_coords, marker_opacity)
 
                             if display_image is not None:
                                 # Resize for display if needed
@@ -683,11 +722,19 @@ try:
                                 height_ratio = max_height / original_height
                                 new_width = int(original_width * height_ratio)
 
+                                # Apply tilt/rotation if requested (using PIL Image rotation)
+                                if map_tilt > 0:
+                                    import math
+                                    from PIL import Image
+                                    # Apply rotation with expand=True to keep the full image visible
+                                    display_image = display_image.rotate(map_tilt, Image.Resampling.BICUBIC, expand=True)
+
+
                                 # Display the map
                                 st.image(
                                     display_image,
                                     use_container_width=True,
-                                    caption=f"Vijayawada Division System Map with Selected Stations"
+                                    caption=f"Vijayawada Division System Map with Selected Stations (Tilt: {map_tilt}°)"
                                 )
 
                                 # Show station count
@@ -700,20 +747,85 @@ try:
                             map_viewer = st.session_state['map_viewer']
                             base_map = map_viewer.load_map()
                             if base_map:
+                                # Apply tilt to base map if needed
+                                if map_tilt > 0:
+                                    from PIL import Image
+                                    base_map = base_map.rotate(map_tilt, Image.Resampling.BICUBIC, expand=True)
+
                                 st.image(
                                     base_map,
                                     use_container_width=True,
-                                    caption="Select stations from the table to display on the map"
+                                    caption=f"Select stations from the table to display on the map (Tilt: {map_tilt}°)"
                                 )
                                 st.info("Select stations from the table to display them on the map")
                             else:
                                 st.error("Unable to load the base map. Please check the map file path.")
                     else:
-                        # Create the base map (using cached version if possible)
-                        m = create_base_map()
+                        # Interactive GPS Map section
+                        # Add 3D controls for the interactive map
+                        st.caption("Map View Controls")
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            map_opacity = st.slider("Map Opacity", 0.1, 1.0, 0.8, 0.1)
+                        with col2:
+                            map_pitch = st.slider("Map Pitch (3D View)", 0, 60, 0, 5)
+
+                        # Create the base map with 3D capabilities
+                        import folium
+                        from folium.plugins import Draw
+
+                        # Define map options with pitch control if supported
+                        map_options = {
+                            'zoom': 7,
+                            'zoomControl': True,
+                        }
+
+                        # Add pitch control if requested
+                        if map_pitch > 0:
+                            map_options['pitch'] = map_pitch
+
+                        # Create the map with options
+                        m = folium.Map(
+                            location=[16.5167, 80.6167],  # Centered around Vijayawada
+                            zoom_start=7,
+                            control_scale=True,
+                            **map_options
+                        )
+
+                        # Add a basemap with adjustable opacity
+                        folium.TileLayer(
+                            tiles='OpenStreetMap',
+                            attr='&copy; OpenStreetMap contributors',
+                            opacity=map_opacity
+                        ).add_to(m)
 
                         # Add markers efficiently
-                        m, displayed_stations, valid_points = add_markers_to_map(m, selected_station_codes, station_coords)
+                        valid_points = []
+                        displayed_stations = []
+
+                        # Process in batches for better performance
+                        for code in selected_station_codes:
+                            normalized_code = code.upper().strip()
+
+                            # Direct lookup first (faster)
+                            if normalized_code in station_coords:
+                                coords = station_coords[normalized_code]
+                                lat, lon = coords['lat'], coords['lon']
+
+                                # Simple popup for better performance
+                                popup_content = f"<b>{normalized_code}</b><br>({lat:.4f}, {lon:.4f})"
+
+                                # Add marker with adjusted opacity in style
+                                folium.Marker(
+                                    [lat, lon],
+                                    popup=folium.Popup(popup_content, max_width=200),
+                                    tooltip=normalized_code,
+                                    icon=folium.Icon(color='red', icon='train', prefix='fa'),
+                                    opacity=map_opacity  # Apply opacity to marker
+                                ).add_to(m)
+
+                                displayed_stations.append(normalized_code)
+                                valid_points.append([lat, lon])
 
                         # Add railway lines if multiple stations (only when needed)
                         if len(valid_points) > 1:
@@ -721,22 +833,13 @@ try:
                                 valid_points,
                                 weight=2,
                                 color='gray',
-                                opacity=0.8,
+                                opacity=map_opacity * 0.8,  # Slightly more transparent than markers
                                 dash_array='5, 10'
                             ).add_to(m)
 
                         # Render the map
-                        st.subheader("Interactive Map")
+                        st.subheader(f"Interactive Map (3D Pitch: {map_pitch}°)")
                         folium_static(m, width=None, height=550)
-
-                        # Show status message
-                        if displayed_stations:
-                            st.success(f"Showing {len(displayed_stations)} stations on the map")
-                        else:
-                            if selected_station_codes:
-                                st.warning(f"No coordinates found for selected stations")
-                            else:
-                                st.info("Select stations from the table to display them on the map")
 
                     # Add instructions in collapsible section for better UI performance
                     with st.expander("About GPS Coordinates"):
