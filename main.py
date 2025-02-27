@@ -296,7 +296,8 @@ try:
                     return str(value) if value is not None else None
 
                 # Apply safe conversion to all elements
-                df = df.applymap(safe_convert)
+                for column in df.columns:
+                    df[column] = df[column].map(safe_convert)
 
                 # Get and print all column names for debugging
                 logger.debug(f"Available columns: {df.columns.tolist()}")
