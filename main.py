@@ -452,11 +452,15 @@ try:
                     # Only show selected stations
                     display_stations = st.session_state['selected_stations']
 
+                    # Pass the selected rows DataFrame directly to the map component
+                    selected_df = edited_df[edited_df['Select']]
+
                     # Render the map with only selected stations
                     render_gps_map(
                         selected_stations=display_stations,
                         map_title="Division GPS Map",
-                        height=550
+                        height=550,
+                        selected_df=selected_df  # Pass the selected DataFrame directly
                     )
             else:
                 st.warning("No data available in cache")

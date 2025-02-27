@@ -9,7 +9,8 @@ def render_gps_map(
     selected_stations: Optional[List[str]] = None,
     center_coordinates: List[float] = [16.5167, 80.6167],  # Default center at Vijayawada
     map_title: str = "Division Map View",
-    height: int = 400
+    height: int = 400,
+    selected_df: Optional[pd.DataFrame] = None  # New parameter to directly receive selected DataFrame
 ) -> None:
     """
     Renders a GPS map with the selected stations marked.
@@ -20,6 +21,7 @@ def render_gps_map(
         center_coordinates: Center coordinates for the map [lat, lon]
         map_title: Title to display above the map
         height: Height of the map in pixels
+        selected_df: DataFrame containing the selected stations with their coordinates
     """
     # Load station coordinates from CSV file
     try:
@@ -101,62 +103,120 @@ def render_gps_map(
         # Add markers for selected stations
         selected_station_points = []
 
-        # Create normalized lookup dictionary for case-insensitive matching
-        normalized_stations = {code.upper().strip(): info for code, info in stations.items()}
-        available_codes = list(normalized_stations.keys())
+        # If selected_df is provided, use it directly as the user suggested
+        if selected_df is not None and not selected_df.empty:
+            # Get column names from the DataFrame
+            columns = selected_df.columns.tolist()
+            st.caption(f"Debug - DataFrame columns: {columns}")
 
-        # Show debugging information
-        with st.expander("Debug - Station Codes"):
-            st.write(f"Selected stations (raw): {selected_stations}")
-            st.write(f"Available CSV station codes: {available_codes[:10]}... (total: {len(available_codes)})")
+            # Try to find the right column names for station code, name, latitude, and longitude
+            station_code_col = next((col for col in columns if 'Station' in col and 'Code' in col), None)
+            name_col = next((col for col in columns if col == 'Name'), None)
+            lat_col = next((col for col in columns if 'Lat' in col), None)
+            lon_col = next((col for col in columns if 'Lon' in col), None)
 
-            # Create a table to show station code matching
-            match_data = []
-            if selected_stations:
-                for code in selected_stations:
-                    normalized_code = code.upper().strip() if code else ""
-                    match_data.append({
-                        "Selected Code": code,
-                        "Normalized Code": normalized_code,
-                        "Found in CSV": normalized_code in normalized_stations,
-                        "Matching Coordinates": normalized_stations.get(normalized_code, {}).get('lat', 'N/A')
-                    })
-                st.table(match_data)
+            # If specific columns aren't found, try to use more generic ones
+            if not station_code_col:
+                station_code_col = next((col for col in columns if 'Station' in col), None)
+            if not name_col:
+                name_col = next((col for col in columns if 'Name' in col), None)
+            if not lat_col:
+                lat_col = next((col for col in columns if 'lat' in col.lower()), None)
+            if not lon_col:
+                lon_col = next((col for col in columns if 'lon' in col.lower()), None)
 
-        # Process each selected station
-        for code in selected_stations:
-            if not code:
-                continue
+            # Show the column mappings for debugging
+            st.caption(f"Debug - Column mappings: Station Code={station_code_col}, Name={name_col}, Lat={lat_col}, Lon={lon_col}")
 
-            # Normalize the code for case-insensitive lookup
-            normalized_code = code.upper().strip()
+            # Add markers only for selected stations using the DataFrame directly
+            for _, station in selected_df.iterrows():
+                try:
+                    # Get station code, name, lat, lon from the appropriate columns
+                    station_code = station.get(station_code_col, '') if station_code_col else ''
+                    name = station.get(name_col, '') if name_col else station_code
 
-            if normalized_code in normalized_stations:
-                # Get station data from the normalized lookup
-                station_info = normalized_stations[normalized_code]
-                original_code = [k for k, v in stations.items() if k.upper().strip() == normalized_code][0]
-                station = stations[original_code]
+                    # Check if lat/lon columns exist and are valid numbers
+                    if lat_col and lon_col and pd.notna(station.get(lat_col)) and pd.notna(station.get(lon_col)):
+                        lat = float(station.get(lat_col))
+                        lon = float(station.get(lon_col))
 
-                popup_content = f"""
-                <div style='font-family: Arial; font-size: 12px;'>
-                    <b>{code} - {station['name']}</b><br>
-                    Lat: {station['lat']:.4f}<br>
-                    Lon: {station['lon']:.4f}
-                </div>
-                """
+                        popup_content = f"""
+                        <div style='font-family: Arial; font-size: 12px;'>
+                            <b>{station_code} - {name}</b><br>
+                            Lat: {lat:.4f}<br>
+                            Lon: {lon:.4f}
+                        </div>
+                        """
 
-                # Add marker
-                folium.Marker(
-                    [station['lat'], station['lon']],
-                    popup=folium.Popup(popup_content, max_width=200),
-                    tooltip=f"{code} - {station['name']}",
-                    icon=folium.Icon(color='red', icon='train', prefix='fa')
-                ).add_to(m)
+                        folium.Marker(
+                            [lat, lon],
+                            popup=folium.Popup(popup_content, max_width=200),
+                            tooltip=station_code,
+                            icon=folium.Icon(color='red', icon='train', prefix='fa')
+                        ).add_to(m)
 
-                # Add to points for railway line
-                selected_station_points.append([station['lat'], station['lon']])
-            else:
-                st.warning(f"Station code '{code}' not found in coordinate data")
+                        # Add to points for railway line
+                        selected_station_points.append([lat, lon])
+                except Exception as e:
+                    st.warning(f"Error adding marker for station: {e}")
+        else:
+            # Fallback to the old method if no DataFrame is provided
+            # Create normalized lookup dictionary for case-insensitive matching
+            normalized_stations = {code.upper().strip(): info for code, info in stations.items()}
+            available_codes = list(normalized_stations.keys())
+
+            # Show debugging information
+            with st.expander("Debug - Station Codes"):
+                st.write(f"Selected stations (raw): {selected_stations}")
+                st.write(f"Available CSV station codes: {available_codes[:10]}... (total: {len(available_codes)})")
+
+                # Create a table to show station code matching
+                match_data = []
+                if selected_stations:
+                    for code in selected_stations:
+                        normalized_code = code.upper().strip() if code else ""
+                        match_data.append({
+                            "Selected Code": code,
+                            "Normalized Code": normalized_code,
+                            "Found in CSV": normalized_code in normalized_stations,
+                            "Matching Coordinates": normalized_stations.get(normalized_code, {}).get('lat', 'N/A')
+                        })
+                    st.table(match_data)
+
+            # Process each selected station
+            for code in selected_stations:
+                if not code:
+                    continue
+
+                # Normalize the code for case-insensitive lookup
+                normalized_code = code.upper().strip()
+
+                if normalized_code in normalized_stations:
+                    # Get station data from the normalized lookup
+                    station_info = normalized_stations[normalized_code]
+                    original_code = [k for k, v in stations.items() if k.upper().strip() == normalized_code][0]
+                    station = stations[original_code]
+
+                    popup_content = f"""
+                    <div style='font-family: Arial; font-size: 12px;'>
+                        <b>{code} - {station['name']}</b><br>
+                        Lat: {station['lat']:.4f}<br>
+                        Lon: {station['lon']:.4f}
+                    </div>
+                    """
+
+                    # Add marker
+                    folium.Marker(
+                        [station['lat'], station['lon']],
+                        popup=folium.Popup(popup_content, max_width=200),
+                        tooltip=f"{code} - {station['name']}",
+                        icon=folium.Icon(color='red', icon='train', prefix='fa')
+                    ).add_to(m)
+
+                    # Add to points for railway line
+                    selected_station_points.append([station['lat'], station['lon']])
+                else:
+                    st.warning(f"Station code '{code}' not found in coordinate data")
 
         # Add railway lines between selected stations if multiple stations
         if len(selected_station_points) > 1:
@@ -172,5 +232,5 @@ def render_gps_map(
         folium_static(m, width=None, height=height)
 
         # Show station count
-        if selected_stations:
-            st.info(f"Showing {len(selected_station_points)} of {len(selected_stations)} selected stations on the map")
+        if selected_station_points:
+            st.info(f"Showing {len(selected_station_points)} of {len(selected_stations) if selected_stations else 0} selected stations on the map")
