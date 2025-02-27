@@ -21,29 +21,26 @@ def render_gps_map(
         map_title: Title to display above the map
         height: Height of the map in pixels
     """
-    # Define station coordinates with actual GPS locations
-    stations = {
-        'BZA': {'name': 'Vijayawada', 'lat': 16.5167, 'lon': 80.6167},
-        'GNT': {'name': 'Guntur', 'lat': 16.3067, 'lon': 80.4365},
-        'VSKP': {'name': 'Visakhapatnam', 'lat': 17.6868, 'lon': 83.2185},
-        'TUNI': {'name': 'Tuni', 'lat': 17.3572, 'lon': 82.5483},
-        'RJY': {'name': 'Rajahmundry', 'lat': 17.0005, 'lon': 81.7799},
-        'NLDA': {'name': 'Nalgonda', 'lat': 17.0575, 'lon': 79.2690},
-        'MTM': {'name': 'Mangalagiri', 'lat': 16.4307, 'lon': 80.5525},
-        'NDL': {'name': 'Nidadavolu', 'lat': 16.9107, 'lon': 81.6717},
-        'ANV': {'name': 'Anakapalle', 'lat': 17.6910, 'lon': 83.0037},
-        'VZM': {'name': 'Vizianagaram', 'lat': 18.1066, 'lon': 83.4205},
-        'SKM': {'name': 'Srikakulam', 'lat': 18.2949, 'lon': 83.8935},
-        'PLH': {'name': 'Palasa', 'lat': 18.7726, 'lon': 84.4162},
-        'GDR': {'name': 'Gudur', 'lat': 14.1483, 'lon': 79.8538},
-        'TADI': {'name': 'Thadi', 'lat': 16.7520, 'lon': 79.9841},
-        # Add more station coordinates from bhanu.json as needed
-        'VNEC': {'name': 'Venkachalam', 'lat': 16.4805, 'lon': 80.5487},
-        'GALA': {'name': 'Galakollu', 'lat': 16.4355, 'lon': 80.5842},
-        'MBD': {'name': 'Mustabad', 'lat': 16.3980, 'lon': 80.6120},
-        'GWM': {'name': 'Gunadala West', 'lat': 16.5310, 'lon': 80.6050},
-        'PAVP': {'name': 'Pavuluru', 'lat': 16.5532, 'lon': 80.5892},
-    }
+    # Load station coordinates from CSV file
+    try:
+        station_df = pd.read_csv('attached_assets/station_coordinates (1).csv')
+        # Create dictionary of station coordinates from the DataFrame
+        stations = {}
+        for _, row in station_df.iterrows():
+            if not pd.isna(row['Station']) and not pd.isna(row['Latitude']) and not pd.isna(row['Longitude']):
+                stations[row['Station']] = {
+                    'name': row['Station'],  # Using station code as name if no name column
+                    'lat': float(row['Latitude']),
+                    'lon': float(row['Longitude'])
+                }
+    except Exception as e:
+        st.warning(f"Error loading station coordinates from CSV: {str(e)}. Using default coordinates.")
+        # Fallback to a minimal set of coordinates if CSV loading fails
+        stations = {
+            'BZA': {'name': 'Vijayawada', 'lat': 16.5167, 'lon': 80.6167},
+            'GNT': {'name': 'Guntur', 'lat': 16.3067, 'lon': 80.4365},
+            'VSKP': {'name': 'Visakhapatnam', 'lat': 17.6868, 'lon': 83.2185},
+        }
 
     # Create a container for the map
     st.subheader(map_title)
