@@ -398,9 +398,15 @@ def render_offline_map_with_markers(selected_station_codes, station_coords):
     # Get the map viewer from session state or create a new one
     map_viewer = st.session_state.get('map_viewer', MapViewer())
 
+    # Temporarily increase marker size
+    original_marker_size = map_viewer.base_marker_size
+    map_viewer.base_marker_size = 25  # Increased from default 15 to 25
+
     # Load the base map
     base_map = map_viewer.load_map()
     if base_map is None:
+        # Restore original marker size before returning
+        map_viewer.base_marker_size = original_marker_size
         return None, []
 
     # Create a copy of the base map to draw on
@@ -432,6 +438,9 @@ def render_offline_map_with_markers(selected_station_codes, station_coords):
             # Draw the marker
             display_image = map_viewer.draw_train_marker(display_image, normalized_code)
             displayed_stations.append(normalized_code)
+
+    # Restore original marker size
+    map_viewer.base_marker_size = original_marker_size
 
     return display_image, displayed_stations
 
@@ -600,7 +609,7 @@ try:
                             "Train No.": st.column_config.TextColumn("Train No.", help="Train Number"),
                             "FROM-TO": st.column_config.TextColumn("FROM-TO", help="Source to Destination"),
                             "IC Entry Delay": st.column_config.TextColumn("IC Entry Delay", help="Entry Delay"),
-                            "Delay": st.column_config.TextColumn("Delay", help="Delay in Minutes")
+                            "Delay": st.column_config.TextColumn("Delay", help="Delayin Minutes")
                         },
                         disabled=[col for col in filtered_df.columns if col != 'Select'],
                         use_container_width=True
