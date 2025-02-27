@@ -16,14 +16,6 @@ from folium.plugins import Draw
 from streamlit_folium import folium_static
 from map_viewer import MapViewer  # Import MapViewer for offline map handling
 
-# Configure pandas display options for better table rendering
-pd.options.display.width = 800  # Control overall display width
-pd.options.display.max_columns = 20  # Maximum number of columns to display
-pd.options.display.min_rows = 5  # Minimum number of rows to display
-pd.options.display.max_rows = 30  # Maximum number of rows to display before truncating
-pd.options.display.colheader_justify = 'center'  # Center-align column headers
-pd.options.display.precision = 2  # Number of decimal places to display
-
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -477,7 +469,7 @@ def render_offline_map_with_markers(selected_station_codes, station_coords, mark
     # Restore original marker size
     map_viewer.base_marker_size = original_marker_size
 
-    # Apply opacity to the image
+    #Apply opacity to the image
     def apply_marker_opacity(img, opacity):
         """Apply opacity to the non-background pixels of an image"""
         if opacity >= 1.0:  # No change needed if fully opaque
@@ -672,12 +664,10 @@ try:
                             "Train No.": st.column_config.TextColumn("Train No.", help="Train Number"),
                             "FROM-TO": st.column_config.TextColumn("FROM-TO", help="Source to Destination"),
                             "IC Entry Delay": st.column_config.TextColumn("IC Entry Delay", help="Entry Delay"),
-                            "Delay": st.column_config.TextColumn("Delay", help="Delay in Minutes")
+                            "Delay": st.column_config.TextColumn("Delay", help="Delayin Minutes")
                         },
                         disabled=[col for col in filtered_df.columns if col != 'Select'],
-                        use_container_width=True,
-                        height=350,  # Adjusted height for better visibility
-                        column_order=["Select", "Train No.", "Train Name", "Station", "Sch_Time", "Current Time", "Delay"]  # Organize columns in logical order
+                        use_container_width=True
                     )
 
                     # Get selected stations for map
