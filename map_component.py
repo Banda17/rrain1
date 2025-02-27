@@ -23,26 +23,120 @@ def render_gps_map(
         height: Height of the map in pixels
         selected_df: DataFrame containing the selected stations with their coordinates
     """
-    # Load station coordinates from CSV file
+    # Hardcoded station coordinates extracted from the CSV file
+    stations = {
+        'GDR': {'name': 'GDR', 'lat': 14.1487258, 'lon': 79.8456503},
+        'MBL': {'name': 'MBL', 'lat': 14.2258343, 'lon': 79.8779689},
+        'KMLP': {'name': 'KMLP', 'lat': 14.2258344, 'lon': 79.8779689},
+        'VKT': {'name': 'VKT', 'lat': 14.3267653, 'lon': 79.9270371},
+        'VDE': {'name': 'VDE', 'lat': 14.4064058, 'lon': 79.9553191},
+        'NLR': {'name': 'NLR', 'lat': 14.4530742, 'lon': 79.9868332},
+        'PGU': {'name': 'PGU', 'lat': 14.4980222, 'lon': 79.9901535},
+        'KJJ': {'name': 'KJJ', 'lat': 14.5640002, 'lon': 79.9938934},
+        'AXR': {'name': 'AXR', 'lat': 14.7101, 'lon': 79.9893},
+        'BTTR': {'name': 'BTTR', 'lat': 14.7743359, 'lon': 79.9667298},
+        'SVPM': {'name': 'SVPM', 'lat': 14.7949226, 'lon': 79.9624715},
+        'KVZ': {'name': 'KVZ', 'lat': 14.9242136, 'lon': 79.9788932},
+        'TTU': {'name': 'TTU', 'lat': 15.0428954, 'lon': 80.0044243},
+        'UPD': {'name': 'UPD', 'lat': 15.1671213, 'lon': 80.0131329},
+        'SKM': {'name': 'SKM', 'lat': 15.252886, 'lon': 80.026428},
+        'OGL': {'name': 'OGL', 'lat': 15.497849, 'lon': 80.0554939},
+        'KRV': {'name': 'KRV', 'lat': 15.5527145, 'lon': 80.1134587},
+        'ANB': {'name': 'ANB', 'lat': 15.596741, 'lon': 80.1362815},
+        'RPRL': {'name': 'RPRL', 'lat': 15.6171364, 'lon': 80.1677164},
+        'UGD': {'name': 'UGD', 'lat': 15.6481768, 'lon': 80.1857879},
+        'KVDV': {'name': 'KVDV', 'lat': 15.7164922, 'lon': 80.2369806},
+        'KPLL': {'name': 'KPLL', 'lat': 15.7482165, 'lon': 80.2573225},
+        'VTM': {'name': 'VTM', 'lat': 15.7797094, 'lon': 80.2739975},
+        'JAQ': {'name': 'JAQ', 'lat': 15.8122497, 'lon': 80.3030082},
+        'CLX': {'name': 'CLX', 'lat': 15.830938, 'lon': 80.3517708},
+        'IPPM': {'name': 'IPPM', 'lat': 15.85281, 'lon': 80.3814662},
+        'SPF': {'name': 'SPF', 'lat': 15.8752985, 'lon': 80.4140117},
+        'BPP': {'name': 'BPP', 'lat': 15.9087804, 'lon': 80.4652035},
+        'APL': {'name': 'APL', 'lat': 15.9703661, 'lon': 80.5142194},
+        'MCVM': {'name': 'MCVM', 'lat': 16.0251057, 'lon': 80.5391888},
+        'NDO': {'name': 'NDO', 'lat': 16.0673498, 'lon': 80.5553901},
+        'MDKU': {'name': 'MDKU', 'lat': 16.1233333, 'lon': 80.5799375},
+        'TSR': {'name': 'TSR', 'lat': 16.1567184, 'lon': 80.5832601},
+        'TEL': {'name': 'TEL', 'lat': 16.2435852, 'lon': 80.6376458},
+        'KLX': {'name': 'KLX', 'lat': 16.2946856, 'lon': 80.6260305},
+        'DIG': {'name': 'DIG', 'lat': 16.329159, 'lon': 80.6232471},
+        'CLVR': {'name': 'CLVR', 'lat': 16.3802036, 'lon': 80.6164899},
+        'PVD': {'name': 'PVD', 'lat': 16.4150823, 'lon': 80.6107384},
+        'KCC': {'name': 'KCC', 'lat': 16.4778294, 'lon': 80.600124},
+        'BZA': {'name': 'BZA', 'lat': 16.5186803, 'lon': 80.5787723},
+        'VNEC': {'name': 'VNEC', 'lat': 16.5315126, 'lon': 80.6256334},
+        'GALA': {'name': 'GALA', 'lat': 16.5378371, 'lon': 80.6731917},
+        'MBD': {'name': 'MBD', 'lat': 16.554087, 'lon': 80.7036966},
+        'GWM': {'name': 'GWM', 'lat': 16.5562972, 'lon': 80.7933824},
+        'PAVP': {'name': 'PAVP', 'lat': 16.5626982, 'lon': 80.8033418},
+        'TOU': {'name': 'TOU', 'lat': 16.5989042, 'lon': 80.8815233},
+        'NZD': {'name': 'NZD', 'lat': 16.717923, 'lon': 80.8230084},
+        'VAT': {'name': 'VAT', 'lat': 16.69406, 'lon': 81.0399239},
+        'PRH': {'name': 'PRH', 'lat': 16.7132558, 'lon': 81.1025796},
+        'EE': {'name': 'EE', 'lat': 16.7132548, 'lon': 81.0845549},
+        'DEL': {'name': 'DEL', 'lat': 16.7818664, 'lon': 81.1780754},
+        'BMD': {'name': 'BMD', 'lat': 16.818151, 'lon': 81.2627899},
+        'PUA': {'name': 'PUA', 'lat': 16.8096519, 'lon': 81.3207946},
+        'CEL': {'name': 'CEL', 'lat': 16.8213153, 'lon': 81.3900847},
+        'BPY': {'name': 'BPY', 'lat': 16.8279598, 'lon': 81.4719773},
+        'TDD': {'name': 'TDD', 'lat': 16.8067368, 'lon': 81.52052},
+        'NBM': {'name': 'NBM', 'lat': 16.83, 'lon': 81.5922511},
+        'NDD': {'name': 'NDD', 'lat': 16.8959685, 'lon': 81.6728381},
+        'CU': {'name': 'CU', 'lat': 16.9702728, 'lon': 81.686414},
+        'PSDA': {'name': 'PSDA', 'lat': 16.9888598, 'lon': 81.6959144},
+        'KVR': {'name': 'KVR', 'lat': 17.003964, 'lon': 81.7217881},
+        'GVN': {'name': 'GVN', 'lat': 17.0050447, 'lon': 81.7683895},
+        'RJY': {'name': 'RJY', 'lat': 16.9841444, 'lon': 81.7835278},
+        'KYM': {'name': 'KYM', 'lat': 16.9135426, 'lon': 81.8291201},
+        'DWP': {'name': 'DWP', 'lat': 16.9264801, 'lon': 81.9185066},
+        'APT': {'name': 'APT', 'lat': 16.9353876, 'lon': 81.9510518},
+        'BVL': {'name': 'BVL', 'lat': 16.967466, 'lon': 82.0283906},
+        'MPU': {'name': 'MPU', 'lat': 17.0050166, 'lon': 82.0930538},
+        'SLO': {'name': 'SLO', 'lat': 17.0473849, 'lon': 82.1652452},
+        'PAP': {'name': 'PAP', 'lat': 17.1127264, 'lon': 82.2560612},
+        'GLP': {'name': 'GLP', 'lat': 17.1544365, 'lon': 82.2873605},
+        'DGDG': {'name': 'DGDG', 'lat': 17.2108602, 'lon': 82.3447996},
+        'RVD': {'name': 'RVD', 'lat': 17.2280704, 'lon': 82.3631186},
+        'ANV': {'name': 'ANV', 'lat': 17.2689997, 'lon': 82.4142117},
+        'HVM': {'name': 'HVM', 'lat': 17.3127808, 'lon': 82.485711},
+        'TUNI': {'name': 'TUNI', 'lat': 17.3611943, 'lon': 82.5421967},
+        'GLU': {'name': 'GLU', 'lat': 17.4098079, 'lon': 82.6294254},
+        'NRP': {'name': 'NRP', 'lat': 17.4511567, 'lon': 82.7188935},
+        'REG': {'name': 'REG', 'lat': 17.5052679, 'lon': 82.7880359},
+        'YLM': {'name': 'YLM', 'lat': 17.5534876, 'lon': 82.8428433},
+        'NASP': {'name': 'NASP', 'lat': 17.6057255, 'lon': 82.8899697},
+        'BVM': {'name': 'BVM', 'lat': 17.6600783, 'lon': 82.9259044},
+        'KSK': {'name': 'KSK', 'lat': 17.6732113, 'lon': 82.9564764},
+        'AKP': {'name': 'AKP', 'lat': 17.6934772, 'lon': 83.0049398},
+        'THY': {'name': 'THY', 'lat': 17.6865433, 'lon': 83.0665228},
+        'DVD': {'name': 'DVD', 'lat': 17.7030476, 'lon': 83.1485371},
+        # Additional key stations
+        'VSKP': {'name': 'Visakhapatnam', 'lat': 17.6868, 'lon': 83.2185},
+        'GNT': {'name': 'Guntur', 'lat': 16.3067, 'lon': 80.4365},
+        'NLDA': {'name': 'Nalgonda', 'lat': 17.0575, 'lon': 79.2690},
+        'MTM': {'name': 'Mangalagiri', 'lat': 16.4307, 'lon': 80.5525},
+        'NDL': {'name': 'Nidadavolu', 'lat': 16.9107, 'lon': 81.6717},
+        'VZM': {'name': 'Vizianagaram', 'lat': 18.1066, 'lon': 83.4205},
+        'PLH': {'name': 'Palasa', 'lat': 18.7726, 'lon': 84.4162}
+    }
+
+    # Attempt to load additional stations from CSV as a backup
     try:
         station_df = pd.read_csv('attached_assets/station_coordinates (1).csv')
-        # Create dictionary of station coordinates from the DataFrame
-        stations = {}
+        # Add any stations from CSV that aren't already in the hardcoded list
         for _, row in station_df.iterrows():
             if not pd.isna(row['Station']) and not pd.isna(row['Latitude']) and not pd.isna(row['Longitude']):
-                stations[row['Station']] = {
-                    'name': row['Station'],  # Using station code as name if no name column
-                    'lat': float(row['Latitude']),
-                    'lon': float(row['Longitude'])
-                }
+                station_code = row['Station']
+                if station_code not in stations:
+                    stations[station_code] = {
+                        'name': station_code,
+                        'lat': float(row['Latitude']),
+                        'lon': float(row['Longitude'])
+                    }
     except Exception as e:
-        st.warning(f"Error loading station coordinates from CSV: {str(e)}. Using default coordinates.")
-        # Fallback to a minimal set of coordinates if CSV loading fails
-        stations = {
-            'BZA': {'name': 'Vijayawada', 'lat': 16.5167, 'lon': 80.6167},
-            'GNT': {'name': 'Guntur', 'lat': 16.3067, 'lon': 80.4365},
-            'VSKP': {'name': 'Visakhapatnam', 'lat': 17.6868, 'lon': 83.2185},
-        }
+        # Just use hardcoded values if CSV fails
+        pass
 
     # Create a container for the map
     st.subheader(map_title)
@@ -161,28 +255,6 @@ def render_gps_map(
                     st.warning(f"Error adding marker for station: {e}")
         else:
             # Fallback to the old method if no DataFrame is provided
-            # Create normalized lookup dictionary for case-insensitive matching
-            normalized_stations = {code.upper().strip(): info for code, info in stations.items()}
-            available_codes = list(normalized_stations.keys())
-
-            # Show debugging information
-            with st.expander("Debug - Station Codes"):
-                st.write(f"Selected stations (raw): {selected_stations}")
-                st.write(f"Available CSV station codes: {available_codes[:10]}... (total: {len(available_codes)})")
-
-                # Create a table to show station code matching
-                match_data = []
-                if selected_stations:
-                    for code in selected_stations:
-                        normalized_code = code.upper().strip() if code else ""
-                        match_data.append({
-                            "Selected Code": code,
-                            "Normalized Code": normalized_code,
-                            "Found in CSV": normalized_code in normalized_stations,
-                            "Matching Coordinates": normalized_stations.get(normalized_code, {}).get('lat', 'N/A')
-                        })
-                    st.table(match_data)
-
             # Process each selected station
             for code in selected_stations:
                 if not code:
@@ -191,32 +263,39 @@ def render_gps_map(
                 # Normalize the code for case-insensitive lookup
                 normalized_code = code.upper().strip()
 
-                if normalized_code in normalized_stations:
-                    # Get station data from the normalized lookup
-                    station_info = normalized_stations[normalized_code]
-                    original_code = [k for k, v in stations.items() if k.upper().strip() == normalized_code][0]
-                    station = stations[original_code]
-
-                    popup_content = f"""
-                    <div style='font-family: Arial; font-size: 12px;'>
-                        <b>{code} - {station['name']}</b><br>
-                        Lat: {station['lat']:.4f}<br>
-                        Lon: {station['lon']:.4f}
-                    </div>
-                    """
-
-                    # Add marker
-                    folium.Marker(
-                        [station['lat'], station['lon']],
-                        popup=folium.Popup(popup_content, max_width=200),
-                        tooltip=f"{code} - {station['name']}",
-                        icon=folium.Icon(color='red', icon='train', prefix='fa')
-                    ).add_to(m)
-
-                    # Add to points for railway line
-                    selected_station_points.append([station['lat'], station['lon']])
+                # First try direct lookup
+                if code in stations:
+                    station = stations[code]
+                # Then try normalized lookup
+                elif normalized_code in stations:
+                    station = stations[normalized_code]
+                # Try case-insensitive lookup in all keys
                 else:
-                    st.warning(f"Station code '{code}' not found in coordinate data")
+                    matching_codes = [k for k in stations.keys() if k.upper().strip() == normalized_code]
+                    if matching_codes:
+                        station = stations[matching_codes[0]]
+                    else:
+                        st.warning(f"Station code '{code}' not found in coordinate data")
+                        continue
+
+                popup_content = f"""
+                <div style='font-family: Arial; font-size: 12px;'>
+                    <b>{code} - {station['name']}</b><br>
+                    Lat: {station['lat']:.4f}<br>
+                    Lon: {station['lon']:.4f}
+                </div>
+                """
+
+                # Add marker
+                folium.Marker(
+                    [station['lat'], station['lon']],
+                    popup=folium.Popup(popup_content, max_width=200),
+                    tooltip=f"{code} - {station['name']}",
+                    icon=folium.Icon(color='red', icon='train', prefix='fa')
+                ).add_to(m)
+
+                # Add to points for railway line
+                selected_station_points.append([station['lat'], station['lon']])
 
         # Add railway lines between selected stations if multiple stations
         if len(selected_station_points) > 1:
