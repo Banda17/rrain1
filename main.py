@@ -421,10 +421,10 @@ try:
 
                 # Render map in the right column
                 with map_col:
-                    # Use selected stations if available, otherwise use first 10 stations
-                    display_stations = st.session_state['selected_stations'] if st.session_state['selected_stations'] else stations[:10]
+                    # Only show selected stations
+                    display_stations = st.session_state['selected_stations']
 
-                    # Render the map with stations from the data
+                    # Render the map with only selected stations
                     render_gps_map(
                         selected_stations=display_stations,
                         map_title="Division GPS Map",

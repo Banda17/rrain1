@@ -45,10 +45,6 @@ def render_gps_map(
         'PAVP': {'name': 'Pavuluru', 'lat': 16.5532, 'lon': 80.5892},
     }
 
-    # If no stations selected, use all stations
-    if not selected_stations:
-        selected_stations = list(stations.keys())
-
     # Create a container for the map
     st.subheader(map_title)
 
@@ -56,6 +52,35 @@ def render_gps_map(
     map_container = st.container()
 
     with map_container:
+        # Check if any stations are selected
+        if not selected_stations or len(selected_stations) == 0:
+            # Show a message when no stations are selected
+            st.info("Please select stations from the table to display them on the map")
+            # Still create a basic map to show the division area
+            try:
+                # Create a custom map bounds tuple with user-specified values
+                custom_bounds = (12.2, 18.7, 78.3, 84.3)  # Fixed bounds as requested by user
+
+                # Try to use OfflineMapHandler if map file is available
+                map_handler = OfflineMapHandler('Vijayawada_Division_System_map_page-0001 (2).png')
+                # Convert list to tuple for center coordinates and pass custom bounds
+                m = map_handler.create_offline_map(
+                    center=(center_coordinates[0], center_coordinates[1]),
+                    custom_bounds=custom_bounds
+                )
+
+                if not m:
+                    # Fall back to online map if offline map fails
+                    m = folium.Map(location=center_coordinates, zoom_start=8)
+            except Exception as e:
+                st.warning(f"Using online map: {str(e)}")
+                # Create a basic folium map as fallback
+                m = folium.Map(location=center_coordinates, zoom_start=8)
+
+            # Display the empty map
+            folium_static(m, width=None, height=height)
+            return
+
         try:
             # Create a custom map bounds tuple with user-specified values
             custom_bounds = (12.2, 18.7, 78.3, 84.3)  # Fixed bounds as requested by user
