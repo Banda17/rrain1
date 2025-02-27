@@ -100,6 +100,11 @@ def render_gps_map(
 
         # Add markers for selected stations
         selected_station_points = []
+
+        # Debug logs
+        st.write(f"Selected stations: {selected_stations}")
+        st.write(f"Available station codes: {list(stations.keys())[:5]}...")
+
         for code in selected_stations:
             if code in stations:
                 station = stations[code]
@@ -121,6 +126,8 @@ def render_gps_map(
 
                 # Add to points for railway line
                 selected_station_points.append([station['lat'], station['lon']])
+            else:
+                st.warning(f"Station code '{code}' not found in coordinate data")
 
         # Add railway lines between selected stations if multiple stations
         if len(selected_station_points) > 1:
@@ -137,4 +144,4 @@ def render_gps_map(
 
         # Show station count
         if selected_stations:
-            st.info(f"Showing {len(selected_stations)} stations on the map")
+            st.info(f"Showing {len(selected_station_points)} of {len(selected_stations)} selected stations on the map")

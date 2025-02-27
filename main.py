@@ -411,11 +411,32 @@ try:
                     # Get selected stations for map
                     if station_column:
                         selected_rows = edited_df[edited_df['Select']]
-                        selected_stations = selected_rows[station_column].dropna().tolist()
-                        st.session_state['selected_stations'] = selected_stations
 
-                        if selected_stations:
-                            st.success(f"Selected {len(selected_stations)} stations for map view")
+                        # Debug information
+                        st.caption(f"Debug - Station column found: '{station_column}'")
+                        st.caption(f"Debug - Number of selected rows: {len(selected_rows)}")
+
+                        if not selected_rows.empty:
+                            # Get all station values and display for debugging
+                            all_stations = selected_rows[station_column].tolist()
+                            st.caption(f"Debug - Raw station values: {all_stations}")
+
+                            # Clean and filter station values
+                            selected_stations = [
+                                str(s).strip() for s in selected_rows[station_column].tolist() 
+                                if s is not None and str(s).strip() != ""
+                            ]
+
+                            # Store in session state
+                            st.session_state['selected_stations'] = selected_stations
+
+                            if selected_stations:
+                                st.success(f"Selected {len(selected_stations)} stations for map view: {selected_stations}")
+                            else:
+                                st.warning("No valid station codes found in selected rows")
+                        else:
+                            st.session_state['selected_stations'] = []
+                            st.info("No rows selected. Please select stations using the checkboxes.")
 
                     refresh_table_placeholder.empty() # Clear the placeholder after table display
 
