@@ -611,13 +611,14 @@ try:
                             bracket_match = re.search(r'\(.*?\+.*?\)', value)
                             if bracket_match:
                                 return True
-                            # Try to convert to number if possible
+                            # Try to convert tonumber if possible
                             try:
                                 num = float(
-                                    value.replace('(', '').replace`('', '').strip())
+                                    value.replace('(', '').replace(')', '').strip())
                                 return num > 0
                             except:
                                 return False
+                        return False
 
                     # Filter rows where Delay column has positive values or (+)
                     if 'Delay' in df.columns:
