@@ -93,9 +93,14 @@ st.set_page_config(page_title="Train Tracking System",
 
 # Add headers
 st.markdown("""
-    <h1 style='text-align: center; color: #1f497d;'>South Central Railway</h1>
-    <h2 style='text-align: center; color: #4f81bd;'>Vijayawada Division</h2>
-    <hr>
+    <div style='display: flex; align-items: center; justify-content: center; margin-bottom: 0.5rem;'>
+        <img src='scr_logo.svg' width='50' height='50' style='margin-right: 15px;'>
+        <div>
+            <h1 style='margin: 0; padding: 0; text-align: center; color: #1f497d;'>South Central Railway</h1>
+            <h2 style='margin: 0; padding: 0; text-align: center; color: #4f81bd;'>Vijayawada Division</h2>
+        </div>
+    </div>
+    <hr style='margin-top: 0.5rem;'>
 """,
             unsafe_allow_html=True)
 
@@ -601,8 +606,7 @@ try:
                     # Try different column name variations
                     'Scheduled [ Entry - Exit ]',
                     'Scheduled [Entry - Exit]',
-                    'Scheduled[ Entry - Exit ]',
-                    'Scheduled[Entry - Exit]',
+                    'Scheduled[ Entry - Exit ]','Scheduled[Entry - Exit]',
                     'Scheduled [ Entry-Exit ]',
                     'Scheduled [Entry-Exit]',
                     'scheduled[Entry-Exit]',

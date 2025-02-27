@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="60" height="60">
+  <!-- Circle background -->
+  <circle cx="100" cy="100" r="90" fill="#1f497d" />
+  <circle cx="100" cy="100" r="80" fill="white" />
+  <circle cx="100" cy="100" r="70" fill="#1f497d" />
+  
+  <!-- SCR text -->
+  <text x="100" y="85" font-family="Arial, sans-serif" font-size="28" font-weight="bold" text-anchor="middle" fill="white">SCR</text>
+  
+  <!-- Railway tracks symbolism -->
+  <rect x="40" y="100" width="120" height="6" fill="white" />
+  <rect x="40" y="115" width="120" height="6" fill="white" />
+  
+  <!-- Small perpendicular lines for railway track -->
+  <rect x="50" y="100" width="2" height="21" fill="white" />
+  <rect x="70" y="100" width="2" height="21" fill="white" />
+  <rect x="90" y="100" width="2" height="21" fill="white" />
+  <rect x="110" y="100" width="2" height="21" fill="white" />
+  <rect x="130" y="100" width="2" height="21" fill="white" />
+  <rect x="150" y="100" width="2" height="21" fill="white" />
+</svg>
