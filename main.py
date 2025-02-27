@@ -343,7 +343,6 @@ def get_station_coordinates():
     }
 
 
-# Cache station code extraction function for better performance
 @st.cache_data(ttl=300)
 def extract_station_codes(selected_stations, station_column=None):
     """Extract station codes from selected DataFrame using optimized approach"""
@@ -396,7 +395,7 @@ def extract_station_codes(selected_stations, station_column=None):
 
 # Create a function to render the offline map with GPS markers
 @st.cache_data(ttl=60)
-def render_offline_map_with_markers(selected_station_codes, station_coords, marker_opacity=0.8):
+def render_offline_map_with_markers(selected_station_codes, station_coords, marker_opacity=0.8, x_offset=0, y_offset=0):
     """Render an offline map with GPS markers for selected stations"""
     # Get the map viewer from session state or create a new one
     map_viewer = st.session_state.get('map_viewer', MapViewer())
@@ -424,7 +423,24 @@ def render_offline_map_with_markers(selected_station_codes, station_coords, mark
 
         # Check if we have the station in the map_viewer's station locations
         if normalized_code in map_viewer.station_locations:
+            # Get original coordinates
+            orig_coords = map_viewer.station_locations[normalized_code].copy()
+
+            # Apply position adjustments to temporary coordinates
+            adjusted_coords = {
+                'x': orig_coords['x'] + (x_offset / 1000),  # Small adjustment scale
+                'y': orig_coords['y'] + (y_offset / 1000)   # Small adjustment scale
+            }
+
+            # Temporarily modify the coordinates
+            map_viewer.station_locations[normalized_code] = adjusted_coords
+
+            # Draw marker with adjusted position
             display_image = map_viewer.draw_train_marker(display_image, normalized_code)
+
+            # Restore original coordinates
+            map_viewer.station_locations[normalized_code] = orig_coords
+
             displayed_stations.append(normalized_code)
         # If not in map_viewer, try to convert GPS coordinates to map coordinates
         elif normalized_code in station_coords:
@@ -432,14 +448,22 @@ def render_offline_map_with_markers(selected_station_codes, station_coords, mark
             # This is a simplified conversion - would need proper calibration for accuracy
             coords = station_coords[normalized_code]
 
-            # Add to map_viewer's station locations (temporary)
+            # Add to map_viewer's station locations with position adjustment
+            adjusted_x = (coords['lon'] - 79.0) / 5.0 + (x_offset / 1000)
+            adjusted_y = (coords['lat'] - 14.0) / 5.0 + (y_offset / 1000)
+
+            # Temporarily add adjusted coordinates
             map_viewer.station_locations[normalized_code] = {
-                'x': (coords['lon'] - 79.0) / 5.0,  # Approximate conversion
-                'y': (coords['lat'] - 14.0) / 5.0   # Approximate conversion
+                'x': adjusted_x,
+                'y': adjusted_y
             }
 
             # Draw the marker
             display_image = map_viewer.draw_train_marker(display_image, normalized_code)
+
+            # Remove temporary station location
+            del map_viewer.station_locations[normalized_code]
+
             displayed_stations.append(normalized_code)
 
     # Restore original marker size
@@ -590,12 +614,10 @@ try:
                             # Try to convert to number if possible
                             try:
                                 num = float(
-                                    value.replace('(', '').replace(')',
-                                                                    '').strip())
+                                    value.replace('(', '').replace`('', '').strip())
                                 return num > 0
                             except:
                                 return False
-                        return False
 
                     # Filter rows where Delay column has positive values or (+)
                     if 'Delay' in df.columns:
@@ -698,7 +720,7 @@ try:
                         st.caption(f"Selected stations: {', '.join(selected_station_codes)}")
 
                     # Toggle between offline map and folium map
-                    map_type = st.radio("Map Type", ["Offline Map with GPS Markers", "Interactive GPS Map"], 
+                    map_type = st.radio("Map Type", ["Offline Map with GPS Markers", "Interactive GPS Map"],
                                        index=0, horizontal=True)
 
                     if map_type == "Offline Map with GPS Markers":
@@ -709,11 +731,18 @@ try:
                         with col2:
                             map_tilt = st.slider("Map Tilt/Rotation (degrees)", 0, 30, 0, 1)
 
+                        # Add new position adjustment controls
+                        col3, col4 = st.columns(2)
+                        with col3:
+                            x_offset = st.slider("Horizontal Position Adjustment", -100, 100, 0, 1)
+                        with col4:
+                            y_offset = st.slider("Vertical Position Adjustment", -100, 100, 0, 1)
+
                         # Use the MapViewer to render offline map with markers
                         if selected_station_codes:
                             # Render offline map with GPS markers
                             display_image, displayed_stations = render_offline_map_with_markers(
-                                selected_station_codes, station_coords, marker_opacity)
+                                selected_station_codes, station_coords, marker_opacity, x_offset, y_offset)
 
                             if display_image is not None:
                                 # Resize for display if needed
@@ -734,7 +763,7 @@ try:
                                 st.image(
                                     display_image,
                                     use_container_width=True,
-                                    caption=f"Vijayawada Division System Map with Selected Stations (Tilt: {map_tilt}°)"
+                                    caption=f"Vijayawada Division System Map with Selected Stations (Tilt: {map_tilt}°, X-Offset: {x_offset}, Y-Offset: {y_offset})"
                                 )
 
                                 # Show station count

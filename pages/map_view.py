@@ -5,6 +5,7 @@ import pandas as pd
 import os
 from map_utils import OfflineMapHandler
 from map_viewer import MapViewer
+from PIL import Image
 
 # Page configuration
 st.set_page_config(
@@ -113,15 +114,18 @@ map_type = st.radio("Map Type", ["Offline Map with GPS Markers", "Interactive GP
                     index=0, horizontal=True)
 
 if map_type == "Offline Map with GPS Markers":
-    # Add controls for map adjustments
+    # Add controls for map adjustments in a 2x2 grid
     col1, col2 = st.columns(2)
     with col1:
         marker_opacity = st.slider("Marker Opacity", 0.1, 1.0, 0.8, 0.1)
-    with col2:
         map_tilt = st.slider("Map Tilt/Rotation (degrees)", 0, 30, 0, 1)
+    with col2:
+        # Add new position adjustment sliders
+        x_offset = st.slider("Horizontal Position Adjustment", -100, 100, 0, 1)
+        y_offset = st.slider("Vertical Position Adjustment", -100, 100, 0, 1)
 
     # Function to render offline map with markers
-    def render_offline_map_with_markers(selected_stations_df, marker_opacity=0.8):
+    def render_offline_map_with_markers(selected_stations_df, marker_opacity=0.8, x_offset=0, y_offset=0):
         """Render an offline map with GPS markers for selected stations"""
         # Temporarily increase marker size
         original_marker_size = map_viewer.base_marker_size
@@ -147,20 +151,45 @@ if map_type == "Offline Map with GPS Markers":
 
             # Try to add using map_viewer first
             if normalized_code in map_viewer.station_locations:
+                # Get original coordinates
+                orig_coords = map_viewer.station_locations[normalized_code].copy()
+
+                # Apply position adjustments to temporary coordinates
+                adjusted_coords = {
+                    'x': orig_coords['x'] + (x_offset / 1000),  # Small adjustment scale
+                    'y': orig_coords['y'] + (y_offset / 1000)   # Small adjustment scale
+                }
+
+                # Temporarily modify the coordinates
+                map_viewer.station_locations[normalized_code] = adjusted_coords
+
+                # Draw marker with adjusted position
                 display_image = map_viewer.draw_train_marker(display_image, normalized_code)
+
+                # Restore original coordinates
+                map_viewer.station_locations[normalized_code] = orig_coords
+
                 displayed_stations.append(normalized_code)
             else:
                 # Convert GPS coordinates to approximate map coordinates
                 lat, lon = station['Latitude'], station['Longitude']
 
-                # Add to map_viewer's station locations (temporary)
+                # Add to map_viewer's station locations with position adjustment
+                adjusted_x = (lon - 79.0) / 5.0 + (x_offset / 1000)
+                adjusted_y = (lat - 14.0) / 5.0 + (y_offset / 1000)
+
+                # Temporarily add adjusted coordinates
                 map_viewer.station_locations[normalized_code] = {
-                    'x': (lon - 79.0) / 5.0,  # Approximate conversion
-                    'y': (lat - 14.0) / 5.0   # Approximate conversion
+                    'x': adjusted_x,
+                    'y': adjusted_y
                 }
 
                 # Draw the marker
                 display_image = map_viewer.draw_train_marker(display_image, normalized_code)
+
+                # Remove temporary station location
+                del map_viewer.station_locations[normalized_code]
+
                 displayed_stations.append(normalized_code)
 
         # Restore original marker size
@@ -199,13 +228,12 @@ if map_type == "Offline Map with GPS Markers":
 
     # Use the function to render offline map with markers
     if not selected_stations.empty:
-        # Render offline map with GPS markers
+        # Render offline map with GPS markers and position adjustments
         display_image, displayed_stations = render_offline_map_with_markers(
-            selected_stations, marker_opacity)
+            selected_stations, marker_opacity, x_offset, y_offset)
 
         if display_image is not None:
             # Resize for display if needed
-            from PIL import Image
             original_width, original_height = display_image.size
             max_height = 600
             height_ratio = max_height / original_height
@@ -220,7 +248,7 @@ if map_type == "Offline Map with GPS Markers":
             st.image(
                 display_image,
                 use_container_width=True,
-                caption=f"Vijayawada Division System Map with Selected Stations (Tilt: {map_tilt}°)"
+                caption=f"Vijayawada Division System Map with Selected Stations (Tilt: {map_tilt}°, X-Offset: {x_offset}, Y-Offset: {y_offset})"
             )
 
             # Show station count
@@ -234,7 +262,6 @@ if map_type == "Offline Map with GPS Markers":
         if base_map:
             # Apply tilt to base map if needed
             if map_tilt > 0:
-                from PIL import Image
                 base_map = base_map.rotate(map_tilt, Image.Resampling.BICUBIC, expand=True)
 
             st.image(
@@ -320,7 +347,7 @@ else:
     folium_static(m, width=1000, height=600)
 
 # Add instructions in collapsible section
-with st.expander("About GPS Coordinates"):
+with st.expander("About GPS Coordinates and Map Controls"):
     st.markdown("""
     ### GPS Coordinate System
     - **Latitude**: North-South position (-90° to 90°)
@@ -330,6 +357,7 @@ with st.expander("About GPS Coordinates"):
     ### Map Features
     - Switch between offline map and interactive GPS view
     - Adjust opacity and rotation/tilt for better visualization
+    - Position sliders to align markers with the map
     - Railway lines automatically connect selected stations in sequence
     - Select multiple stations to see their connections
     """)
