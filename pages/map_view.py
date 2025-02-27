@@ -313,9 +313,9 @@ else:
                 dash_array='5, 10'
             ).add_to(m)
 
-    # Display the map
+    # Display the map with increased width
     st.subheader("Interactive Map")
-    folium_static(m, width=1000, height=600)
+    folium_static(m, width=1200, height=650)
 
 # Add instructions in collapsible section
 with st.expander("About GPS Coordinates"):

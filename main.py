@@ -598,8 +598,7 @@ try:
                 stations = extract_stations_from_data(df)
 
                 # Drop unwanted columns - use exact column names with proper spacing
-                columns_to_drop = [
-                    'Sr.',
+                columns_to_drop = ['Sr.',
                     'Exit Time for NLT Status',
                     'FROM-TO',
                     'Start date',
@@ -787,7 +786,9 @@ try:
 
                                 # Show station count
                                 if displayed_stations:
-                                    st.success(f"Showing {len(displayed_stations)} stations on the map")
+                                    st.success(f"Showing {len(displayed_stations)} selected stations with markers and all other stations as dots")
+                                else:
+                                    st.info("No stations selected. All stations shown as dots on the map.")
                             else:
                                 st.error("Unable to load the offline map. Please check the map file.")
                         else:
@@ -819,6 +820,10 @@ try:
                             opacity=0.8
                         ).add_to(m)
 
+                        # Add markers efficiently
+                        displayed_stations = []
+                        valid_points = []
+
                         # First add small dots for all stations
                         for code, coords in station_coords.items():
                             # Skip selected stations - they'll get bigger markers later
@@ -837,18 +842,12 @@ try:
                                 tooltip=code
                             ).add_to(m)
 
-                        # Add markers efficiently for selected stations
-                        valid_points = []
-                        displayed_stations = []
-
-                        # Process in batches for better performance
+                        # Then add larger markers for selected stations
                         for code in selected_station_codes:
-                            normalized_code = code.upper().strip()
-
-                            # Direct lookup first (faster)
-                            if normalized_code in station_coords:
-                                coords = station_coords[normalized_code]
-                                lat, lon = coords['lat'], coords['lon']
+                            if code in station_coords:
+                                normalized_code = code.upper().strip()
+                                lat = station_coords[code]['lat']
+                                lon = station_coords[code]['lon']
 
                                 # Simple popup for better performance
                                 popup_content = f"<b>{normalized_code}</b><br>({lat:.4f}, {lon:.4f})"
@@ -865,7 +864,7 @@ try:
                                 displayed_stations.append(normalized_code)
                                 valid_points.append([lat, lon])
 
-                        # Add railway lines if multiple stations (only when needed)
+                        # Add railway lines between selected stations if applicable
                         if len(valid_points) > 1:
                             folium.PolyLine(
                                 valid_points,
@@ -875,17 +874,25 @@ try:
                                 dash_array='5, 10'
                             ).add_to(m)
 
-                        # Render the map
+                        # Render the map with increased width
                         st.subheader("Interactive Map")
-                        folium_static(m, width=None, height=550)
+                        folium_static(m, width=1200, height=650)
 
-                    # Add instructions in collapsible section for better UI performance
-                    with st.expander("About GPS Coordinates"):
-                        st.markdown("""
-                        - Latitude: North-South position (-90° to 90°)
-                        - Longitude: East-West position (-180° to 180°)
-                        - Coordinates are in decimal degrees format
-                        """)
+                        # Add instructions in collapsible section for better UI performance
+                        with st.expander("Map Instructions"):
+                            st.markdown("""
+                            ### Using the Interactive Map
+                            - **Selected stations** are shown with train icons
+                            - **All other stations** appear as small gray dots
+                            - **Click on a marker** to see station details
+                            - **Railway lines** connect selected stations in sequence
+                            - Use the **mouse wheel** to zoom in/out
+                            - **Drag** to move the map view
+
+                            ### Selection Tips
+                            - Select multiple consecutive stations to see the railway line
+                            - Toggle between Offline and Interactive map views for different perspectives
+                            """)
 
             else:
                 st.error("No data available in the cached data frame")
