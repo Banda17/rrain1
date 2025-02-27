@@ -795,7 +795,7 @@ def render_offline_map_with_markers(selected_station_codes,
             for x in range(width):
                 r, g, b, a = pixdata[x, y]
                 if a > 0:  # Only modify non-transparent pixels
-                    pixdata[x, y] = (r, g, b, int(a * opacity))
+                                        pixdata[x, y] = (r, g, b, int(a * opacity))
 
         return result
 
@@ -924,7 +924,7 @@ try:
                 """, unsafe_allow_html=True)
 
                 # Create a more balanced column ratio with no gap - 60% table to 40% map
-                table_col, map_col = st.columns([3, 2], gap="none")
+                table_col, map_col = st.columns([3, 2], gap="small")
 
                 with table_col:
                     # Refresh animation placeholder right before displaying the table

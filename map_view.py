@@ -115,7 +115,7 @@ stations_df = pd.DataFrame([
 
 # Create a two-column layout for table and map display with more space for the map
 # Use more table space, 60% table to 40% map ratio
-table_section, map_section = st.columns([3, 2], gap="none")
+table_section, map_section = st.columns([2, 3], gap="small")
 
 with table_section:
     st.subheader("Station Selection")
