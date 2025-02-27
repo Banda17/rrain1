@@ -75,6 +75,19 @@ def get_station_coordinates():
         'VAT': {'name': 'Vijayawada Thermal', 'lat': 16.69406, 'lon': 81.0399239},
     }
 
+# Apply custom CSS to remove all padding and margins between columns
+st.markdown("""
+<style>
+.stColumn > div {
+    padding: 0px !important;
+}
+div[data-testid="column"] {
+    padding: 0px !important;
+    margin: 0px !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
 # Create DataFrame for station selection
 stations_df = pd.DataFrame([
     {
@@ -87,8 +100,8 @@ stations_df = pd.DataFrame([
     for code, info in get_station_coordinates().items()
 ])
 
-# Create a two-column layout for table and map display
-table_section, map_section = st.columns([3, 2])
+# Create a two-column layout for table and map display with more space for the map
+table_section, map_section = st.columns([2, 3], gap="small")
 
 with table_section:
     st.subheader("Station Selection")
@@ -123,6 +136,7 @@ with map_section:
     <style>
     .stColumn > div:first-child {
         padding-left: 0;
+        margin-left: 0;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -233,9 +247,9 @@ with map_section:
             # Resize for display if needed
             from PIL import Image
             original_width, original_height = display_image.size
-            max_height = 600
+            max_height = 650  # Increased height
             height_ratio = max_height / original_height
-            new_width = int(original_width * height_ratio)
+            new_width = int(original_width * height_ratio * 1.2)  # Extra width factor
 
             # Display the map
             st.image(
@@ -328,7 +342,7 @@ with map_section:
 
         # Display the map with increased width
         st.subheader("Interactive Map")
-        folium_static(m, width=1200, height=650)
+        folium_static(m, width=1300, height=650)
 
 # Add instructions in collapsible section
 with st.expander("About GPS Coordinates"):
