@@ -14,6 +14,14 @@ st.set_page_config(
     layout="wide"
 )
 
+# Configure pandas display options for better table rendering
+pd.options.display.width = 800  # Control overall display width
+pd.options.display.max_columns = 20  # Maximum number of columns to display
+pd.options.display.min_rows = 5  # Minimum number of rows to display
+pd.options.display.max_rows = 30  # Maximum number of rows to display before truncating
+pd.options.display.colheader_justify = 'center'  # Center-align column headers
+pd.options.display.precision = 2  # Number of decimal places to display
+
 st.title("🗺️ Division Map View")
 st.markdown("""
 This interactive map shows the stations in Vijayawada Division with their GPS coordinates.
@@ -103,7 +111,8 @@ edited_df = st.data_editor(
         )
     },
     disabled=["Station Code", "Name", "Latitude", "Longitude"],
-    height=300
+    height=250,  # Reduced height for more compact display
+    use_container_width=True
 )
 
 # Get selected stations

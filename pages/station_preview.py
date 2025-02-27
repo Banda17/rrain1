@@ -98,13 +98,13 @@ if base_map:
             st.dataframe(
                 stations_df_sorted,
                 use_container_width=True,
-                height=400
+                height=300  # Adjusted height for better display
             )
         else:
             st.dataframe(
                 stations_df_sorted[['Station Code', 'Route']],
                 use_container_width=True,
-                height=400
+                height=250  # Slightly smaller height for the reduced column set
             )
 
         # Show station count
