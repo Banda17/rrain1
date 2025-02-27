@@ -241,6 +241,188 @@ def load_and_process_data():
             return True, status_table, pd.DataFrame(cached_data), message
     return False, None, None, message
 
+# Cache station coordinates using Streamlit's cache_data decorator
+@st.cache_data(ttl=3600)  # Cache for 1 hour
+def get_station_coordinates():
+    """Cache station coordinates for faster access"""
+    return {
+        'BZA': {'lat': 16.5167, 'lon': 80.6167},  # Vijayawada
+        'GNT': {'lat': 16.3067, 'lon': 80.4365},  # Guntur
+        'VSKP': {'lat': 17.6868, 'lon': 83.2185},  # Visakhapatnam
+        'TUNI': {'lat': 17.3572, 'lon': 82.5483},  # Tuni
+        'RJY': {'lat': 17.0005, 'lon': 81.7799},  # Rajahmundry
+        'NLDA': {'lat': 17.0575, 'lon': 79.2690},  # Nalgonda
+        'MTM': {'lat': 16.4307, 'lon': 80.5525},  # Mangalagiri
+        'NDL': {'lat': 16.9107, 'lon': 81.6717},  # Nidadavolu
+        'ANV': {'lat': 17.6910, 'lon': 83.0037},  # Anakapalle
+        'VZM': {'lat': 18.1066, 'lon': 83.4205},  # Vizianagaram
+        'SKM': {'lat': 18.2949, 'lon': 83.8935},  # Srikakulam
+        'PLH': {'lat': 18.7726, 'lon': 84.4162},   # Palasa
+        'GDR': {'lat': 14.1487258, 'lon': 79.8456503},
+        'MBL': {'lat': 14.2258343, 'lon': 79.8779689},
+        'KMLP': {'lat': 14.2258344, 'lon': 79.8779689},
+        'VKT': {'lat': 14.3267653, 'lon': 79.9270371},
+        'VDE': {'lat': 14.4064058, 'lon': 79.9553191},
+        'NLR': {'lat': 14.4530742, 'lon': 79.9868332},
+        'PGU': {'lat': 14.4980222, 'lon': 79.9901535},
+        'KJJ': {'lat': 14.5640002, 'lon': 79.9938934},
+        'AXR': {'lat': 14.7101, 'lon': 79.9893},
+        'BTTR': {'lat': 14.7743359, 'lon': 79.9667298},
+        'SVPM': {'lat': 14.7949226, 'lon': 79.9624715},
+        'KVZ': {'lat': 14.9242136, 'lon': 79.9788932},
+        'TTU': {'lat': 15.0428954, 'lon': 80.0044243},
+        'UPD': {'lat': 15.1671213, 'lon': 80.0131329},
+        'SKM': {'lat': 15.252886, 'lon': 80.026428},
+        'OGL': {'lat': 15.497849, 'lon': 80.0554939},
+        'KRV': {'lat': 15.5527145, 'lon': 80.1134587},
+        'ANB': {'lat': 15.596741, 'lon': 80.1362815},
+        'RPRL': {'lat': 15.6171364, 'lon': 80.1677164},
+        'UGD': {'lat': 15.6481768, 'lon': 80.1857879},
+        'KVDV': {'lat': 15.7164922, 'lon': 80.2369806},
+        'KPLL': {'lat': 15.7482165, 'lon': 80.2573225},
+        'VTM': {'lat': 15.7797094, 'lon': 80.2739975},
+        'JAQ': {'lat': 15.8122497, 'lon': 80.3030082},
+        'CLX': {'lat': 15.830938, 'lon': 80.3517708},
+        'IPPM': {'lat': 15.85281, 'lon': 80.3814662},
+        'SPF': {'lat': 15.8752985, 'lon': 80.4140117},
+        'BPP': {'lat': 15.9087804, 'lon': 80.4652035},
+        'APL': {'lat': 15.9703661, 'lon': 80.5142194},
+        'MCVM': {'lat': 16.0251057, 'lon': 80.5391888},
+        'NDO': {'lat': 16.0673498, 'lon': 80.5553901},
+        'MDKU': {'lat': 16.1233333, 'lon': 80.5799375},
+        'TSR': {'lat': 16.1567184, 'lon': 80.5832601},
+        'TEL': {'lat': 16.2435852, 'lon': 80.6376458},
+        'KLX': {'lat': 16.2946856, 'lon': 80.6260305},
+        'DIG': {'lat': 16.329159, 'lon': 80.6232471},
+        'CLVR': {'lat': 16.3802036, 'lon': 80.6164899},
+        'PVD': {'lat': 16.4150823, 'lon': 80.6107384},
+        'KCC': {'lat': 16.4778294, 'lon': 80.600124},
+        'NZD': {'lat': 16.717923, 'lon': 80.8230084},
+        'VAT': {'lat': 16.69406, 'lon': 81.0399239},
+        'PRH': {'lat': 16.7132558, 'lon': 81.1025796},
+        'EE': {'lat': 16.7132548, 'lon': 81.0845549},
+        'DEL': {'lat': 16.7818664, 'lon': 81.1780754},
+        'BMD': {'lat': 16.818151, 'lon': 81.2627899},
+        'PUA': {'lat': 16.8096519, 'lon': 81.3207946},
+        'CEL': {'lat': 16.8213153, 'lon': 81.3900847},
+        'BPY': {'lat': 16.8279598, 'lon': 81.4719773},
+        'TDD': {'lat': 16.8067368, 'lon': 81.52052},
+        'NBM': {'lat': 16.83, 'lon': 81.5922511},
+        'NDD': {'lat': 16.8959685, 'lon': 81.6728381},
+        'CU': {'lat': 16.9702728, 'lon': 81.686414},
+        'PSDA': {'lat': 16.9888598, 'lon': 81.6959144},
+        'KVR': {'lat': 17.003964, 'lon': 81.7217881},
+        'GVN': {'lat': 17.0050447, 'lon': 81.7683895},
+        'KYM': {'lat': 16.9135426, 'lon': 81.8291201},
+        'DWP': {'lat': 16.9264801, 'lon': 81.9185066},
+        'APT': {'lat': 16.9353876, 'lon': 81.9510518},
+        'BVL': {'lat': 16.967466, 'lon': 82.0283906},
+        'MPU': {'lat': 17.0050166, 'lon': 82.0930538},
+        'SLO': {'lat': 17.0473849, 'lon': 82.1652452},
+        'PAP': {'lat': 17.1127264, 'lon': 82.2560612},
+        'GLP': {'lat': 17.1544365, 'lon': 82.2873605},
+        'DGDG': {'lat': 17.2108602, 'lon': 82.3447996},
+        'RVD': {'lat': 17.2280704, 'lon': 82.3631186},
+        'HVM': {'lat': 17.3127808, 'lon': 82.485711},
+        'GLU': {'lat': 17.4098079, 'lon': 82.6294254},
+        'NRP': {'lat': 17.4511567, 'lon': 82.7188935},
+        'REG': {'lat': 17.5052679, 'lon': 82.7880359},
+        'YLM': {'lat': 17.5534876, 'lon': 82.8428433},
+        'NASP': {'lat': 17.6057255, 'lon': 82.8899697},
+        'BVM': {'lat': 17.6600783, 'lon': 82.9259044},
+        'KSK': {'lat': 17.6732113, 'lon': 82.9564764},
+        'AKP': {'lat': 17.6934772, 'lon': 83.0049398},
+        'THY': {'lat': 17.6865433, 'lon': 83.0665228},
+        'DVD': {'lat': 17.7030476, 'lon': 83.1485371}
+    }
+
+# Cache station code extraction function for better performance
+@st.cache_data(ttl=300)
+def extract_station_codes(selected_stations, station_column=None):
+    """Extract station codes from selected DataFrame using optimized approach"""
+    selected_station_codes = []
+
+    if selected_stations.empty:
+        return selected_station_codes
+
+    # Look for station code in 'Current Running Details' or 'Station' column
+    potential_station_columns = ['Current Running Details', 'Station', 'Station Code', 'station', 'STATION']
+
+    # Try each potential column
+    for col_name in potential_station_columns:
+        if col_name in selected_stations.columns:
+            for _, row in selected_stations.iterrows():
+                if pd.notna(row[col_name]):
+                    # Extract station code from text (may contain additional details)
+                    text_value = str(row[col_name]).strip()
+
+                    # Handle 'Current Running Details' column which might have format "NZD ..."
+                    if col_name == 'Current Running Details':
+                        # Extract first word which is likely the station code
+                        parts = text_value.split()
+                        if parts:
+                            code = parts[0].strip()
+                            if code and code not in selected_station_codes:
+                                selected_station_codes.append(code)
+                    else:
+                        # For other columns, use the full value
+                        if text_value and text_value not in selected_station_codes:
+                            selected_station_codes.append(text_value)
+
+    # If still no codes found, try a more generic approach with any column
+    if not selected_station_codes:
+        for col in selected_stations.columns:
+            if any(keyword in col for keyword in ['station', 'Station', 'STATION', 'Running']):
+                for _, row in selected_stations.iterrows():
+                    if pd.notna(row[col]):
+                        text = str(row[col])
+                        # Try to extract a station code (usually 2-5 uppercase letters)
+                        words = text.split()
+                        for word in words:
+                            word = word.strip()
+                            if 2 <= len(word) <= 5 and word.isupper():
+                                if word not in selected_station_codes:
+                                    selected_station_codes.append(word)
+
+    return selected_station_codes
+
+# Optimize map creation
+@st.cache_data(ttl=60)
+def create_base_map(center=[16.5167, 80.6167], zoom_start=7):
+    """Create and cache the base map"""
+    return folium.Map(location=center, zoom_start=zoom_start)
+
+# Function to add markers to map efficiently
+def add_markers_to_map(m, station_codes, station_coords):
+    """Add markers to map with optimized performance"""
+    displayed_stations = []
+    valid_points = []
+
+    # Process in batches for better performance
+    for code in station_codes:
+        normalized_code = code.upper().strip()
+
+        # Direct lookup first (faster)
+        if normalized_code in station_coords:
+            coords = station_coords[normalized_code]
+            lat, lon = coords['lat'], coords['lon']
+
+            # Simple popup for better performance
+            popup_content = f"<b>{normalized_code}</b><br>({lat:.4f}, {lon:.4f})"
+
+            # Add marker
+            folium.Marker(
+                [lat, lon],
+                popup=folium.Popup(popup_content, max_width=200),
+                tooltip=normalized_code,
+                icon=folium.Icon(color='red', icon='train', prefix='fa')
+            ).add_to(m)
+
+            displayed_stations.append(normalized_code)
+            valid_points.append([lat, lon])
+
+    return m, displayed_stations, valid_points
+
 
 # Initialize session state
 initialize_session_state()
@@ -425,7 +607,7 @@ try:
                             all_stations = selected_rows[station_column].tolist()
                             st.caption(f"Debug - Raw station values: {all_stations}")
 
-                            # Clean and filter station values with improved handling
+                            #                            # Clean and filter station values with improved handling
                             selected_stations = []
                             for station in selected_rows[station_column].tolist():
                                 if station is not None:
@@ -451,186 +633,24 @@ try:
 
                 # Render map in the right column
                 with map_col:
-                    # Hardcoded station coordinates
-                    station_coords = {
-                        'BZA': {'lat': 16.5167, 'lon': 80.6167},  # Vijayawada
-                        'GNT': {'lat': 16.3067, 'lon': 80.4365},  # Guntur
-                        'VSKP': {'lat': 17.6868, 'lon': 83.2185},  # Visakhapatnam
-                        'TUNI': {'lat': 17.3572, 'lon': 82.5483},  # Tuni
-                        'RJY': {'lat': 17.0005, 'lon': 81.7799},  # Rajahmundry
-                        'NLDA': {'lat': 17.0575, 'lon': 79.2690},  # Nalgonda
-                        'MTM': {'lat': 16.4307, 'lon': 80.5525},  # Mangalagiri
-                        'NDL': {'lat': 16.9107, 'lon': 81.6717},  # Nidadavolu
-                        'ANV': {'lat': 17.6910, 'lon': 83.0037},  # Anakapalle
-                        'VZM': {'lat': 18.1066, 'lon': 83.4205},  # Vizianagaram
-                        'SKM': {'lat': 18.2949, 'lon': 83.8935},  # Srikakulam
-                        'PLH': {'lat': 18.7726, 'lon': 84.4162},   # Palasa
-                        'GDR': {'lat': 14.1487258, 'lon': 79.8456503},
-                        'MBL': {'lat': 14.2258343, 'lon': 79.8779689},
-                        'KMLP': {'lat': 14.2258344, 'lon': 79.8779689},
-                        'VKT': {'lat': 14.3267653, 'lon': 79.9270371},
-                        'VDE': {'lat': 14.4064058, 'lon': 79.9553191},
-                        'NLR': {'lat': 14.4530742, 'lon': 79.9868332},
-                        'PGU': {'lat': 14.4980222, 'lon': 79.9901535},
-                        'KJJ': {'lat': 14.5640002, 'lon': 79.9938934},
-                        'AXR': {'lat': 14.7101, 'lon': 79.9893},
-                        'BTTR': {'lat': 14.7743359, 'lon': 79.9667298},
-                        'SVPM': {'lat': 14.7949226, 'lon': 79.9624715},
-                        'KVZ': {'lat': 14.9242136, 'lon': 79.9788932},
-                        'TTU': {'lat': 15.0428954, 'lon': 80.0044243},
-                        'UPD': {'lat': 15.1671213, 'lon': 80.0131329},
-                        'SKM': {'lat': 15.252886, 'lon': 80.026428},
-                        'OGL': {'lat': 15.497849, 'lon': 80.0554939},
-                        'KRV': {'lat': 15.5527145, 'lon': 80.1134587},
-                        'ANB': {'lat': 15.596741, 'lon': 80.1362815},
-                        'RPRL': {'lat': 15.6171364, 'lon': 80.1677164},
-                        'UGD': {'lat': 15.6481768, 'lon': 80.1857879},
-                        'KVDV': {'lat': 15.7164922, 'lon': 80.2369806},
-                        'KPLL': {'lat': 15.7482165, 'lon': 80.2573225},
-                        'VTM': {'lat': 15.7797094, 'lon': 80.2739975},
-                        'JAQ': {'lat': 15.8122497, 'lon': 80.3030082},
-                        'CLX': {'lat': 15.830938, 'lon': 80.3517708},
-                        'IPPM': {'lat': 15.85281, 'lon': 80.3814662},
-                        'SPF': {'lat': 15.8752985, 'lon': 80.4140117},
-                        'BPP': {'lat': 15.9087804, 'lon': 80.4652035},
-                        'APL': {'lat': 15.9703661, 'lon': 80.5142194},
-                        'MCVM': {'lat': 16.0251057, 'lon': 80.5391888},
-                        'NDO': {'lat': 16.0673498, 'lon': 80.5553901},
-                        'MDKU': {'lat': 16.1233333, 'lon': 80.5799375},
-                        'TSR': {'lat': 16.1567184, 'lon': 80.5832601},
-                        'TEL': {'lat': 16.2435852, 'lon': 80.6376458},
-                        'KLX': {'lat': 16.2946856, 'lon': 80.6260305},
-                        'DIG': {'lat': 16.329159, 'lon': 80.6232471},
-                        'CLVR': {'lat': 16.3802036, 'lon': 80.6164899},
-                        'PVD': {'lat': 16.4150823, 'lon': 80.6107384},
-                        'KCC': {'lat': 16.4778294, 'lon': 80.600124}
-                    }
+                    # Get cached station coordinates
+                    station_coords = get_station_coordinates()
 
-                    # Get selected stations from the table
+                    # Get selected stations and extract codes efficiently
                     selected_stations = edited_df[edited_df['Select']]
+                    selected_station_codes = extract_station_codes(selected_stations, station_column)
 
-                    # Debug what columns we have
-                    st.caption(f"Debug - Selected DataFrame columns: {selected_stations.columns.tolist()}")
-                    if not selected_stations.empty:
-                        st.caption(f"Debug - First row values: {dict(selected_stations.iloc[0])}")
+                    # Only show minimal debug info
+                    if selected_station_codes:
+                        st.caption(f"Selected stations: {', '.join(selected_station_codes)}")
 
-                    # Get the station codes from the selected stations
-                    selected_station_codes = []
+                    # Create the base map (using cached version if possible)
+                    m = create_base_map()
 
-                    # Try multiple ways to find station codes
-                    if not selected_stations.empty:
-                        # Look for station code in 'Current Running Details' or 'Station' column
-                        potential_station_columns = ['Current Running Details', 'Station', 'Station Code', 'station', 'STATION']
+                    # Add markers efficiently
+                    m, displayed_stations, valid_points = add_markers_to_map(m, selected_station_codes, station_coords)
 
-                        # Try each potential column
-                        for col_name in potential_station_columns:
-                            if col_name in selected_stations.columns:
-                                for _, row in selected_stations.iterrows():
-                                    if pd.notna(row[col_name]):
-                                        # Extract station code from text (may contain additional details)
-                                        text_value = str(row[col_name]).strip()
-
-                                        # Handle 'Current Running Details' column which might have format "NZD ..."
-                                        if col_name == 'Current Running Details':
-                                            # Extract first word which is likely the station code
-                                            parts = text_value.split()
-                                            if parts:
-                                                code = parts[0].strip()
-                                                if code and code not in selected_station_codes:
-                                                    selected_station_codes.append(code)
-                                        else:
-                                            # For other columns, use the full value
-                                            if text_value and text_value not in selected_station_codes:
-                                                selected_station_codes.append(text_value)
-
-                        # If still no codes found, try a more generic approach with any column
-                        if not selected_station_codes:
-                            for col in selected_stations.columns:
-                                if any(keyword in col for keyword in ['station', 'Station', 'STATION', 'Running']):
-                                    for _, row in selected_stations.iterrows():
-                                        if pd.notna(row[col]):
-                                            text = str(row[col])
-                                            # Try to extract a station code (usually 2-5 uppercase letters)
-                                            words = text.split()
-                                            for word in words:
-                                                word = word.strip()
-                                                if 2 <= len(word) <= 5 and word.isupper():
-                                                    if word not in selected_station_codes:
-                                                        selected_station_codes.append(word)
-
-                    # Debug the extracted station codes
-                    st.write(f"Debug - Extracted Station Codes: {selected_station_codes}")
-
-
-                    # Define Andhra Pradesh center coordinates
-                    AP_CENTER = [16.5167, 80.6167]  # Centered around Vijayawada
-
-                    # Create the map centered around Andhra Pradesh
-                    m = folium.Map(location=AP_CENTER, zoom_start=7)
-
-                    # Debug information
-                    st.caption(f"Selected station codes: {selected_station_codes}")
-
-                    # Variables to track which stations are displayed
-                    displayed_stations = []
-                    valid_points = []
-
-                    # Add markers for all selected stations that have coordinates
-                    for code in selected_station_codes:
-                        # Normalize code for matching
-                        normalized_code = code.upper().strip()
-
-                        # Check if we have coordinates for this station
-                        if normalized_code in station_coords:
-                            # Get coordinates
-                            coords = station_coords[normalized_code]
-                            lat = coords['lat']
-                            lon = coords['lon']
-
-                            # Create popup content
-                            popup_content = f"""
-                            <div style='font-family: Arial; font-size: 12px;'>
-                                <b>{normalized_code}</b><br>
-                                Lat: {lat:.4f}<br>
-                                Lon: {lon:.4f}
-                            </div>
-                            """
-
-                            # Add marker to map
-                            folium.Marker(
-                                [lat, lon],
-                                popup=folium.Popup(popup_content, max_width=200),
-                                tooltip=normalized_code,
-                                icon=folium.Icon(color='red', icon='train', prefix='fa')
-                            ).add_to(m)
-
-                            # Add to tracking variables
-                            displayed_stations.append(normalized_code)
-                            valid_points.append([lat, lon])
-                        else:
-                            # Display warning for station codes without coordinates
-                            st.warning(f"No coordinates found for station code: {normalized_code}")
-
-                            # Try an alternative lookup approach
-                            for key in station_coords.keys():
-                                if key.upper().strip() == normalized_code:
-                                    coords = station_coords[key]
-                                    lat = coords['lat']
-                                    lon = coords['lon']
-
-                                    # Add marker to map
-                                    folium.Marker(
-                                        [lat, lon],
-                                        popup=folium.Popup(f"<b>{normalized_code}</b><br>Lat: {lat:.4f}<br>Lon: {lon:.4f}", max_width=200),
-                                        tooltip=normalized_code,
-                                        icon=folium.Icon(color='red', icon='train', prefix='fa')
-                                    ).add_to(m)
-
-                                    displayed_stations.append(normalized_code)
-                                    valid_points.append([lat, lon])
-                                    break
-
-                    # Add railway lines if multiple stations
+                    # Add railway lines if multiple stations (only when needed)
                     if len(valid_points) > 1:
                         folium.PolyLine(
                             valid_points,
@@ -646,20 +666,19 @@ try:
 
                     # Show status message
                     if displayed_stations:
-                        st.success(f"Showing {len(displayed_stations)} stations on the map: {', '.join(displayed_stations)}")
+                        st.success(f"Showing {len(displayed_stations)} stations on the map")
                     else:
                         if selected_station_codes:
-                            st.warning(f"No coordinates found for selected stations: {', '.join(selected_station_codes)}")
+                            st.warning(f"No coordinates found for selected stations")
                         else:
                             st.info("Select stations from the table to display them on the map")
 
-                    # Add instructions
+                    # Add instructions in collapsible section for better UI performance
                     with st.expander("About GPS Coordinates"):
                         st.markdown("""
                         - Latitude: North-South position (-90° to 90°)
                         - Longitude: East-West position (-180° to 180°)
                         - Coordinates are in decimal degrees format
-                        - The map shows stations in the Vijayawada Division
                         """)
 
             else:
