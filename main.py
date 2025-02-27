@@ -15,7 +15,6 @@ import folium
 from folium.plugins import Draw
 from streamlit_folium import folium_static
 
-
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -510,14 +509,45 @@ try:
                     # Get selected stations from the table
                     selected_stations = edited_df[edited_df['Select']]
 
+                    # Debug what columns we have
+                    st.caption(f"Debug - Selected DataFrame columns: {selected_stations.columns.tolist()}")
+                    if not selected_stations.empty:
+                        st.caption(f"Debug - First row values: {dict(selected_stations.iloc[0])}")
+
                     # Get the station codes from the selected stations
                     selected_station_codes = []
-                    if not selected_stations.empty and station_column in selected_stations.columns:
-                        for _, row in selected_stations.iterrows():
-                            if station_column in row and row[station_column]:
-                                code = str(row[station_column]).strip()
-                                if code:
-                                    selected_station_codes.append(code)
+
+                    # Try multiple ways to find station codes
+                    if not selected_stations.empty:
+                        # Try using the previously identified station_column
+                        if station_column and station_column in selected_stations.columns:
+                            for _, row in selected_stations.iterrows():
+                                if pd.notna(row[station_column]):
+                                    code = str(row[station_column]).strip()
+                                    if code:
+                                        selected_station_codes.append(code)
+
+                        # If no station codes found, try looking for any column that might contain station codes
+                        if not selected_station_codes:
+                            station_keywords = ['Station', 'STATION', 'station', 'Station Code', 'StationCode']
+                            for col in selected_stations.columns:
+                                for keyword in station_keywords:
+                                    if keyword in col:
+                                        for _, row in selected_stations.iterrows():
+                                            if pd.notna(row[col]):
+                                                code = str(row[col]).strip()
+                                                if code:
+                                                    selected_station_codes.append(code)
+                                        # Break if we found some station codes
+                                        if selected_station_codes:
+                                            break
+                                # Break if we found some station codes
+                                if selected_station_codes:
+                                    break
+
+                    # Debug the extracted station codes
+                    st.write(f"Debug - Extracted Station Codes: {selected_station_codes}")
+
 
                     # Define Andhra Pradesh center coordinates
                     AP_CENTER = [16.5167, 80.6167]  # Centered around Vijayawada
