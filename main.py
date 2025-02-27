@@ -746,8 +746,17 @@ try:
 
                     refresh_table_placeholder.empty()  # Clear the placeholder after table display
 
-                # Render map in the right column
+                # Display map with reduced left margin
                 with map_col:
+                    # Remove extra padding/margin to bring map closer to table
+                    st.markdown("""
+                    <style>
+                    .stColumn > div:first-child {
+                        padding-left: 0;
+                    }
+                    </style>
+                    """, unsafe_allow_html=True)
+
                     # Get cached station coordinates
                     station_coords = get_station_coordinates()
 

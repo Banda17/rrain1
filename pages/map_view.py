@@ -87,235 +87,248 @@ stations_df = pd.DataFrame([
     for code, info in get_station_coordinates().items()
 ])
 
-# Controls
-st.subheader("Station Selection")
-st.markdown("Select stations to display on the map:")
+# Create a two-column layout for table and map display
+table_section, map_section = st.columns([3, 2])
 
-# Create a column layout to control table width
-table_col1, table_col2 = st.columns([3, 1])
-with table_col1:
-    # Make the dataframe interactive with checkboxes
-    edited_df = st.data_editor(
-        stations_df,
-        hide_index=True,
-        column_config={
-            "Select": st.column_config.CheckboxColumn(
-                "Select",
-                help="Select to show on map",
-                default=False
-            )
-        },
-        disabled=["Station Code", "Name", "Latitude", "Longitude"],
-        use_container_width=False,
-        height=800,  # Increased height further
-        num_rows=40  # Show 40 rows at a time
-    )
-with table_col2:
-    # Empty space to reduce table width
-    st.empty()
+with table_section:
+    st.subheader("Station Selection")
+    st.markdown("Select stations to display on the map:")
 
-# Get selected stations
-selected_stations = edited_df[edited_df['Select']]
+    # Create a column layout to control table width
+    table_col1, table_col2 = st.columns([3, 1])
+    with table_col1:
+        # Make the dataframe interactive with checkboxes
+        edited_df = st.data_editor(
+            stations_df,
+            hide_index=True,
+            column_config={
+                "Select": st.column_config.CheckboxColumn(
+                    "Select",
+                    help="Select to show on map",
+                    default=False
+                )
+            },
+            disabled=["Station Code", "Name", "Latitude", "Longitude"],
+            use_container_width=False,
+            height=800,  # Increased height further
+            num_rows=40  # Show 40 rows at a time
+        )
+    with table_col2:
+        # Empty space to reduce table width
+        st.empty()
 
-# Toggle between offline map and folium map
-map_type = st.radio("Map Type", ["Offline Map with GPS Markers", "Interactive GPS Map"], 
-                    index=0, horizontal=True)
+with map_section:
+    # Remove extra padding/margin to bring map closer to table
+    st.markdown("""
+    <style>
+    .stColumn > div:first-child {
+        padding-left: 0;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
-if map_type == "Offline Map with GPS Markers":
-    # Function to render offline map with markers
-    def render_offline_map_with_markers(selected_stations_df):
-        """Render an offline map with GPS markers for selected stations"""
-        # Temporarily increase marker size
-        original_marker_size = map_viewer.base_marker_size
-        map_viewer.base_marker_size = 25  # Increased from default 15 to 25
+    # Get selected stations
+    selected_stations = edited_df[edited_df['Select']]
 
-        # Load the base map
-        base_map = map_viewer.load_map()
-        if base_map is None:
-            # Restore original marker size before returning
+    # Toggle between offline map and folium map
+    map_type = st.radio("Map Type", ["Offline Map with GPS Markers", "Interactive GPS Map"], 
+                        index=0, horizontal=True)
+
+    if map_type == "Offline Map with GPS Markers":
+        # Function to render offline map with markers
+        def render_offline_map_with_markers(selected_stations_df):
+            """Render an offline map with GPS markers for selected stations"""
+            # Temporarily increase marker size
+            original_marker_size = map_viewer.base_marker_size
+            map_viewer.base_marker_size = 25  # Increased from default 15 to 25
+
+            # Load the base map
+            base_map = map_viewer.load_map()
+            if base_map is None:
+                # Restore original marker size before returning
+                map_viewer.base_marker_size = original_marker_size
+                return None, []
+
+            # Create a copy of the base map to draw on
+            display_image = base_map.copy()
+
+            # First, draw small dots for all non-selected stations
+            draw = ImageDraw.Draw(display_image)
+
+            # Get all station coordinates
+            station_coords = get_station_coordinates()
+
+            # Create a list of selected station codes for easy lookup
+            selected_codes = [row['Station Code'].upper().strip() for _, row in selected_stations_df.iterrows()]
+
+            # Draw small dots for all non-selected stations
+            for code, info in station_coords.items():
+                # Skip if this is a selected station (will be drawn with a marker later)
+                if code in selected_codes:
+                    continue
+
+                # Try to convert GPS coordinates to map coordinates
+                try:
+                    # Approximate conversion
+                    x_norm = (info['lon'] - 79.0) / 5.0
+                    y_norm = (info['lat'] - 14.0) / 5.0
+
+                    # Add to map_viewer's station locations for future use
+                    map_viewer.station_locations[code] = {
+                        'x': x_norm,
+                        'y': y_norm
+                    }
+
+                    # Convert normalized coordinates to pixel coordinates
+                    width, height = display_image.size
+                    x = int(x_norm * width)
+                    y = int(y_norm * height)
+
+                    # Draw a small dot
+                    dot_radius = 5
+                    draw.ellipse((x-dot_radius, y-dot_radius, x+dot_radius, y+dot_radius), 
+                                fill=(100, 100, 100, 180))  # Gray with some transparency
+                except:
+                    # Skip if conversion fails
+                    continue
+
+            # Keep track of displayed stations
+            displayed_stations = []
+
+            # Draw markers for each selected station
+            for _, station in selected_stations_df.iterrows():
+                code = station['Station Code']
+                normalized_code = code.upper().strip()
+
+                # Try to add using map_viewer first
+                if normalized_code in map_viewer.station_locations:
+                    display_image = map_viewer.draw_train_marker(display_image, normalized_code)
+                    displayed_stations.append(normalized_code)
+                else:
+                    # Convert GPS coordinates to approximate map coordinates
+                    lat, lon = station['Latitude'], station['Longitude']
+
+                    # Add to map_viewer's station locations (temporary)
+                    map_viewer.station_locations[normalized_code] = {
+                        'x': (lon - 79.0) / 5.0,  # Approximate conversion
+                        'y': (lat - 14.0) / 5.0   # Approximate conversion
+                    }
+
+                    # Draw the marker
+                    display_image = map_viewer.draw_train_marker(display_image, normalized_code)
+                    displayed_stations.append(normalized_code)
+
+            # Restore original marker size
             map_viewer.base_marker_size = original_marker_size
-            return None, []
 
-        # Create a copy of the base map to draw on
-        display_image = base_map.copy()
+            return display_image, displayed_stations
 
-        # First, draw small dots for all non-selected stations
-        draw = ImageDraw.Draw(display_image)
+        # Use the function to render offline map with markers
+        display_image, displayed_stations = None, []
+
+        # Always render the map to show all stations as dots
+        display_image, displayed_stations = render_offline_map_with_markers(selected_stations)
+
+        if display_image is not None:
+            # Resize for display if needed
+            from PIL import Image
+            original_width, original_height = display_image.size
+            max_height = 600
+            height_ratio = max_height / original_height
+            new_width = int(original_width * height_ratio)
+
+            # Display the map
+            st.image(
+                display_image.resize((new_width, max_height)), #resize image
+                use_container_width=True,
+                caption="Vijayawada Division System Map with Selected Stations"
+            )
+
+            # Show station count
+            if displayed_stations:
+                st.success(f"Showing {len(displayed_stations)} selected stations with markers and all other stations as dots")
+            else:
+                st.info("No stations selected. All stations shown as dots on the map.")
+        else:
+            st.error("Unable to load the offline map. Please check the map file.")
+    else:
+        # Interactive GPS Map section
+        # Create the map
+        m = folium.Map(
+            location=[16.5167, 80.6167],  # Centered around Vijayawada
+            zoom_start=7,
+            control_scale=True
+        )
+
+        # Add a basemap
+        folium.TileLayer(
+            tiles='OpenStreetMap',
+            attr='&copy; OpenStreetMap contributors',
+            opacity=0.8
+        ).add_to(m)
 
         # Get all station coordinates
         station_coords = get_station_coordinates()
 
         # Create a list of selected station codes for easy lookup
-        selected_codes = [row['Station Code'].upper().strip() for _, row in selected_stations_df.iterrows()]
+        selected_codes = [row['Station Code'].upper().strip() for _, row in selected_stations.iterrows()]
 
-        # Draw small dots for all non-selected stations
+        # First add small dots for all non-selected stations
         for code, info in station_coords.items():
             # Skip if this is a selected station (will be drawn with a marker later)
-            if code in selected_codes:
+            if code.upper() in selected_codes:
                 continue
 
-            # Try to convert GPS coordinates to map coordinates
-            try:
-                # Approximate conversion
-                x_norm = (info['lon'] - 79.0) / 5.0
-                y_norm = (info['lat'] - 14.0) / 5.0
-
-                # Add to map_viewer's station locations for future use
-                map_viewer.station_locations[code] = {
-                    'x': x_norm,
-                    'y': y_norm
-                }
-
-                # Convert normalized coordinates to pixel coordinates
-                width, height = display_image.size
-                x = int(x_norm * width)
-                y = int(y_norm * height)
-
-                # Draw a small dot
-                dot_radius = 5
-                draw.ellipse((x-dot_radius, y-dot_radius, x+dot_radius, y+dot_radius), 
-                            fill=(100, 100, 100, 180))  # Gray with some transparency
-            except:
-                # Skip if conversion fails
-                continue
-
-        # Keep track of displayed stations
-        displayed_stations = []
-
-        # Draw markers for each selected station
-        for _, station in selected_stations_df.iterrows():
-            code = station['Station Code']
-            normalized_code = code.upper().strip()
-
-            # Try to add using map_viewer first
-            if normalized_code in map_viewer.station_locations:
-                display_image = map_viewer.draw_train_marker(display_image, normalized_code)
-                displayed_stations.append(normalized_code)
-            else:
-                # Convert GPS coordinates to approximate map coordinates
-                lat, lon = station['Latitude'], station['Longitude']
-
-                # Add to map_viewer's station locations (temporary)
-                map_viewer.station_locations[normalized_code] = {
-                    'x': (lon - 79.0) / 5.0,  # Approximate conversion
-                    'y': (lat - 14.0) / 5.0   # Approximate conversion
-                }
-
-                # Draw the marker
-                display_image = map_viewer.draw_train_marker(display_image, normalized_code)
-                displayed_stations.append(normalized_code)
-
-        # Restore original marker size
-        map_viewer.base_marker_size = original_marker_size
-
-        return display_image, displayed_stations
-
-    # Use the function to render offline map with markers
-    display_image, displayed_stations = None, []
-
-    # Always render the map to show all stations as dots
-    display_image, displayed_stations = render_offline_map_with_markers(selected_stations)
-
-    if display_image is not None:
-        # Resize for display if needed
-        from PIL import Image
-        original_width, original_height = display_image.size
-        max_height = 600
-        height_ratio = max_height / original_height
-        new_width = int(original_width * height_ratio)
-
-        # Display the map
-        st.image(
-            display_image,
-            use_container_width=True,
-            caption="Vijayawada Division System Map with Selected Stations"
-        )
-
-        # Show station count
-        if displayed_stations:
-            st.success(f"Showing {len(displayed_stations)} selected stations with markers and all other stations as dots")
-        else:
-            st.info("No stations selected. All stations shown as dots on the map.")
-    else:
-        st.error("Unable to load the offline map. Please check the map file.")
-else:
-    # Interactive GPS Map section
-    # Create the map
-    m = folium.Map(
-        location=[16.5167, 80.6167],  # Centered around Vijayawada
-        zoom_start=7,
-        control_scale=True
-    )
-
-    # Add a basemap
-    folium.TileLayer(
-        tiles='OpenStreetMap',
-        attr='&copy; OpenStreetMap contributors',
-        opacity=0.8
-    ).add_to(m)
-
-    # Get all station coordinates
-    station_coords = get_station_coordinates()
-
-    # Create a list of selected station codes for easy lookup
-    selected_codes = [row['Station Code'].upper().strip() for _, row in selected_stations.iterrows()]
-
-    # First add small dots for all non-selected stations
-    for code, info in station_coords.items():
-        # Skip if this is a selected station (will be drawn with a marker later)
-        if code.upper() in selected_codes:
-            continue
-
-        # Add small circle markers for non-selected stations
-        folium.CircleMarker(
-            [info['lat'], info['lon']],
-            radius=3,  # Small radius
-            color='gray',
-            fill=True,
-            fill_color='gray',
-            fill_opacity=0.6,
-            opacity=0.6,
-            tooltip=code
-        ).add_to(m)
-
-    # Add markers only for selected stations
-    if not selected_stations.empty:
-        # Add markers for selected stations
-        valid_points = []
-        for _, station in selected_stations.iterrows():
-            # Create custom popup content
-            popup_content = f"""
-            <div style='font-family: Arial; font-size: 12px;'>
-                <b>{station['Station Code']} - {station['Name']}</b><br>
-                Lat: {station['Latitude']:.4f}<br>
-                Lon: {station['Longitude']:.4f}
-            </div>
-            """
-
-            folium.Marker(
-                [station['Latitude'], station['Longitude']],
-                popup=folium.Popup(popup_content, max_width=200),
-                tooltip=station['Station Code'],
-                icon=folium.Icon(color='red', icon='train', prefix='fa'),
-                opacity=0.9  # Fixed opacity
-            ).add_to(m)
-
-            # Add to points for railway line
-            valid_points.append([station['Latitude'], station['Longitude']])
-
-        # Add railway lines between selected stations
-        if len(valid_points) > 1:
-            folium.PolyLine(
-                valid_points,
-                weight=2,
+            # Add small circle markers for non-selected stations
+            folium.CircleMarker(
+                [info['lat'], info['lon']],
+                radius=3,  # Small radius
                 color='gray',
-                opacity=0.8,  # Fixed opacity
-                dash_array='5, 10'
+                fill=True,
+                fill_color='gray',
+                fill_opacity=0.6,
+                opacity=0.6,
+                tooltip=code
             ).add_to(m)
 
-    # Display the map with increased width
-    st.subheader("Interactive Map")
-    folium_static(m, width=1200, height=650)
+        # Add markers only for selected stations
+        if not selected_stations.empty:
+            # Add markers for selected stations
+            valid_points = []
+            for _, station in selected_stations.iterrows():
+                # Create custom popup content
+                popup_content = f"""
+                <div style='font-family: Arial; font-size: 12px;'>
+                    <b>{station['Station Code']} - {station['Name']}</b><br>
+                    Lat: {station['Latitude']:.4f}<br>
+                    Lon: {station['Longitude']:.4f}
+                </div>
+                """
+
+                folium.Marker(
+                    [station['Latitude'], station['Longitude']],
+                    popup=folium.Popup(popup_content, max_width=200),
+                    tooltip=station['Station Code'],
+                    icon=folium.Icon(color='red', icon='train', prefix='fa'),
+                    opacity=0.9  # Fixed opacity
+                ).add_to(m)
+
+                # Add to points for railway line
+                valid_points.append([station['Latitude'], station['Longitude']])
+
+            # Add railway lines between selected stations
+            if len(valid_points) > 1:
+                folium.PolyLine(
+                    valid_points,
+                    weight=2,
+                    color='gray',
+                    opacity=0.8,  # Fixed opacity
+                    dash_array='5, 10'
+                ).add_to(m)
+
+        # Display the map with increased width
+        st.subheader("Interactive Map")
+        folium_static(m, width=1200, height=650)
 
 # Add instructions in collapsible section
 with st.expander("About GPS Coordinates"):
