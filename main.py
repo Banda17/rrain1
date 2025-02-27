@@ -876,7 +876,7 @@ try:
 
                         # Render the map with increased width
                         st.subheader("Interactive Map")
-                        folium_static(m, width=1200, height=650)
+                        folium_static(m, width=1800, height=650)
 
                         # Add instructions in collapsible section for better UI performance
                         with st.expander("Map Instructions"):
