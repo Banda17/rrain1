@@ -91,21 +91,28 @@ stations_df = pd.DataFrame([
 st.subheader("Station Selection")
 st.markdown("Select stations to display on the map:")
 
-# Make the dataframe interactive with checkboxes
-edited_df = st.data_editor(
-    stations_df,
-    hide_index=True,
-    column_config={
-        "Select": st.column_config.CheckboxColumn(
-            "Select",
-            help="Select to show on map",
-            default=False
-        )
-    },
-    disabled=["Station Code", "Name", "Latitude", "Longitude"],
-    height=600,  # Increased height to show more rows
-    num_rows=40  # Show 40 rows at a time
-)
+# Create a column layout to control table width
+table_col1, table_col2 = st.columns([3, 1])
+with table_col1:
+    # Make the dataframe interactive with checkboxes
+    edited_df = st.data_editor(
+        stations_df,
+        hide_index=True,
+        column_config={
+            "Select": st.column_config.CheckboxColumn(
+                "Select",
+                help="Select to show on map",
+                default=False
+            )
+        },
+        disabled=["Station Code", "Name", "Latitude", "Longitude"],
+        use_container_width=False,
+        height=800,  # Increased height further
+        num_rows=40  # Show 40 rows at a time
+    )
+with table_col2:
+    # Empty space to reduce table width
+    st.empty()
 
 # Get selected stations
 selected_stations = edited_df[edited_df['Select']]
