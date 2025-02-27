@@ -102,7 +102,7 @@ st.markdown("""
     </div>
     <hr style='margin-top: 0.5rem;'>
 """,
-    unsafe_allow_html=True)
+            unsafe_allow_html=True)
 
 
 def initialize_session_state():
@@ -673,8 +673,8 @@ def extract_station_codes(selected_stations, station_column=None):
 # Create a function to render the offline map with GPS markers
 @st.cache_data(ttl=60)
 def render_offline_map_with_markers(selected_station_codes,
-                                   station_coords,
-                                   marker_opacity=0.8):
+                                    station_coords,
+                                    marker_opacity=0.8):
     """Render an offline map with GPS markers for selected stations"""
     # Get the map viewer from session state or create a new one
     map_viewer = st.session_state.get('map_viewer', MapViewer())
@@ -716,8 +716,10 @@ def render_offline_map_with_markers(selected_station_codes,
 
             # Draw a small dot (5 pixel radius)
             dot_radius = 5
-            draw.ellipse((x - dot_radius, y - dot_radius, x + dot_radius, y + dot_radius),
-                         fill=(100, 100, 100, 180))  # Gray with some transparency
+            draw.ellipse(
+                (x - dot_radius, y - dot_radius, x + dot_radius,
+                 y + dot_radius),
+                fill=(100, 100, 100, 180))  # Gray with some transparency
         else:
             # Convert GPS to approximate map coordinates
             try:
@@ -735,8 +737,10 @@ def render_offline_map_with_markers(selected_station_codes,
 
                 # Draw a small dot
                 dot_radius = 5
-                draw.ellipse((x - dot_radius, y - dot_radius, x + dot_radius, y + dot_radius),
-                             fill=(100, 100, 100, 180))  # Gray with some transparency
+                draw.ellipse(
+                    (x - dot_radius, y - dot_radius, x + dot_radius,
+                     y + dot_radius),
+                    fill=(100, 100, 100, 180))  # Gray with some transparency
             except:
                 # Skip if conversion fails
                 continue
@@ -795,7 +799,7 @@ def render_offline_map_with_markers(selected_station_codes,
             for x in range(width):
                 r, g, b, a = pixdata[x, y]
                 if a > 0:  # Only modify non-transparent pixels
-                                        pixdata[x, y] = (r, g, b, int(a * opacity))
+                    pixdata[x, y] = (r, g, b, int(a * opacity))
 
         return result
 
@@ -872,14 +876,16 @@ try:
                 stations = extract_stations_from_data(df)
 
                 # Drop unwanted columns - use exact column names with proper spacing
-                columns_to_drop = ['Sr.',
+                columns_to_drop = [
+                    'Sr.',
                     'Exit Time for NLT Status',
                     'FROM-TO',
                     'Start date',
                     # Try different column name variations
                     'Scheduled [ Entry - Exit ]',
                     'Scheduled [Entry - Exit]',
-                    'Scheduled[ Entry - Exit ]','Scheduled[Entry - Exit]',
+                    'Scheduled[ Entry - Exit ]',
+                    'Scheduled[Entry - Exit]',
                     'Scheduled [ Entry-Exit ]',
                     'Scheduled [Entry-Exit]',
                     'scheduled[Entry-Exit]',
@@ -921,16 +927,17 @@ try:
                     max-width: none !important;
                 }
                 </style>
-                """, unsafe_allow_html=True)
+                """,
+                            unsafe_allow_html=True)
 
                 # Create a more balanced column ratio with no gap - 60% table to 40% map
-                table_col, map_col = st.columns([3, 2], gap="small")
+                table_col, map_col = st.columns([3, 3], gap="small")
 
                 with table_col:
                     # Refresh animation placeholder right before displaying the table
                     refresh_table_placeholder = st.empty()
                     create_pulsing_refresh_animation(refresh_table_placeholder,
-                                                      "Refreshing Table...")
+                                                     "Refreshing Table...")
 
                     # Function to check if a value is positive or contains (+)
                     def is_positive_or_plus(value):
@@ -996,17 +1003,28 @@ try:
                             filtered_df,
                             hide_index=True,
                             column_config={
-                                "Select": st.column_config.CheckboxColumn(
+                                "Select":
+                                st.column_config.CheckboxColumn(
                                     "Select",
                                     help="Select to show on map",
-                                    default=False
-                                ),
-                                "Train No.": st.column_config.TextColumn("Train No.", help="Train Number"),
-                                "FROM-TO": st.column_config.TextColumn("FROM-TO", help="Source to Destination"),
-                                "IC Entry Delay": st.column_config.TextColumn("IC Entry Delay", help="Entry Delay"),
-                                "Delay": st.column_config.TextColumn("Delay", help="Delay in Minutes")
+                                    default=False),
+                                "Train No.":
+                                st.column_config.TextColumn(
+                                    "Train No.", help="Train Number"),
+                                "FROM-TO":
+                                st.column_config.TextColumn(
+                                    "FROM-TO", help="Source to Destination"),
+                                "IC Entry Delay":
+                                st.column_config.TextColumn(
+                                    "IC Entry Delay", help="Entry Delay"),
+                                "Delay":
+                                st.column_config.TextColumn(
+                                    "Delay", help="Delay in Minutes")
                             },
-                            disabled=[col for col in filtered_df.columns if col != 'Select'],
+                            disabled=[
+                                col for col in filtered_df.columns
+                                if col != 'Select'
+                            ],
                             use_container_width=True,  # Use full container width
                             height=800,  # Increased height further
                             num_rows=40  # Show 40 rows at a time
@@ -1024,27 +1042,38 @@ try:
 
                             # Debug - show all stations in selected rows
                             if not selected_rows.empty and station_column in selected_rows.columns:
-                                all_stations = selected_rows[station_column].tolist()
-                                st.caption(f"Debug - Raw station values: {all_stations}")
+                                all_stations = selected_rows[
+                                    station_column].tolist()
+                                st.caption(
+                                    f"Debug - Raw station values: {all_stations}"
+                                )
 
                                 # Clean and filter station values with improved handling
                                 selected_stations = []
-                                for station in selected_rows[station_column].tolist():
+                                for station in selected_rows[
+                                        station_column].tolist():
                                     if station is not None:
                                         cleaned = station.strip().upper()
                                         if cleaned and cleaned not in selected_stations:
                                             selected_stations.append(cleaned)
 
                                 if selected_stations:
-                                    st.caption(f"Selected stations: {', '.join(selected_stations)}")
+                                    st.caption(
+                                        f"Selected stations: {', '.join(selected_stations)}"
+                                    )
                                 else:
                                     st.caption("No stations selected")
 
                         except Exception as e:
-                            logger.error(f"Error processing selected stations: {str(e)}")
-                            st.error(f"Error processing selected stations: {str(e)}")
+                            logger.error(
+                                f"Error processing selected stations: {str(e)}"
+                            )
+                            st.error(
+                                f"Error processing selected stations: {str(e)}"
+                            )
 
-                    refresh_table_placeholder.empty()  # Clear the placeholder after table display
+                    refresh_table_placeholder.empty(
+                    )  # Clear the placeholder after table display
 
                 # Display map with reduced left margin
                 with map_col:
@@ -1056,23 +1085,29 @@ try:
                         margin-left: 0 !important;
                     }
                     </style>
-                    """, unsafe_allow_html=True)
+                    """,
+                                unsafe_allow_html=True)
 
                     # Get cached station coordinates
                     station_coords = get_station_coordinates()
 
                     # Extract station codes from selected rows
                     selected_rows = edited_df[edited_df['Select']]
-                    selected_station_codes = extract_station_codes(selected_rows,
-                                                                  station_column)
+                    selected_station_codes = extract_station_codes(
+                        selected_rows, station_column)
 
                     # Toggle between offline map and folium map
-                    map_type = st.radio("Map Type", ["Offline Map with GPS Markers", "Interactive GPS Map"],
-                                       index=0, horizontal=True)
+                    map_type = st.radio("Map Type", [
+                        "Offline Map with GPS Markers", "Interactive GPS Map"
+                    ],
+                                        index=0,
+                                        horizontal=True)
 
                     if map_type == "Offline Map with GPS Markers":
                         if selected_station_codes:
-                            st.caption(f"Selected stations: {', '.join(selected_station_codes)}")
+                            st.caption(
+                                f"Selected stations: {', '.join(selected_station_codes)}"
+                            )
 
                         # Render offline map with markers
                         display_image, displayed_stations = render_offline_map_with_markers(
@@ -1087,42 +1122,48 @@ try:
                             # Calculate new dimensions maintaining aspect ratio
                             max_height = 600  # Increased height for better visibility
                             height_ratio = max_height / original_height
-                            new_width = int(original_width * height_ratio * 1.2)  # Extra width factor
+                            new_width = int(original_width * height_ratio *
+                                            1.2)  # Extra width factor
                             new_height = max_height
 
                             display_image = display_image.resize(
                                 (new_width, new_height),
-                                Image.Resampling.LANCZOS
-                            )
+                                Image.Resampling.LANCZOS)
 
                             # Display the map
                             st.image(
                                 display_image,
                                 use_container_width=True,
-                                caption="Vijayawada Division System Map with Selected Stations"
+                                caption=
+                                "Vijayawada Division System Map with Selected Stations"
                             )
 
                             # Show station count
                             if displayed_stations:
-                                st.success(f"Showing {len(displayed_stations)} selected stations with markers and all other stations as dots")
+                                st.success(
+                                    f"Showing {len(displayed_stations)} selected stations with markers and all other stations as dots"
+                                )
                             else:
-                                st.info("No stations selected. All stations shown as dots on the map.")
+                                st.info(
+                                    "No stations selected. All stations shown as dots on the map."
+                                )
                         else:
-                            st.error("Unable to load the offline map. Please check the map file.")
+                            st.error(
+                                "Unable to load the offline map. Please check the map file."
+                            )
                     else:
                         # Create the interactive map
                         m = folium.Map(
-                            location=[16.5167, 80.6167],  # Centered around Vijayawada
+                            location=[16.5167,
+                                      80.6167],  # Centered around Vijayawada
                             zoom_start=7,
-                            control_scale=True
-                        )
+                            control_scale=True)
 
                         # Add a basemap with reduced opacity
                         folium.TileLayer(
                             tiles='OpenStreetMap',
                             attr='&copy; OpenStreetMap contributors',
-                            opacity=0.8
-                        ).add_to(m)
+                            opacity=0.8).add_to(m)
 
                         # Add markers efficiently
                         displayed_stations = []
@@ -1135,16 +1176,14 @@ try:
                                 continue
 
                             # Add small circles for non-selected stations
-                            folium.CircleMarker(
-                                [coords['lat'], coords['lon']],
-                                radius=3,
-                                color='gray',
-                                fill=True,
-                                fill_color='gray',
-                                fill_opacity=0.6,
-                                opacity=0.6,
-                                tooltip=code
-                            ).add_to(m)
+                            folium.CircleMarker([coords['lat'], coords['lon']],
+                                                radius=3,
+                                                color='gray',
+                                                fill=True,
+                                                fill_color='gray',
+                                                fill_opacity=0.6,
+                                                opacity=0.6,
+                                                tooltip=code).add_to(m)
 
                         # Then add larger markers for selected stations
                         for code in selected_station_codes:
@@ -1157,28 +1196,24 @@ try:
                                 popup_content = f"<b>{normalized_code}</b><br>({lat:.4f}, {lon:.4f})"
 
                                 # Add marker
-                                folium.Marker(
-                                    [lat, lon],
-                                    popup=popup_content,
-                                    tooltip=normalized_code,
-                                    icon=folium.Icon(color='red',
-                                                    icon='train',
-                                                    prefix='fa'),
-                                    opacity=0.8
-                                ).add_to(m)
+                                folium.Marker([lat, lon],
+                                              popup=popup_content,
+                                              tooltip=normalized_code,
+                                              icon=folium.Icon(color='red',
+                                                               icon='train',
+                                                               prefix='fa'),
+                                              opacity=0.8).add_to(m)
 
                                 displayed_stations.append(normalized_code)
                                 valid_points.append([lat, lon])
 
                         # Add railway lines between selected stations if applicable
                         if len(valid_points) > 1:
-                            folium.PolyLine(
-                                valid_points,
-                                weight=2,
-                                color='gray',
-                                opacity=0.8,
-                                dash_array='5, 10'
-                            ).add_to(m)
+                            folium.PolyLine(valid_points,
+                                            weight=2,
+                                            color='gray',
+                                            opacity=0.8,
+                                            dash_array='5, 10').add_to(m)
 
                         # Render the map with increased width
                         st.subheader("Interactive Map")
@@ -1212,4 +1247,6 @@ except Exception as e:
 
 # Footer
 st.markdown("---")
-st.markdown("<div style='text-align: center; color: #666;'>© 2023 South Central Railway - Vijayawada Division</div>", unsafe_allow_html=True)
+st.markdown(
+    "<div style='text-align: center; color: #666;'>© 2023 South Central Railway - Vijayawada Division</div>",
+    unsafe_allow_html=True)
