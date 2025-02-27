@@ -14,6 +14,7 @@ from animation_utils import create_pulsing_refresh_animation, show_countdown_pro
 import folium
 from folium.plugins import Draw
 from streamlit_folium import folium_static
+from map_viewer import MapViewer  # Import MapViewer for offline map handling
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -145,6 +146,10 @@ def initialize_session_state():
         'selected_stations': {  # New state variable for selected stations
             'default': [],
             'type': list
+        },
+        'map_viewer': {  # Add MapViewer to session state
+            'default': MapViewer(),
+            'type': MapViewer
         }
     }
 
@@ -386,42 +391,49 @@ def extract_station_codes(selected_stations, station_column=None):
 
     return selected_station_codes
 
-# Optimize map creation
+# Create a function to render the offline map with GPS markers
 @st.cache_data(ttl=60)
-def create_base_map(center=[16.5167, 80.6167], zoom_start=7):
-    """Create and cache the base map"""
-    return folium.Map(location=center, zoom_start=zoom_start)
+def render_offline_map_with_markers(selected_station_codes, station_coords):
+    """Render an offline map with GPS markers for selected stations"""
+    # Get the map viewer from session state or create a new one
+    map_viewer = st.session_state.get('map_viewer', MapViewer())
 
-# Function to add markers to map efficiently
-def add_markers_to_map(m, station_codes, station_coords):
-    """Add markers to map with optimized performance"""
+    # Load the base map
+    base_map = map_viewer.load_map()
+    if base_map is None:
+        return None, []
+
+    # Create a copy of the base map to draw on
+    display_image = base_map.copy()
+
+    # Keep track of displayed stations
     displayed_stations = []
-    valid_points = []
 
-    # Process in batches for better performance
-    for code in station_codes:
+    # Draw markers for each selected station
+    for code in selected_station_codes:
         normalized_code = code.upper().strip()
 
-        # Direct lookup first (faster)
-        if normalized_code in station_coords:
-            coords = station_coords[normalized_code]
-            lat, lon = coords['lat'], coords['lon']
-
-            # Simple popup for better performance
-            popup_content = f"<b>{normalized_code}</b><br>({lat:.4f}, {lon:.4f})"
-
-            # Add marker
-            folium.Marker(
-                [lat, lon],
-                popup=folium.Popup(popup_content, max_width=200),
-                tooltip=normalized_code,
-                icon=folium.Icon(color='red', icon='train', prefix='fa')
-            ).add_to(m)
-
+        # Check if we have the station in the map_viewer's station locations
+        if normalized_code in map_viewer.station_locations:
+            display_image = map_viewer.draw_train_marker(display_image, normalized_code)
             displayed_stations.append(normalized_code)
-            valid_points.append([lat, lon])
+        # If not in map_viewer, try to convert GPS coordinates to map coordinates
+        elif normalized_code in station_coords:
+            # GPS coordinates to normalized map coordinates (approximate conversion)
+            # This is a simplified conversion - would need proper calibration for accuracy
+            coords = station_coords[normalized_code]
 
-    return m, displayed_stations, valid_points
+            # Add to map_viewer's station locations (temporary)
+            map_viewer.station_locations[normalized_code] = {
+                'x': (coords['lon'] - 79.0) / 5.0,  # Approximate conversion
+                'y': (coords['lat'] - 14.0) / 5.0   # Approximate conversion
+            }
+
+            # Draw the marker
+            display_image = map_viewer.draw_train_marker(display_image, normalized_code)
+            displayed_stations.append(normalized_code)
+
+    return display_image, displayed_stations
 
 
 # Initialize session state
@@ -644,34 +656,78 @@ try:
                     if selected_station_codes:
                         st.caption(f"Selected stations: {', '.join(selected_station_codes)}")
 
-                    # Create the base map (using cached version if possible)
-                    m = create_base_map()
+                    # Toggle between offline map and folium map
+                    map_type = st.radio("Map Type", ["Offline Map with GPS Markers", "Interactive GPS Map"], 
+                                       index=0, horizontal=True)
 
-                    # Add markers efficiently
-                    m, displayed_stations, valid_points = add_markers_to_map(m, selected_station_codes, station_coords)
-
-                    # Add railway lines if multiple stations (only when needed)
-                    if len(valid_points) > 1:
-                        folium.PolyLine(
-                            valid_points,
-                            weight=2,
-                            color='gray',
-                            opacity=0.8,
-                            dash_array='5, 10'
-                        ).add_to(m)
-
-                    # Render the map
-                    st.subheader("Interactive Map")
-                    folium_static(m, width=None, height=550)
-
-                    # Show status message
-                    if displayed_stations:
-                        st.success(f"Showing {len(displayed_stations)} stations on the map")
-                    else:
+                    if map_type == "Offline Map with GPS Markers":
+                        # Use the MapViewer to render offline map with markers
                         if selected_station_codes:
-                            st.warning(f"No coordinates found for selected stations")
+                            # Render offline map with GPS markers
+                            display_image, displayed_stations = render_offline_map_with_markers(
+                                selected_station_codes, station_coords)
+
+                            if display_image is not None:
+                                # Resize for display if needed
+                                original_width, original_height = display_image.size
+                                max_height = 600
+                                height_ratio = max_height / original_height
+                                new_width = int(original_width * height_ratio)
+
+                                # Display the map
+                                st.image(
+                                    display_image,
+                                    use_container_width=True,
+                                    caption=f"Vijayawada Division System Map with Selected Stations"
+                                )
+
+                                # Show station count
+                                if displayed_stations:
+                                    st.success(f"Showing {len(displayed_stations)} stations on the map")
+                            else:
+                                st.error("Unable to load the offline map. Please check the map file.")
                         else:
-                            st.info("Select stations from the table to display them on the map")
+                            # Show empty map with message
+                            map_viewer = st.session_state['map_viewer']
+                            base_map = map_viewer.load_map()
+                            if base_map:
+                                st.image(
+                                    base_map,
+                                    use_container_width=True,
+                                    caption="Select stations from the table to display on the map"
+                                )
+                                st.info("Select stations from the table to display them on the map")
+                            else:
+                                st.error("Unable to load the base map. Please check the map file path.")
+                    else:
+                        # Create the base map (using cached version if possible)
+                        m = create_base_map()
+
+                        # Add markers efficiently
+                        m, displayed_stations, valid_points = add_markers_to_map(m, selected_station_codes, station_coords)
+
+                        # Add railway lines if multiple stations (only when needed)
+                        if len(valid_points) > 1:
+                            folium.PolyLine(
+                                valid_points,
+                                weight=2,
+                                color='gray',
+                                opacity=0.8,
+                                dash_array='5, 10'
+                            ).add_to(m)
+
+                        # Render the map
+                        st.subheader("Interactive Map")
+                        folium_static(m, width=None, height=550)
+
+                        # Show status message
+                        if displayed_stations:
+                            st.success(f"Showing {len(displayed_stations)} stations on the map")
+                        else:
+                            if selected_station_codes:
+                                st.warning(f"No coordinates found for selected stations")
+                            else:
+                                st.info("Select stations from the table to display them on the map")
 
                     # Add instructions in collapsible section for better UI performance
                     with st.expander("About GPS Coordinates"):
