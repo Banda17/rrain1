@@ -343,7 +343,6 @@ def get_station_coordinates():
     }
 
 
-# Cache station code extraction function for better performance
 @st.cache_data(ttl=300)
 def extract_station_codes(selected_stations, station_column=None):
     """Extract station codes from selected DataFrame using optimized approach"""
@@ -415,6 +414,57 @@ def render_offline_map_with_markers(selected_station_codes, station_coords, mark
     # Create a copy of the base map to draw on
     display_image = base_map.copy()
 
+    # First, draw small dots for all stations
+    from PIL import ImageDraw
+    draw = ImageDraw.Draw(display_image)
+
+    # Draw small dots for all stations (non-selected)
+    for code, coords in station_coords.items():
+        # Skip if this is a selected station (will be drawn with a marker later)
+        if code in selected_station_codes:
+            continue
+
+        # Try to convert GPS coordinates to map coordinates
+        if code in map_viewer.station_locations:
+            # Use existing map coordinates
+            x_norm = map_viewer.station_locations[code]['x']
+            y_norm = map_viewer.station_locations[code]['y']
+
+            # Convert normalized coordinates to pixel coordinates
+            width, height = display_image.size
+            x = int(x_norm * width)
+            y = int(y_norm * height)
+
+            # Draw a small dot (5 pixel radius)
+            dot_radius = 5
+            draw.ellipse((x - dot_radius, y - dot_radius, x + dot_radius, y + dot_radius),
+                         fill=(100, 100, 100, 180))  # Gray with some transparency
+        else:
+            # Convert GPS to approximate map coordinates
+            try:
+                # Approximate conversion
+                x_norm = (coords['lon'] - 79.0) / 5.0
+                y_norm = (coords['lat'] - 14.0) / 5.0
+
+                # Add to map_viewer's station locations for future use
+                map_viewer.station_locations[code] = {
+                    'x': x_norm,
+                    'y': y_norm
+                }
+
+                # Convert normalized coordinates to pixel coordinates
+                width, height = display_image.size
+                x = int(x_norm * width)
+                y = int(y_norm * height)
+
+                # Draw a small dot
+                dot_radius = 5
+                draw.ellipse((x - dot_radius, y - dot_radius, x + dot_radius, y + dot_radius),
+                             fill=(100, 100, 100, 180))  # Gray with some transparency
+            except:
+                # Skip if conversion fails
+                continue
+
     # Keep track of displayed stations
     displayed_stations = []
 
@@ -445,7 +495,7 @@ def render_offline_map_with_markers(selected_station_codes, station_coords, mark
     # Restore original marker size
     map_viewer.base_marker_size = original_marker_size
 
-    #Apply opacity to the image
+    # Apply opacity to the image
     def apply_marker_opacity(img, opacity):
         """Apply opacity to the non-background pixels of an image"""
         if opacity >= 1.0:  # No change needed if fully opaque
@@ -618,7 +668,7 @@ try:
 
                         return styles
 
-                    # Add a "# Add a "Select" column at the beginning of the DataFrame for checkboxes
+                    # Add a "Select" column at the beginning of the DataFrame for checkboxes
                     if 'Select' not in filtered_df.columns:
                         filtered_df.insert(0, 'Select', False)
 
@@ -660,7 +710,7 @@ try:
                             all_stations = selected_rows[station_column].tolist()
                             st.caption(f"Debug - Raw station values: {all_stations}")
 
-                            #                            # Clean and filter station values with improved handling
+                            # Clean and filter station values with improved handling
                             selected_stations = []
                             for station in selected_rows[station_column].tolist():
                                 if station is not None:
@@ -698,7 +748,7 @@ try:
                         st.caption(f"Selected stations: {', '.join(selected_station_codes)}")
 
                     # Toggle between offline map and folium map
-                    map_type = st.radio("Map Type", ["Offline Map with GPS Markers", "Interactive GPS Map"], 
+                    map_type = st.radio("Map Type", ["Offline Map with GPS Markers", "Interactive GPS Map"],
                                        index=0, horizontal=True)
 
                     if map_type == "Offline Map with GPS Markers":
@@ -756,7 +806,25 @@ try:
                             opacity=0.8
                         ).add_to(m)
 
-                        # Add markers efficiently
+                        # First add small dots for all stations
+                        for code, coords in station_coords.items():
+                            # Skip selected stations - they'll get bigger markers later
+                            if code in selected_station_codes:
+                                continue
+
+                            # Add small circle markers for non-selected stations
+                            folium.CircleMarker(
+                                [coords['lat'], coords['lon']],
+                                radius=3,  # Small radius
+                                color='gray',
+                                fill=True,
+                                fill_color='gray',
+                                fill_opacity=0.6,
+                                opacity=0.6,
+                                tooltip=code
+                            ).add_to(m)
+
+                        # Add markers efficiently for selected stations
                         valid_points = []
                         displayed_stations = []
 
@@ -807,14 +875,14 @@ try:
                         """)
 
             else:
-                st.warning("No data available in cache")
-
+                st.error("No data available in the cached data frame")
+        else:
+            st.error("No cached data available")
     else:
-        st.error(f"Error loading data: {message}")
-
+        st.error(f"Failed to load data: {message}")
 except Exception as e:
+    logger.error(f"Error in main page: {str(e)}")
     st.error(f"An error occurred: {str(e)}")
-    st.exception(e)
 
 # Footer
 st.markdown("---")

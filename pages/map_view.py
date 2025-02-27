@@ -5,6 +5,7 @@ import pandas as pd
 import os
 from map_utils import OfflineMapHandler
 from map_viewer import MapViewer
+from PIL import ImageDraw
 
 # Page configuration
 st.set_page_config(
@@ -130,6 +131,46 @@ if map_type == "Offline Map with GPS Markers":
         # Create a copy of the base map to draw on
         display_image = base_map.copy()
 
+        # First, draw small dots for all non-selected stations
+        draw = ImageDraw.Draw(display_image)
+
+        # Get all station coordinates
+        station_coords = get_station_coordinates()
+
+        # Create a list of selected station codes for easy lookup
+        selected_codes = [row['Station Code'].upper().strip() for _, row in selected_stations_df.iterrows()]
+
+        # Draw small dots for all non-selected stations
+        for code, info in station_coords.items():
+            # Skip if this is a selected station (will be drawn with a marker later)
+            if code in selected_codes:
+                continue
+
+            # Try to convert GPS coordinates to map coordinates
+            try:
+                # Approximate conversion
+                x_norm = (info['lon'] - 79.0) / 5.0
+                y_norm = (info['lat'] - 14.0) / 5.0
+
+                # Add to map_viewer's station locations for future use
+                map_viewer.station_locations[code] = {
+                    'x': x_norm,
+                    'y': y_norm
+                }
+
+                # Convert normalized coordinates to pixel coordinates
+                width, height = display_image.size
+                x = int(x_norm * width)
+                y = int(y_norm * height)
+
+                # Draw a small dot
+                dot_radius = 5
+                draw.ellipse((x-dot_radius, y-dot_radius, x+dot_radius, y+dot_radius), 
+                            fill=(100, 100, 100, 180))  # Gray with some transparency
+            except:
+                # Skip if conversion fails
+                continue
+
         # Keep track of displayed stations
         displayed_stations = []
 
@@ -162,42 +203,33 @@ if map_type == "Offline Map with GPS Markers":
         return display_image, displayed_stations
 
     # Use the function to render offline map with markers
-    if not selected_stations.empty:
-        # Render offline map with GPS markers
-        display_image, displayed_stations = render_offline_map_with_markers(selected_stations)
+    display_image, displayed_stations = None, []
 
-        if display_image is not None:
-            # Resize for display if needed
-            from PIL import Image
-            original_width, original_height = display_image.size
-            max_height = 600
-            height_ratio = max_height / original_height
-            new_width = int(original_width * height_ratio)
+    # Always render the map to show all stations as dots
+    display_image, displayed_stations = render_offline_map_with_markers(selected_stations)
 
-            # Display the map
-            st.image(
-                display_image,
-                use_container_width=True,
-                caption="Vijayawada Division System Map with Selected Stations"
-            )
+    if display_image is not None:
+        # Resize for display if needed
+        from PIL import Image
+        original_width, original_height = display_image.size
+        max_height = 600
+        height_ratio = max_height / original_height
+        new_width = int(original_width * height_ratio)
 
-            # Show station count
-            if displayed_stations:
-                st.success(f"Showing {len(displayed_stations)} stations on the map")
+        # Display the map
+        st.image(
+            display_image,
+            use_container_width=True,
+            caption="Vijayawada Division System Map with Selected Stations"
+        )
+
+        # Show station count
+        if displayed_stations:
+            st.success(f"Showing {len(displayed_stations)} selected stations with markers and all other stations as dots")
         else:
-            st.error("Unable to load the offline map. Please check the map file.")
+            st.info("No stations selected. All stations shown as dots on the map.")
     else:
-        # Show empty map with message
-        base_map = map_viewer.load_map()
-        if base_map:
-            st.image(
-                base_map,
-                use_container_width=True,
-                caption="Select stations from the table to display on the map"
-            )
-            st.info("Select stations from the table to display them on the map")
-        else:
-            st.error("Unable to load the base map. Please check the map file path.")
+        st.error("Unable to load the offline map. Please check the map file.")
 else:
     # Interactive GPS Map section
     # Create the map
@@ -213,6 +245,30 @@ else:
         attr='&copy; OpenStreetMap contributors',
         opacity=0.8
     ).add_to(m)
+
+    # Get all station coordinates
+    station_coords = get_station_coordinates()
+
+    # Create a list of selected station codes for easy lookup
+    selected_codes = [row['Station Code'].upper().strip() for _, row in selected_stations.iterrows()]
+
+    # First add small dots for all non-selected stations
+    for code, info in station_coords.items():
+        # Skip if this is a selected station (will be drawn with a marker later)
+        if code.upper() in selected_codes:
+            continue
+
+        # Add small circle markers for non-selected stations
+        folium.CircleMarker(
+            [info['lat'], info['lon']],
+            radius=3,  # Small radius
+            color='gray',
+            fill=True,
+            fill_color='gray',
+            fill_opacity=0.6,
+            opacity=0.6,
+            tooltip=code
+        ).add_to(m)
 
     # Add markers only for selected stations
     if not selected_stations.empty:
@@ -264,5 +320,6 @@ with st.expander("About GPS Coordinates"):
     ### Map Features
     - Switch between offline map and interactive GPS view
     - Railway lines automatically connect selected stations in sequence
+    - All stations shown as small dots, selected stations shown with train markers
     - Select multiple stations to see their connections
     """)
