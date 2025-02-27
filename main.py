@@ -607,7 +607,7 @@ try:
                     'Scheduled [Entry-Exit]',
                     'scheduled[Entry-Exit]',
                     'DivisionalActual[ Entry - Exit ]',
-                    'Divisional Actual [Entry - Exit]',
+                    'Divisional Actual [Entry- Exit]',
                     'Divisional Actual[ Entry-Exit ]',
                     'Divisional Actual[ Entry - Exit ]',
                     'DivisionalActual[ Entry-Exit ]',
@@ -691,10 +691,12 @@ try:
                             "Train No.": st.column_config.TextColumn("Train No.", help="Train Number"),
                             "FROM-TO": st.column_config.TextColumn("FROM-TO", help="Source to Destination"),
                             "IC Entry Delay": st.column_config.TextColumn("IC Entry Delay", help="Entry Delay"),
-                            "Delay": st.column_config.TextColumn("Delay", help="Delayin Minutes")
+                            "Delay": st.column_config.TextColumn("Delay", help="Delay in Minutes")
                         },
                         disabled=[col for col in filtered_df.columns if col != 'Select'],
-                        use_container_width=True
+                        use_container_width=True,
+                        height=600,  # Increased height to show more rows
+                        num_rows=40  # Show 40 rows at a time
                     )
 
                     # Get selected stations for map

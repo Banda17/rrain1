@@ -103,7 +103,8 @@ edited_df = st.data_editor(
         )
     },
     disabled=["Station Code", "Name", "Latitude", "Longitude"],
-    height=300
+    height=600,  # Increased height to show more rows
+    num_rows=40  # Show 40 rows at a time
 )
 
 # Get selected stations
