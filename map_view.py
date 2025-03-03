@@ -153,7 +153,7 @@ with map_section:
     selected_stations = edited_df[edited_df['Select']]
 
     # Toggle between offline map and folium map
-    map_type = st.radio("Map Type", ["Offline Map with GPS Markers", "Interactive GPS Map"], 
+    map_type = st.radio("Map Type", ["Offline Map with GPS Markers", "Interactive GPS Map"],
                         index=0, horizontal=True)
 
     if map_type == "Offline Map with GPS Markers":
@@ -208,8 +208,8 @@ with map_section:
 
                     # Draw a small dot
                     dot_radius = 5
-                    draw.ellipse((x-dot_radius, y-dot_radius, x+dot_radius, y+dot_radius), 
-                                fill=(100, 100, 100, 180))  # Gray with some transparency
+                    draw.ellipse((x - dot_radius, y - dot_radius, x + dot_radius, y + dot_radius),
+                                 fill=(100, 100, 100, 180))  # Gray with some transparency
                 except:
                     # Skip if conversion fails
                     continue
@@ -233,7 +233,7 @@ with map_section:
                     # Add to map_viewer's station locations (temporary)
                     map_viewer.station_locations[normalized_code] = {
                         'x': (lon - 79.0) / 5.0,  # Approximate conversion
-                        'y': (lat - 14.0) / 5.0   # Approximate conversion
+                        'y': (lat - 14.0) / 5.0  # Approximate conversion
                     }
 
                     # Draw the marker
@@ -261,7 +261,7 @@ with map_section:
 
             # Display the map
             st.image(
-                display_image.resize((new_width, max_height)), #resize image
+                display_image.resize((new_width, max_height)),  # resize image
                 use_container_width=True,
                 caption="Vijayawada Division System Map with Selected Stations"
             )
@@ -295,13 +295,27 @@ with map_section:
         # Create a list of selected station codes for easy lookup
         selected_codes = [row['Station Code'].upper().strip() for _, row in selected_stations.iterrows()]
 
+        # Create a counter to alternate label positions
+        counter = 0
+
         # First add small dots for all non-selected stations
         for code, info in station_coords.items():
             # Skip if this is a selected station (will be drawn with a marker later)
             if code.upper() in selected_codes:
                 continue
 
-            # Add small circle markers for non-selected stations
+            # Determine offset for alternating left/right positioning
+            x_offset = -50 if counter % 2 == 0 else 50  # Pixels left or right
+            y_offset = 0  # No vertical offset
+
+            # Every 3rd station, use vertical offset instead to further reduce overlap
+            if counter % 3 == 0:
+                x_offset = 0
+                y_offset = -30  # Above the point
+
+            counter += 1
+
+            # Add small circle marker for the station
             folium.CircleMarker(
                 [info['lat'], info['lon']],
                 radius=3,  # Small radius
@@ -313,30 +327,60 @@ with map_section:
                 tooltip=code
             ).add_to(m)
 
+            # Add permanent label with custom positioning
+            folium.DivIcon(
+                icon_size=(150, 36),
+                icon_anchor=(75-x_offset, 18-y_offset),  # Adjust anchor based on offset
+                html=f'<div style="font-size: 10px; color: #555;">{code}</div>'
+            ).add_to(folium.Marker(
+                [info['lat'], info['lon']],
+                icon=folium.DivIcon(icon_size=(0, 0))  # Invisible marker, just for the label
+            ).add_to(m))
+
         # Add markers only for selected stations
         if not selected_stations.empty:
             # Add markers for selected stations
             valid_points = []
             for _, station in selected_stations.iterrows():
+                code = station['Station Code']
+                lat = station['Latitude']
+                lon = station['Longitude']
+
+                # Determine offset for selected stations - opposite to non-selected pattern
+                x_offset = 50 if counter % 2 == 0 else -50
+                y_offset = -30 if counter % 3 == 0 else 0
+                counter += 1
+
                 # Create custom popup content
                 popup_content = f"""
                 <div style='font-family: Arial; font-size: 12px;'>
-                    <b>{station['Station Code']} - {station['Name']}</b><br>
-                    Lat: {station['Latitude']:.4f}<br>
-                    Lon: {station['Longitude']:.4f}
+                    <b>{code} - {station['Name']}</b><br>
+                    Lat: {lat:.4f}<br>
+                    Lon: {lon:.4f}
                 </div>
                 """
 
+                # Add train icon marker
                 folium.Marker(
-                    [station['Latitude'], station['Longitude']],
+                    [lat, lon],
                     popup=folium.Popup(popup_content, max_width=200),
-                    tooltip=station['Station Code'],
+                    tooltip=code,
                     icon=folium.Icon(color='red', icon='train', prefix='fa'),
                     opacity=0.9  # Fixed opacity
                 ).add_to(m)
 
+                # Add prominent label with custom positioning
+                folium.DivIcon(
+                    icon_size=(150, 36),
+                    icon_anchor=(75-x_offset, 18-y_offset),
+                    html=f'<div style="background-color: rgba(255,255,255,0.7); padding: 2px 4px; border: 1px solid #d32f2f; border-radius: 3px; font-weight: bold; font-size: 11px; color: #d32f2f; text-align: center;">{code}</div>'
+                ).add_to(folium.Marker(
+                    [lat, lon],
+                    icon=folium.DivIcon(icon_size=(0, 0))
+                ).add_to(m))
+
                 # Add to points for railway line
-                valid_points.append([station['Latitude'], station['Longitude']])
+                valid_points.append([lat, lon])
 
             # Add railway lines between selected stations
             if len(valid_points) > 1:

@@ -809,6 +809,8 @@ def render_offline_map_with_markers(selected_station_codes,
     return display_image, displayed_stations
 
 
+#
+
 # Initialize session state
 initialize_session_state()
 
@@ -1096,11 +1098,8 @@ try:
                         selected_rows, station_column)
 
                     # Toggle between offline map and folium map
-                    map_type = st.radio("Map Type", [
-                        "Offline Map with GPS Markers", "Interactive GPS Map"
-                    ],
-                                        index=0,
-                                        horizontal=True)
+                    map_type = st.radio("Map Type", ["Offline Map with GPS Markers", "Interactive GPS Map"],
+                                        index=0, horizontal=True)
 
                     if map_type == "Offline Map with GPS Markers":
                         if selected_station_codes:
@@ -1168,51 +1167,91 @@ try:
                         displayed_stations = []
                         valid_points = []
 
-                        # First add small dots for all non-selected stations
+                        # Create a counter to alternate label positions
+                        counter = 0
+
+                        # First add all non-selected stations as dots with alternating labels
                         for code, coords in station_coords.items():
                             # Skip selected stations - they'll get bigger markers later
                             if code.upper() in selected_station_codes:
                                 continue
 
-                            # Add small circles for non-selected stations
-                            folium.CircleMarker([coords['lat'], coords['lon']],
-                                                radius=3,
-                                                color='gray',
-                                                fill=True,
-                                                fill_color='gray',
-                                                fill_opacity=0.6,
-                                                opacity=0.6,
-                                                tooltip=code).add_to(m)
+                            # Determine offset for alternating left/right positioning
+                            x_offset = -50 if counter % 2 == 0 else 50  # Pixels left or right
+                            y_offset = 0  # No vertical offset
 
-                        # Then add larger markers for selected stations
+                            # Every 3rd station, use vertical offset instead to further reduce overlap
+                            if counter % 3 == 0:
+                                x_offset = 0
+                                y_offset = -30  # Above the point
+
+                            counter += 1
+
+                            # Add small circle for the station
+                            folium.CircleMarker(
+                                [coords['lat'], coords['lon']],
+                                radius=3,
+                                color='gray',
+                                fill=True,
+                                fill_color='gray',
+                                fill_opacity=0.6,
+                                opacity=0.6,
+                                tooltip=code
+                            ).add_to(m)
+
+                            # Add permanent label with custom positioning
+                            folium.DivIcon(
+                                icon_size=(150, 36),
+                                icon_anchor=(75 - x_offset, 18 - y_offset),  # Adjust anchor based on offset
+                                html=f'<div style="font-size: 10px; color: #555;">{code}</div>'
+                            ).add_to(folium.Marker(
+                                [coords['lat'], coords['lon']],
+                                icon=folium.DivIcon(icon_size=(0, 0))  # Invisible marker, just for the label
+                            ).add_to(m))
+
+                        # Then add larger markers for selected stations with prominent labels
                         for code in selected_station_codes:
-                            if code in station_coords:
-                                normalized_code = code.upper().strip()
-                                lat = station_coords[code]['lat']
-                                lon = station_coords[code]['lon']
+                            normalized_code = code.upper().strip()
+                            if normalized_code in station_coords:
+                                lat = station_coords[normalized_code]['lat']
+                                lon = station_coords[normalized_code]['lon']
 
-                                # Simple popup for better performance
-                                popup_content = f"<b>{normalized_code}</b><br>({lat:.4f}, {lon:.4f})"
+                                # Determine offset for selected stations - opposite to non-selected pattern
+                                x_offset = 50 if counter % 2 == 0 else -50
+                                y_offset = -30 if counter % 3 == 0 else 0
+                                counter += 1
 
-                                # Add marker
-                                folium.Marker([lat, lon],
-                                              popup=popup_content,
-                                              tooltip=normalized_code,
-                                              icon=folium.Icon(color='red',
-                                                                icon='train',
-                                                                prefix='fa'),
-                                              opacity=0.8).add_to(m)
+                                # Add train icon marker
+                                folium.Marker(
+                                    [lat, lon],
+                                    popup=f"<b>{normalized_code}</b><br>({lat:.4f}, {lon:.4f})",
+                                    tooltip=normalized_code,
+                                    icon=folium.Icon(color='red', icon='train', prefix='fa'),
+                                    opacity=0.8
+                                ).add_to(m)
+
+                                # Add prominent label with custom positioning
+                                folium.DivIcon(
+                                    icon_size=(150, 36),
+                                    icon_anchor=(75 - x_offset, 18 - y_offset),
+                                    html=f'<div style="background-color: rgba(255,255,255,0.7); padding: 2px 4px; border: 1px solid #d32f2f; border-radius: 3px; font-weight: bold; font-size: 11px; color: #d32f2f; text-align: center;">{normalized_code}</div>'
+                                ).add_to(folium.Marker(
+                                    [lat, lon],
+                                    icon=folium.DivIcon(icon_size=(0, 0))
+                                ).add_to(m))
 
                                 displayed_stations.append(normalized_code)
                                 valid_points.append([lat, lon])
 
-                        # Add railway lines between selected stations if applicable
+                        # Add railway lines between selected stations
                         if len(valid_points) > 1:
-                            folium.PolyLine(valid_points,
-                                            weight=2,
-                                            color='gray',
-                                            opacity=0.8,
-                                            dash_array='5, 10').add_to(m)
+                            folium.PolyLine(
+                                valid_points,
+                                weight=2,
+                                color='gray',
+                                opacity=0.8,
+                                dash_array='5, 10'
+                            ).add_to(m)
 
                         # Render the map with increased width
                         st.subheader("Interactive Map")
