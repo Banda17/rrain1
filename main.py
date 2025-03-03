@@ -624,9 +624,9 @@ def extract_station_codes(selected_stations, station_column=None):
     if selected_stations.empty:
         return selected_station_codes
 
-    # Look for station code in 'Current Running Details' or 'Station' column
+    # Look for station code in 'CRD' or 'Station' column
     potential_station_columns = [
-        'Current Running Details', 'Station', 'Station Code', 'station',
+        'CRD', 'Station', 'Station Code', 'station',
         'STATION'
     ]
 
@@ -638,8 +638,8 @@ def extract_station_codes(selected_stations, station_column=None):
                     # Extract station code from text (may contain additional details)
                     text_value = str(row[col_name]).strip()
 
-                    # Handle 'Current Running Details' column which might have format "NZD ..."
-                    if col_name == 'Current Running Details':
+                    # Handle 'CRD' column which might have format "NZD ..."
+                    if col_name == 'CRD':
                         # Extract first word which is likely the station code
                         parts = text_value.split()
                         if parts:
@@ -655,7 +655,7 @@ def extract_station_codes(selected_stations, station_column=None):
     if not selected_station_codes:
         for col in selected_stations.columns:
             if any(keyword in col for keyword in
-                   ['station', 'Station', 'STATION', 'Running']):
+                   ['station', 'Station', 'STATION', 'Running', 'CRD']):
                 for _, row in selected_stations.iterrows():
                     if pd.notna(row[col]):
                         text = str(row[col])
@@ -798,16 +798,14 @@ def render_offline_map_with_markers(selected_station_codes,
         for y in range(height):
             for x in range(width):
                 r, g, b, a = pixdata[x, y]
-                if a > 0:  # Only modify non-transparent pixels
-                    pixdata[x, y] = (r, g, b, int(a * opacity))
+                if a > 0:  # Only modify non-transparent pixels                    pixdata[x, y] = (r, g, b, int(a * opacity))
 
         return result
 
     if marker_opacity < 1.0:
         display_image = apply_marker_opacity(display_image, marker_opacity)
 
-    return display_image, displayed_stations
-
+    returndisplay_image, displayed_stations
 
 # Initialize session state
 initialize_session_state()
@@ -1045,8 +1043,7 @@ try:
                                 all_stations = selected_rows[
                                     station_column].tolist()
                                 st.caption(
-                                    f"Debug - Raw station values: {all_stations}"
-                                )
+                                    f"Debug - Raw station values from CRD/Station column: {all_stations}")
 
                                 # Clean and filter station values with improved handling
                                 selected_stations = []
@@ -1200,8 +1197,8 @@ try:
                                               popup=popup_content,
                                               tooltip=normalized_code,
                                               icon=folium.Icon(color='red',
-                                                               icon='train',
-                                                               prefix='fa'),
+                                                                icon='train',
+                                                                prefix='fa'),
                                               opacity=0.8).add_to(m)
 
                                 displayed_stations.append(normalized_code)
