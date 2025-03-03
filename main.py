@@ -156,6 +156,10 @@ def initialize_session_state():
         'db_initialized': {  # New state variable to track database initialization
             'default': False,
             'type': bool
+        },
+        'current_map_type': {  # New state variable for current map type
+            'default': "Offline Map with GPS Markers",
+            'type': str
         }
     }
 
@@ -617,65 +621,11 @@ def get_station_coordinates():
     }
 
 
-@st.cache_data(ttl=300)
-def extract_station_codes(selected_stations, station_column=None):
-    """Extract station codes from selected DataFrame using optimized approach"""
-    selected_station_codes = []
-
-    if selected_stations.empty:
-        return selected_station_codes
-
-    # Look for station code in 'CRD' or 'Station' column
-    potential_station_columns = [
-        'CRD', 'Station', 'Station Code', 'station',
-        'STATION'
-    ]
-
-    # Try each potential column
-    for col_name in potential_station_columns:
-        if col_name in selected_stations.columns:
-            for _, row in selected_stations.iterrows():
-                if pd.notna(row[col_name]):
-                    # Extract station code from text (may contain additional details)
-                    text_value = str(row[col_name]).strip()
-
-                    # Handle 'CRD' column which might have format "NZD ..."
-                    if col_name == 'CRD':
-                        # Extract first word which is likely the station code
-                        parts = text_value.split()
-                        if parts:
-                            code = parts[0].strip()
-                            if code and code not in selected_station_codes:
-                                selected_station_codes.append(code)
-                    else:
-                        # For other columns, use the full value
-                        if text_value and text_value not in selected_station_codes:
-                            selected_station_codes.append(text_value)
-
-    # If still no codes found, try a more generic approach with any column
-    if not selected_station_codes:
-        for col in selected_stations.columns:
-            if any(keyword in col for keyword in
-                   ['station', 'Station', 'STATION', 'Running', 'CRD']):
-                for _, row in selected_stations.iterrows():
-                    if pd.notna(row[col]):
-                        text = str(row[col])
-                        # Try to extract a station code (usually 2-5 uppercase letters)
-                        words = text.split()
-                        for word in words:
-                            word = word.strip()
-                            if 2 <= len(word) <= 5 and word.isupper():
-                                if word not in selected_station_codes:
-                                    selected_station_codes.append(word)
-
-    return selected_station_codes
-
-
 # Create a function to render the offline map with GPS markers
 @st.cache_data(ttl=60)
 def render_offline_map_with_markers(selected_station_codes,
-                                    station_coords,
-                                    marker_opacity=0.8):
+                                   station_coords,
+                                   marker_opacity=0.8):
     """Render an offline map with GPS markers for selected stations"""
     # Get the map viewer from session state or create a new one
     map_viewer = st.session_state.get('map_viewer', MapViewer())
@@ -719,7 +669,7 @@ def render_offline_map_with_markers(selected_station_codes,
             dot_radius = 5
             draw.ellipse(
                 (x - dot_radius, y - dot_radius, x + dot_radius,
-                 y + dot_radius),
+                  y + dot_radius),
                 fill=(100, 100, 100, 180))  # Gray with some transparency
         else:
             # Convert GPS to approximate map coordinates
@@ -740,7 +690,7 @@ def render_offline_map_with_markers(selected_station_codes,
                 dot_radius = 5
                 draw.ellipse(
                     (x - dot_radius, y - dot_radius, x + dot_radius,
-                     y + dot_radius),
+                      y + dot_radius),
                     fill=(100, 100, 100, 180))  # Gray with some transparency
             except:
                 # Skip if conversion fails
@@ -809,6 +759,59 @@ def render_offline_map_with_markers(selected_station_codes,
 
     return display_image, displayed_stations
 
+
+@st.cache_data(ttl=300)
+def extract_station_codes(selected_stations, station_column=None):
+    """Extract station codes from selected DataFrame using optimized approach"""
+    selected_station_codes = []
+
+    if selected_stations.empty:
+        return selected_station_codes
+
+    # Look for station code in 'CRD' or 'Station' column
+    potential_station_columns = [
+        'CRD', 'Station', 'Station Code', 'station',
+        'STATION'
+    ]
+
+    # Try each potential column
+    for col_name in potential_station_columns:
+        if col_name in selected_stations.columns:
+            for _, row in selected_stations.iterrows():
+                if pd.notna(row[col_name]):
+                    # Extract station code from text (may contain additional details)
+                    text_value = str(row[col_name]).strip()
+
+                    # Handle 'CRD' column which might have format "NZD ..."
+                    if col_name == 'CRD':
+                        # Extract first word which is likely the station code
+                        parts = text_value.split()
+                        if parts:
+                            code = parts[0].strip()
+                            if code and code not in selected_station_codes:
+                                selected_station_codes.append(code)
+                    else:
+                        # For other columns, use the full value
+                        if text_value and text_value not in selected_station_codes:
+                            selected_station_codes.append(text_value)
+
+    # If still no codes found, try a more generic approach with any column
+    if not selected_station_codes:
+        for col in selected_stations.columns:
+            if any(keyword in col for keyword in
+                   ['station', 'Station', 'STATION', 'Running', 'CRD']):
+                for _, row in selected_stations.iterrows():
+                    ifpd.notna(row[col]):
+                        text = str(row[col])
+                        # Try to extract a station code (usually 2-5 uppercase letters)                        # Try to extract a station code (usually 2-5 uppercase letters)
+                        words = text.split()
+                        for word in words:
+                            word = word.strip()
+                            if 2 <= len(word) <= 5 and word.isupper():
+                                if word not in selected_station_codes:
+                                    selected_station_codes.append(word)
+
+    return selected_station_codes
 
 
 # Initialize session state
@@ -916,33 +919,6 @@ try:
                     if col in df.columns:
                         df = df.drop(columns=[col])
                         logger.debug(f"Dropped column: {col}")
-
-                # Create a two-column layout for the table and map
-                st.markdown("""
-                <style>
-                .stColumn > div {
-                    padding: 0px !important;
-                }
-                div[data-testid="column"] {
-                    padding: 0px !important;
-                    margin: 0px !important;
-                }
-                .block-container {
-                    padding-left: 0.5rem !important;
-                    padding-right: 0.5rem !important;
-                    max-width: 100% !important;
-                }
-                div[data-testid="stVerticalBlock"] {
-                    gap: 0px !important;
-                }
-                /* Custom styling to make table wider */
-                [data-testid="stDataFrame"] {
-                    width: 100% !important;
-                    max-width: none !important;
-                }
-                </style>
-                """,
-                            unsafe_allow_html=True)
 
                 # Create a more balanced column ratio with no gap - 60% table to 40% map
                 table_col, map_col = st.columns([3, 3], gap="small")
@@ -1088,245 +1064,220 @@ try:
                     refresh_table_placeholder.empty(
                     )  # Clear the placeholder after table display
 
-                # Display map with reduced left margin
-                with map_col:
-                    # Remove extra padding/margin to bring map closer to table
-                    st.markdown("""
-                    <style>
-                    .stColumn > div:first-child {
-                        padding-left: 0 !important;
-                        margin-left: 0 !important;
-                    }
-                    </style>
-                    """,
-                                unsafe_allow_html=True)
+                # Display maps - now we'll display both and control visibility with CSS
+                # First, prepare both maps but only render the selected one
 
-                    # Get cached station coordinates
-                    station_coords = get_station_coordinates()
+                # OFFLINE MAP SECTION
+                st.markdown('<div id="offline-map-container">', unsafe_allow_html=True)
 
-                    # Extract station codes from selected rows
-                    selected_rows = edited_df[edited_df['Select']]
-                    selected_station_codes = extract_station_codes(
-                        selected_rows, station_column)
+                # Use the function to render offline map with markers
+                display_image, displayed_stations = None, []
 
-                    # Toggle between offline map and folium map
-                    map_type = st.radio("Map Type", ["Offline Map with GPS Markers", "Interactive GPS Map"],
-                                        index=0, horizontal=True)
+                # Always render the map to show all stations as dots
+                display_image, displayed_stations = render_offline_map_with_markers(selected_stations,
+                                                                                    station_coords,
+                                                                                    marker_opacity=0.8)
 
-                    if map_type == "Offline Map with GPS Markers":
-                        if selected_station_codes:
-                            st.caption(
-                                f"Selected stations: {', '.join(selected_station_codes)}"
-                            )
+                # Display the offline map (will be controlled by visibility)
+                if display_image is not None:
+                    # Resize for display if needed
+                    from PIL import Image
+                    original_width, original_height = display_image.size
+                    max_height = 650  # Increased height
+                    height_ratio = max_height / original_height
+                    new_width = int(original_width * height_ratio * 1.2)  # Extra width factor
 
-                        # Render offline map with markers
-                        display_image, displayed_stations = render_offline_map_with_markers(
-                            selected_station_codes, station_coords)
+                    # Display the map
+                    st.image(
+                        display_image.resize((new_width, max_height)),  # resize image
+                        use_container_width=True,
+                        caption="Vijayawada Division System Map with Selected Stations"
+                    )
 
-                        if display_image is not None:
-                            # Convert and resize for display if needed
-                            from PIL import Image
-                            display_image = display_image.convert('RGB')
-                            original_width, original_height = display_image.size
-
-                            # Calculate new dimensions maintaining aspect ratio
-                            max_height = 600  # Increased height for better visibility
-                            height_ratio = max_height / original_height
-                            new_width = int(original_width * height_ratio *
-                                            1.2)  # Extra width factor
-                            new_height = max_height
-
-                            display_image = display_image.resize(
-                                (new_width, new_height),
-                                Image.Resampling.LANCZOS)
-
-                            # Display the map
-                            st.image(
-                                display_image,
-                                use_container_width=True,
-                                caption=
-                                "Vijayawada Division System Map with Selected Stations"
-                            )
-
-                            # Show station count
-                            if displayed_stations:
-                                st.success(
-                                    f"Showing {len(displayed_stations)} selected stations with markers and all other stations as dots"
-                                )
-                            else:
-                                st.info(
-                                    "No stations selected. All stations shown as dots on the map."
-                                )
-                        else:
-                            st.error(
-                                "Unable to load the offline map. Please check the map file."
-                            )
+                    # Show station count
+                    if displayed_stations:
+                        st.success(f"Showing {len(displayed_stations)} selected stations with markers and all other stations as dots")
                     else:
-                        # Create the interactive map
-                        m = folium.Map(
-                            location=[16.5167,
-                                      80.6167],  # Centered around Vijayawada
-                            zoom_start=7,
-                            control_scale=True)
+                        st.info("No stations selected. All stations shown as dots on the map.")
+                else:
+                    st.error("Unable to load the offline map. Please check the map file.")
 
-                        # Add a basemap with reduced opacity
-                        folium.TileLayer(
-                            tiles='OpenStreetMap',
-                            attr='&copy; OpenStreetMap contributors',
-                            opacity=0.8).add_to(m)
+                st.markdown('</div>', unsafe_allow_html=True)
 
-                        # Add markers efficiently
-                        displayed_stations = []
-                        valid_points = []
+                # INTERACTIVE GPS MAP SECTION
+                st.markdown('<div id="interactive-map-container">', unsafe_allow_html=True)
 
-                        # Create a counter to alternate label positions
-                        counter = 0
+                # Create an interactive map using folium
+                AP_CENTER = [16.5167, 80.6167] # Added AP center coordinates
+                m = folium.Map(
+                    location=AP_CENTER,  # Centered around Andhra Pradesh
+                    zoom_start=7,
+                    tiles='OpenStreetMap',
+                    attr='&copy; OpenStreetMap contributors'
+                )
 
-                        # First add all non-selected stations as dots with alternating labels
-                        for code, coords in station_coords.items():
-                            # Skip selected stations - they'll get bigger markers later
-                            if code.upper() in selected_station_codes:
-                                continue
+                # Add markers for stations
+                displayed_stations = []
+                valid_points = []
 
-                            # Determine offset for alternating left/right positioning
-                            x_offset = -50 if counter % 2 == 0 else 50  # Pixels left or right
-                            y_offset = 0  # No vertical offset
+                # Create a counter to alternate label positions
+                counter = 0
 
-                            # Every 3rd station, use vertical offset instead to further reduce overlap
-                            if counter % 3 == 0:
-                                x_offset = 0
-                                y_offset = -30  # Above the point
+                # First add all non-selected stations as dots with alternating labels
+                for code, coords in station_coords.items():
+                    # Skip selected stations - they'll get bigger markers later
+                    if code.upper() in selected_stations:
+                        continue
 
-                            counter += 1
+                    # Determine offset for alternating left/right positioning
+                    x_offset = -50 if counter % 2 == 0 else 50  # Pixels left or right
+                    y_offset = 0  # No vertical offset
 
-                            # Add small circle for the station with maroon border
-                            folium.CircleMarker(
-                                [coords['lat'], coords['lon']],
-                                radius=3,
-                                color='#800000',  # Maroon red border
-                                fill=True,
-                                fill_color='gray',
-                                fill_opacity=0.6,
-                                opacity=0.8,
-                                tooltip=code
-                            ).add_to(m)
+                    # Every 3rd station, use vertical offset instead to further reduce overlap
+                    if counter % 3 == 0:
+                        x_offset = 0
+                        y_offset = -30  # Above the point
 
-                            # Determine arrow direction based on offset
-                            arrow_direction = "←" if x_offset > 0 else "→"
-                            if y_offset < 0:
-                                arrow_direction = "↓"
+                    counter += 1
 
-                            # Add box around dot with arrow and label with custom positioning
-                            # Make sizing consistent regardless of zoom by using absolute elements
-                            html_content = f'''
-                            <div style="position:absolute; width:0; height:0;">
-                                <!-- Box around station location -->
-                                <div style="position:absolute; width:6px; height:6px; border:1px solid #800000; left:-3px; top:-3px; border-radius:1px; background-color:rgba(255,255,255,0.5);"></div>
-                                <!-- Arrow pointing to station -->
-                                <div style="position:absolute; left:{2 if x_offset < 0 else -8}px; top:{-2 if y_offset < 0 else 0}px; color:#800000; font-size:12px; font-weight:bold; line-height:1;">{arrow_direction}</div>
-                                <!-- Station label -->
-                                <div style="position:absolute; left:{10 if x_offset < 0 else -40}px; top:{-18 if y_offset < 0 else 0}px; background-color:rgba(255,255,255,0.8); padding:1px 3px; border:1px solid #800000; border-radius:2px; font-size:9px; white-space:nowrap;">{code}</div>
-                            </div>
-                            '''
+                    # Add small circle for the station with maroon border
+                    folium.CircleMarker(
+                        [coords['lat'], coords['lon']],
+                        radius=3,
+                        color='#800000',  # Maroon red border
+                        fill=True,
+                        fill_color='gray',
+                        fill_opacity=0.6,
+                        opacity=0.8,
+                        tooltip=code
+                    ).add_to(m)
 
-                            folium.DivIcon(
-                                icon_size=(0, 0),  # Using zero size to improve positioning
-                                icon_anchor=(0, 0),  # Centered anchor point
-                                html=html_content
-                            ).add_to(folium.Marker(
-                                [coords['lat'], coords['lon']],
-                                icon=folium.DivIcon(icon_size=(0, 0))  # Invisible marker
-                            ).add_to(m))
+                    # Determine arrow direction based on offset
+                    arrow_direction = "←" if x_offset > 0 else "→"
+                    if y_offset < 0:
+                        arrow_direction = "↓"
 
-                        # Then add larger markers for selected stations with prominent labels
-                        for code in selected_station_codes:
-                            normalized_code = code.upper().strip()
-                            if normalized_code in station_coords:
-                                lat = station_coords[normalized_code]['lat']
-                                lon = station_coords[normalized_code]['lon']
+                    # Add box around dot with arrow and label with custom positioning
+                    # Make sizing consistent regardless of zoom by using absolute elements
+                    html_content = f'''
+                    <div style="position:absolute; width:0; height:0;">
+                        <!-- Box around station location -->
+                        <div style="position:absolute; width:6px; height:6px; border:1px solid #800000; left:-3px; top:-3px; border-radius:1px; background-color:rgba(255,255,255,0.5);"></div>
+                        <!-- Arrow pointing to station -->
+                        <div style="position:absolute; left:{2 if x_offset < 0 else -8}px; top:{-2 if y_offset < 0 else 0}px; color:#800000; font-size:12px; font-weight:bold; line-height:1;">{arrow_direction}</div>
+                        <!-- Station label -->
+                        <div style="position:absolute; left:{10 if x_offset < 0 else -40}px; top:{-18 if y_offset < 0 else 0}px; background-color:rgba(255,255,255,0.8); padding:1px 3px; border:1px solid #800000; border-radius:2px; font-size:9px; white-space:nowrap;">{code}</div>
+                    </div>
+                    '''
 
-                                # Determine offset for selected stations - opposite to non-selected pattern
-                                x_offset = 50 if counter % 2 == 0 else -50
-                                y_offset = -30 if counter % 3 == 0 else 0
-                                counter += 1
+                    folium.DivIcon(
+                        icon_size=(0, 0),  # Using zero size to improve positioning
+                        icon_anchor=(0, 0),  # Centered anchor point
+                        html=html_content
+                    ).add_to(folium.Marker(
+                        [coords['lat'], coords['lon']],
+                        icon=folium.DivIcon(icon_size=(0, 0))  # Invisible marker
+                    ).add_to(m))
 
-                                # Add train icon marker
-                                folium.Marker(
-                                    [lat, lon],
-                                    popup=f"<b>{normalized_code}</b><br>({lat:.4f}, {lon:.4f})",
-                                    tooltip=normalized_code,
-                                    icon=folium.Icon(color='red', icon='train', prefix='fa'),
-                                    opacity=0.8
-                                ).add_to(m)
+                # Then add larger markers for selected stations with prominent labels
+                for code in selected_stations:
+                    normalized_code = code.upper().strip()
+                    if normalized_code in station_coords:
+                        lat = station_coords[normalized_code]['lat']
+                        lon = station_coords[normalized_code]['lon']
 
-                                # Determine arrow direction based on offset
-                                arrow_direction = "←" if x_offset > 0 else "→"
-                                if y_offset < 0:
-                                    arrow_direction = "↓"
+                        # Determine offset for selected stations - opposite to non-selected pattern
+                        x_offset = 50 if counter % 2 == 0 else -50
+                        y_offset = -30 if counter % 3 == 0 else 0
+                        counter += 1
 
-                                # Add highlighted box, arrow, and prominent label with zoom-stable positioning
-                                html_content = f'''
-                                <div style="position:absolute; width:0; height:0;">
-                                    <!-- Larger box for selected station -->
-                                    <div style="position:absolute; width:8px; height:8px; border:2px solid #800000; left:-4px; top:-4px; border-radius:2px; background-color:rgba(255,255,255,0.5);"></div>
-                                    <!-- Bold arrow -->
-                                    <div style="position:absolute; left:{5 if x_offset < 0 else -15}px; top:{-3 if y_offset < 0 else 0}px; color:#800000; font-size:14px; font-weight:bold; line-height:1;">{arrow_direction}</div>
-                                    <!-- Prominent station label -->
-                                    <div style="position:absolute; left:{15 if x_offset < 0 else -50}px; top:{-20 if y_offset < 0 else 0}px; background-color:rgba(255,255,255,0.9); padding:2px 4px; border:2px solid #800000; border-radius:3px; font-weight:bold; font-size:10px; color:#800000; white-space:nowrap;">{normalized_code}</div>
-                                </div>
-                                '''
+                        # Add train icon marker
+                        folium.Marker(
+                            [lat, lon],
+                            popup=f"<b>{normalized_code}</b><br>({lat:.4f}, {lon:.4f})",
+                            tooltip=normalized_code,
+                            icon=folium.Icon(color='red', icon='train', prefix='fa'),
+                            opacity=0.8
+                        ).add_to(m)
 
-                                folium.DivIcon(
-                                    icon_size=(0, 0),  # Using zero size to improve positioning
-                                    icon_anchor=(0, 0),  # Centered anchor point
-                                    html=html_content
-                                ).add_to(folium.Marker(
-                                    [lat, lon],
-                                    icon=folium.DivIcon(icon_size=(0, 0))
-                                ).add_to(m))
+                        # Determine arrow direction based on offset
+                        arrow_direction = "←" if x_offset > 0 else "→"
+                        if y_offset < 0:
+                            arrow_direction = "↓"
 
-                                displayed_stations.append(normalized_code)
-                                valid_points.append([lat, lon])
+                        # Add highlighted box, arrow, and prominent label with zoom-stable positioning
+                        html_content = f'''
+                        <div style="position:absolute; width:0; height:0;">
+                            <!-- Larger box for selected station -->
+                            <div style="position:absolute; width:8px; height:8px; border:2px solid #800000; left:-4px; top:-4px; border-radius:2px; background-color:rgba(255,255,255,0.5);"></div>
+                            <!-- Bold arrow -->
+                            <div style="position:absolute; left:{5 if x_offset < 0 else -15}px; top:{-3 if y_offset < 0 else 0}px; color:#800000; font-size:14px; font-weight:bold; line-height:1;">{arrow_direction}</div>
+                            <!-- Prominent station label -->
+                            <div style="position:absolute; left:{15 if x_offset < 0 else -50}px; top:{-20 if y_offset < 0 else 0}px; background-color:rgba(255,255,255,0.9); padding:2px 4px; border:2px solid #800000; border-radius:3px; font-weight:bold; font-size:10px; color:#800000; white-space:nowrap;">{normalized_code}</div>
+                        </div>
+                        '''
 
-                        # Add railway lines between selected stations
-                        if len(valid_points) > 1:
-                            folium.PolyLine(
-                                valid_points,
-                                weight=2,
-                                color='gray',
-                                opacity=0.8,
-                                dash_array='5, 10'
-                            ).add_to(m)
+                        folium.DivIcon(
+                            icon_size=(0, 0),  # Using zero size to improve positioning
+                            icon_anchor=(0, 0),  # Centered anchor point
+                            html=html_content
+                        ).add_to(folium.Marker(
+                            [lat, lon],
+                            icon=folium.DivIcon(icon_size=(0, 0))
+                        ).add_to(m))
 
-                        # Render the map with increased width
-                        st.subheader("Interactive Map")
-                        folium_static(m, width=1200, height=650)
+                        displayed_stations.append(normalized_code)
+                        valid_points.append([lat, lon])
 
-                        # Add instructions in collapsible section for better UI performance
-                        with st.expander("Map Instructions"):
-                            st.markdown("""
-                            ### Using the Interactive Map
-                            - **Selected stations** are shown with train icons
-                            - **All other stations** appear as small gray dots
-                            - **Click on a marker** to see station details
-                            - **Railway lines** connect selected stations in sequence
-                            - Use the **mouse wheel** to zoom in/out
-                            - **Drag** to move the map view
+                # Add railway lines between selected stations
+                if len(valid_points) > 1:
+                    folium.PolyLine(
+                        valid_points,
+                        weight=2,
+                        color='gray',
+                        opacity=0.8,
+                        dash_array='5, 10'
+                    ).add_to(m)
 
-                            ### Selection Tips
-                            - Select multiple consecutive stations to see the railway line
-                            - Toggle between Offline and Interactive map views for different perspectives
-                            """)
+                # Display the map with increased width
+                folium_static(m, width=1000)  # Increased width for better visibility
+                st.markdown('</div>', unsafe_allow_html=True)
+
+                # Add some visual separation before the map type selection
+                st.markdown("""
+                <div style="margin-top: 20px; margin-bottom: 20px; border-top: 1px solid #e6e6e6; padding-top: 10px;"></div>
+                """, unsafe_allow_html=True)
+
+                # Add Map Type Selection BELOW both maps
+                map_type = st.radio("Map Type", ["Offline Map with GPS Markers", "Interactive GPS Map"],
+                                 index=0 if st.session_state.get('current_map_type', "Offline Map with GPS Markers") == "Offline Map with GPS Markers" else 1,
+                                 horizontal=True)
+
+                # Store the current selection in session state
+                st.session_state['current_map_type'] = map_type
+
+                # Add CSS to control map visibility based on selection
+                visibility_css = f"""
+                <style>
+                #{'offline-map-container' if map_type == 'Offline Map with GPS Markers' else 'interactive-map-container'} {{
+                    display: block;
+                }}
+                #{'interactive-map-container' if map_type == 'Offline Map with GPS Markers' else 'offline-map-container'} {{
+                    display: none;
+                }}
+                </style>
+                """
+                st.markdown(visibility_css, unsafe_allow_html=True)
 
             else:
                 st.error("No data available in the cached data frame")
         else:
-            st.error("No cached data available")
+            st.error("No data available in the data handler's cache")
     else:
         st.error(f"Failed to load data: {message}")
 except Exception as e:
+    logger.error(f"Error in main: {str(e)}")
     st.error(f"An error occurred: {str(e)}")
-    logger.error(f"Error in main app: {str(e)}")
 
 # Footer
 st.markdown("---")

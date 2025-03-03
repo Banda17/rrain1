@@ -441,6 +441,11 @@ with map_section:
 
     st.markdown('</div>', unsafe_allow_html=True)
 
+    # Add some visual separation before the map type selection
+    st.markdown("""
+    <div style="margin-top: 20px; margin-bottom: 20px; border-top: 1px solid #e6e6e6; padding-top: 10px;"></div>
+    """, unsafe_allow_html=True)
+
     # Add Map Type Selection BELOW both maps
     map_type = st.radio("Map Type", ["Offline Map with GPS Markers", "Interactive GPS Map"],
                      index=0 if st.session_state.current_map_type == "Offline Map with GPS Markers" else 1, 
