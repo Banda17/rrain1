@@ -88,18 +88,33 @@ st.set_page_config(page_title="Train Tracking System",
                    layout="wide",
                    initial_sidebar_state="collapsed")
 
-# Add headers
-st.markdown("""
-    <div style='display: flex; align-items: center; justify-content: center; margin-bottom: 0.5rem;'>
-        <img src='attached_assets/image_1740626085775.png' width='60' height='60' style='margin-right: 15px; object-fit: contain;'>
+# Create a layout for the header with logo
+col1, col2 = st.columns([1, 5])
+
+# Display the logo in the first column
+with col1:
+    try:
+        # Try loading the new logo first
+        st.image("attached_assets/scr_logo.png", width=80)
+    except Exception as e:
+        st.warning(f"Error loading new logo: {str(e)}")
+        # Try fallback to the original logo
+        try:
+            st.image("scr_logo.png", width=80)
+        except Exception as e2:
+            st.warning(f"Error loading any logo: {str(e2)}")
+
+# Display the title and subtitle in the second column
+with col2:
+    st.markdown("""
         <div>
-            <h1 style='margin: 0; padding: 0; text-align: center; color: #1f497d;'>South Central Railway</h1>
-            <h2 style='margin: 0; padding: 0; text-align: center; color: #4f81bd;'>Vijayawada Division</h2>
+            <h1 style='margin: 0; padding: 0; text-align: left; color: #1f497d;'>South Central Railway</h1>
+            <h2 style='margin: 0; padding: 0; text-align: left; color: #4f81bd;'>Vijayawada Division</h2>
         </div>
-    </div>
-    <hr style='margin-top: 0.5rem;'>
-""",
-            unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
+
+# Add a horizontal line to separate the header from content
+st.markdown("<hr style='margin-top: 0.5rem;'>", unsafe_allow_html=True)
 
 
 def initialize_session_state():
@@ -153,7 +168,8 @@ def initialize_session_state():
             'default': MapViewer(),
             'type': MapViewer
         },
-        'db_initialized': {  # New state variable to track database initialization
+        'db_initialized':
+        {  # New state variable to track database initialization
             'default': False,
             'type': bool
         }
@@ -170,7 +186,7 @@ def initialize_session_state():
         data_handler.spreadsheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRO2ZV-BOcL11_5NhlrOnn5Keph3-cVp7Tyr1t6RxsoDvxZjdOyDsmRkdvesJLbSnZwY8v3CATt1Of9/pub?gid=155911658&single=true&output=csv"
         st.session_state['icms_data_handler'] = data_handler
 
-
+# Rest of the original code from line 174 onwards
 def update_selected_train_details(selected):
     """Update the selected train details in session state"""
     try:
@@ -627,8 +643,7 @@ def extract_station_codes(selected_stations, station_column=None):
 
     # Look for station code in 'CRD' or 'Station' column
     potential_station_columns = [
-        'CRD', 'Station', 'Station Code', 'station',
-        'STATION'
+        'CRD', 'Station', 'Station Code', 'station', 'STATION'
     ]
 
     # Try each potential column
@@ -674,8 +689,8 @@ def extract_station_codes(selected_stations, station_column=None):
 # Create a function to render the offline map with GPS markers
 @st.cache_data(ttl=60)
 def render_offline_map_with_markers(selected_station_codes,
-                                     station_coords,
-                                     marker_opacity=0.8):
+                                    station_coords,
+                                    marker_opacity=0.8):
     """Render an offline map with GPS markers for selected stations"""
     # Get the map viewer from session state or create a new one
     map_viewer = st.session_state.get('map_viewer', MapViewer())
@@ -787,8 +802,7 @@ def render_offline_map_with_markers(selected_station_codes,
         # Convert to RGBA if not already
         if img.mode != 'RGBA':
             img = img.convert('RGBA')
-
-        # Create a copy to work with
+        #        # Create a copy to work with
         result = img.copy()
 
         # Get pixel data
@@ -1058,7 +1072,8 @@ try:
                                 all_stations = selected_rows[
                                     station_column].tolist()
                                 st.caption(
-                                    f"Debug - Raw station values from CRD column: {all_stations}")
+                                    f"Debug - Raw station values from CRD column: {all_stations}"
+                                )
 
                                 # Clean and filter station values with improved handling
                                 selected_stations = []
@@ -1110,10 +1125,12 @@ try:
 
                     # First, set a default map type value to use
                     if 'map_type' not in st.session_state:
-                        st.session_state['map_type'] = "Offline Map with GPS Markers"
+                        st.session_state[
+                            'map_type'] = "Offline Map with GPS Markers"
 
                     # Display the appropriate map based on the current map type
-                    if st.session_state['map_type'] == "Offline Map with GPS Markers":
+                    if st.session_state[
+                            'map_type'] == "Offline Map with GPS Markers":
                         if selected_station_codes:
                             st.caption(
                                 f"Selected stations: {', '.join(selected_station_codes)}"
@@ -1208,8 +1225,7 @@ try:
                                 fill_color='gray',
                                 fill_opacity=0.6,
                                 opacity=0.8,
-                                tooltip=code
-                            ).add_to(m)
+                                tooltip=code).add_to(m)
 
                             # Determine arrow direction based on offset
                             #arrow_direction = "←" if x_offset > 0 else "→"
@@ -1228,13 +1244,17 @@ try:
                             '''
 
                             folium.DivIcon(
-                                icon_size=(0, 0),  # Using zero size to improve positioning
+                                icon_size=(
+                                    0, 0
+                                ),  # Using zero size to improve positioning
                                 icon_anchor=(0, 0),  # Centered anchor point
-                                html=html_content
-                            ).add_to(folium.Marker(
-                                [coords['lat'], coords['lon']],
-                                icon=folium.DivIcon(icon_size=(0, 0))  # Invisible marker
-                            ).add_to(m))
+                                html=html_content).add_to(
+                                    folium.Marker(
+                                        [coords['lat'], coords['lon']],
+                                        icon=folium.DivIcon(
+                                            icon_size=(0,
+                                                       0))  # Invisible marker
+                                    ).add_to(m))
 
                         # Then add larger markers for selected stations with prominent labels
                         for code in selected_station_codes:
@@ -1251,11 +1271,13 @@ try:
                                 # Add train icon marker
                                 folium.Marker(
                                     [lat, lon],
-                                    popup=f"<b>{normalized_code}</b><br>({lat:.4f}, {lon:.4f})",
+                                    popup=
+                                    f"<b>{normalized_code}</b><br>({lat:.4f}, {lon:.4f})",
                                     tooltip=normalized_code,
-                                    icon=folium.Icon(color='red', icon='train', prefix='fa'),
-                                    opacity=0.8
-                                ).add_to(m)
+                                    icon=folium.Icon(color='red',
+                                                     icon='train',
+                                                     prefix='fa'),
+                                    opacity=0.8).add_to(m)
 
                                 # Determine arrow direction based on offset
                                 #arrow_direction = "←" if x_offset > 0 else "→"
@@ -1273,26 +1295,27 @@ try:
                                 '''
 
                                 folium.DivIcon(
-                                    icon_size=(0, 0),  # Using zero size to improve positioning
-                                    icon_anchor=(0, 0),  # Centered anchor point
-                                    html=html_content
-                                ).add_to(folium.Marker(
-                                    [lat, lon],
-                                    icon=folium.DivIcon(icon_size=(0, 0))
-                                ).add_to(m))
+                                    icon_size=(
+                                        0, 0
+                                    ),  # Using zero size to improve positioning
+                                    icon_anchor=(0,
+                                                 0),  # Centered anchor point
+                                    html=html_content).add_to(
+                                        folium.Marker(
+                                            [lat, lon],
+                                            icon=folium.DivIcon(
+                                                icon_size=(0, 0))).add_to(m))
 
                                 displayed_stations.append(normalized_code)
                                 valid_points.append([lat, lon])
 
                         # Add railway lines between selected stations
                         if len(valid_points) > 1:
-                            folium.PolyLine(
-                                valid_points,
-                                weight=2,
-                                color='gray',
-                                opacity=0.8,
-                                dash_array='5, 10'
-                            ).add_to(m)
+                            folium.PolyLine(valid_points,
+                                            weight=2,
+                                            color='gray',
+                                            opacity=0.8,
+                                            dash_array='5, 10').add_to(m)
 
                         # Render the map with increased width
                         st.subheader("Interactive Map")
@@ -1303,12 +1326,14 @@ try:
 
                     # Display the map type selection radio buttons below the map
                     selected_map_type = st.radio(
-                        "Map Type",
-                        ["Offline Map with GPS Markers", "Interactive GPS Map"],
-                        index=0 if st.session_state['map_type'] == "Offline Map with GPS Markers" else 1,
+                        "Map Type", [
+                            "Offline Map with GPS Markers",
+                            "Interactive GPS Map"
+                        ],
+                        index=0 if st.session_state['map_type']
+                        == "Offline Map with GPS Markers" else 1,
                         horizontal=True,
-                        key="map_type_selector"
-                    )
+                        key="map_type_selector")
 
                     # Update the session state when the selection changes
                     if selected_map_type != st.session_state['map_type']:
