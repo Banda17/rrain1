@@ -811,8 +811,7 @@ def render_offline_map_with_markers(selected_station_codes,
 
 #
 #
-# Initialize session state
-initialize_session_state()
+# Initialize session stateinitialize_session_state()
 
 # Main page title
 st.title("ICMS Data - Vijayawada Division")
@@ -1205,24 +1204,25 @@ try:
                                 arrow_direction = "↓"
 
                             # Add box around dot with arrow and label with custom positioning
+                            # Make sizing consistent regardless of zoom by using absolute elements
                             html_content = f'''
-                            <div style="position:relative;">
+                            <div style="position:absolute; width:0; height:0;">
                                 <!-- Box around station location -->
-                                <div style="position:absolute; width:10px; height:10px; border:2px solid #800000; left:-7px; top:-7px; border-radius:2px;"></div>
+                                <div style="position:absolute; width:6px; height:6px; border:1px solid #800000; left:-3px; top:-3px; border-radius:1px; background-color:rgba(255,255,255,0.5);"></div>
                                 <!-- Arrow pointing to station -->
-                                <div style="position:absolute; left:{5 if x_offset < 0 else -15}px; top:{-3 if y_offset < 0 else 0}px; color:#800000; font-size:16px; font-weight:bold;">{arrow_direction}</div>
+                                <div style="position:absolute; left:{2 if x_offset < 0 else -8}px; top:{-2 if y_offset < 0 else 0}px; color:#800000; font-size:12px; font-weight:bold; line-height:1;">{arrow_direction}</div>
                                 <!-- Station label -->
-                                <div style="position:absolute; left:{15 if x_offset < 0 else -55}px; top:{-25 if y_offset < 0 else 0}px; background-color:rgba(255,255,255,0.7); padding:2px 4px; border:1px solid #800000; border-radius:3px; font-size:10px;">{code}</div>
+                                <div style="position:absolute; left:{10 if x_offset < 0 else -40}px; top:{-18 if y_offset < 0 else 0}px; background-color:rgba(255,255,255,0.8); padding:1px 3px; border:1px solid #800000; border-radius:2px; font-size:9px; white-space:nowrap;">{code}</div>
                             </div>
                             '''
 
                             folium.DivIcon(
-                                icon_size=(150, 36),
-                                icon_anchor=(75 - x_offset, 18 - y_offset),  # Adjust anchor based on offset
+                                icon_size=(0, 0),  # Using zero size to improve positioning
+                                icon_anchor=(0, 0),  # Centered anchor point
                                 html=html_content
                             ).add_to(folium.Marker(
                                 [coords['lat'], coords['lon']],
-                                icon=folium.DivIcon(icon_size=(0, 0))  # Invisible marker, just for the label
+                                icon=folium.DivIcon(icon_size=(0, 0))  # Invisible marker
                             ).add_to(m))
 
                         # Then add larger markers for selected stations with prominent labels
@@ -1251,21 +1251,21 @@ try:
                                 if y_offset < 0:
                                     arrow_direction = "↓"
 
-                                # Add highlighted box, arrow, and prominent label
+                                # Add highlighted box, arrow, and prominent label with zoom-stable positioning
                                 html_content = f'''
-                                <div style="position:relative;">
+                                <div style="position:absolute; width:0; height:0;">
                                     <!-- Larger box for selected station -->
-                                    <div style="position:absolute; width:14px; height:14px; border:3px solid #800000; left:-9px; top:-9px; border-radius:3px;"></div>
+                                    <div style="position:absolute; width:8px; height:8px; border:2px solid #800000; left:-4px; top:-4px; border-radius:2px; background-color:rgba(255,255,255,0.5);"></div>
                                     <!-- Bold arrow -->
-                                    <div style="position:absolute; left:{10 if x_offset < 0 else -20}px; top:{-5 if y_offset < 0 else 0}px; color:#800000; font-size:20px; font-weight:bold;">{arrow_direction}</div>
+                                    <div style="position:absolute; left:{5 if x_offset < 0 else -15}px; top:{-3 if y_offset < 0 else 0}px; color:#800000; font-size:14px; font-weight:bold; line-height:1;">{arrow_direction}</div>
                                     <!-- Prominent station label -->
-                                    <div style="position:absolute; left:{25 if x_offset < 0 else -65}px; top:{-30 if y_offset < 0 else 0}px; background-color:rgba(255,255,255,0.9); padding:3px 6px; border:2px solid #800000; border-radius:4px; font-weight:bold; font-size:12px; color:#800000;">{normalized_code}</div>
+                                    <div style="position:absolute; left:{15 if x_offset < 0 else -50}px; top:{-20 if y_offset < 0 else 0}px; background-color:rgba(255,255,255,0.9); padding:2px 4px; border:2px solid #800000; border-radius:3px; font-weight:bold; font-size:10px; color:#800000; white-space:nowrap;">{normalized_code}</div>
                                 </div>
                                 '''
 
                                 folium.DivIcon(
-                                    icon_size=(150, 36),
-                                    icon_anchor=(75 - x_offset, 18 - y_offset),
+                                    icon_size=(0, 0),  # Using zero size to improve positioning
+                                    icon_anchor=(0, 0),  # Centered anchor point
                                     html=html_content
                                 ).add_to(folium.Marker(
                                     [lat, lon],
