@@ -674,8 +674,8 @@ def extract_station_codes(selected_stations, station_column=None):
 # Create a function to render the offline map with GPS markers
 @st.cache_data(ttl=60)
 def render_offline_map_with_markers(selected_station_codes,
-                                    station_coords,
-                                    marker_opacity=0.8):
+                                     station_coords,
+                                     marker_opacity=0.8):
     """Render an offline map with GPS markers for selected stations"""
     # Get the map viewer from session state or create a new one
     map_viewer = st.session_state.get('map_viewer', MapViewer())
@@ -719,7 +719,7 @@ def render_offline_map_with_markers(selected_station_codes,
             dot_radius = 5
             draw.ellipse(
                 (x - dot_radius, y - dot_radius, x + dot_radius,
-                 y + dot_radius),
+                  y + dot_radius),
                 fill=(100, 100, 100, 180))  # Gray with some transparency
         else:
             # Convert GPS to approximate map coordinates
@@ -1212,9 +1212,9 @@ try:
                             ).add_to(m)
 
                             # Determine arrow direction based on offset
-                            arrow_direction = "←" if x_offset > 0 else "→"
-                            if y_offset < 0:
-                                arrow_direction = "↓"
+                            #arrow_direction = "←" if x_offset > 0 else "→"
+                            #if y_offset < 0:
+                            #    arrow_direction = "↓"
 
                             # Add box around dot with arrow and label with custom positioning
                             # Make sizing consistent regardless of zoom by using absolute elements
@@ -1222,8 +1222,6 @@ try:
                             <div style="position:absolute; width:0; height:0;">
                                 <!-- Box around station location -->
                                 <div style="position:absolute; width:6px; height:6px; border:1px solid #800000; left:-3px; top:-3px; border-radius:1px; background-color:rgba(255,255,255,0.5);"></div>
-                                <!-- Arrow pointing to station -->
-                                <div style="position:absolute; left:{2 if x_offset < 0 else -8}px; top:{-2 if y_offset < 0 else 0}px; color:#800000; font-size:12px; font-weight:bold; line-height:1;">{arrow_direction}</div>
                                 <!-- Station label -->
                                 <div style="position:absolute; left:{10 if x_offset < 0 else -40}px; top:{-18 if y_offset < 0 else 0}px; background-color:rgba(255,255,255,0.8); padding:1px 3px; border:1px solid #800000; border-radius:2px; font-size:9px; white-space:nowrap;">{code}</div>
                             </div>
@@ -1260,17 +1258,15 @@ try:
                                 ).add_to(m)
 
                                 # Determine arrow direction based on offset
-                                arrow_direction = "←" if x_offset > 0 else "→"
-                                if y_offset < 0:
-                                    arrow_direction = "↓"
+                                #arrow_direction = "←" if x_offset > 0 else "→"
+                                #if y_offset < 0:
+                                #    arrow_direction = "↓"
 
                                 # Add highlighted box, arrow, and prominent label with zoom-stable positioning
                                 html_content = f'''
                                 <div style="position:absolute; width:0; height:0;">
                                     <!-- Larger box for selected station -->
                                     <div style="position:absolute; width:8px; height:8px; border:2px solid #800000; left:-4px; top:-4px; border-radius:2px; background-color:rgba(255,255,255,0.5);"></div>
-                                    <!-- Bold arrow -->
-                                    <div style="position:absolute; left:{5 if x_offset < 0 else -15}px; top:{-3 if y_offset < 0 else 0}px; color:#800000; font-size:14px; font-weight:bold; line-height:1;">{arrow_direction}</div>
                                     <!-- Prominent station label -->
                                     <div style="position:absolute; left:{15 if x_offset < 0 else -50}px; top:{-20 if y_offset < 0 else 0}px; background-color:rgba(255,255,255,0.9); padding:2px 4px; border:2px solid #800000; border-radius:3px; font-weight:bold; font-size:10px; color:#800000; white-space:nowrap;">{normalized_code}</div>
                                 </div>
@@ -1307,9 +1303,9 @@ try:
 
                     # Display the map type selection radio buttons below the map
                     selected_map_type = st.radio(
-                        "Map Type", 
+                        "Map Type",
                         ["Offline Map with GPS Markers", "Interactive GPS Map"],
-                        index=0 if st.session_state['map_type'] == "Offline Map with GPS Markers" else 1, 
+                        index=0 if st.session_state['map_type'] == "Offline Map with GPS Markers" else 1,
                         horizontal=True,
                         key="map_type_selector"
                     )

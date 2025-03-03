@@ -71,7 +71,7 @@ def get_station_coordinates():
         'VTM': {'name': 'Vetapalem', 'lat': 15.7797094, 'lon': 80.2739975},
         'JAQ': {'name': 'Jaggampeta', 'lat': 15.8122497, 'lon': 80.3030082},
         'CLX': {'name': 'Chirala', 'lat': 15.830938, 'lon': 80.3517708},
-        'NZD': {'name': 'Nidubrolu', 'lat': 16.717923, 'lon': 80.8230084},
+        'NZD': {'name': 'Vijayawada Thermal', 'lat': 16.717923, 'lon': 80.8230084},
         'VAT': {'name': 'Vijayawada Thermal', 'lat': 16.69406, 'lon': 81.0399239},
     }
 
@@ -144,11 +144,12 @@ with map_section:
     # Get selected stations
     selected_stations = edited_df[edited_df['Select']]
 
-    # Toggle between offline map and folium map
-    map_type = st.radio("Map Type", ["Offline Map with GPS Markers", "Interactive GPS Map"], 
-                        index=0, horizontal=True)
+    # First, set a default map type value to use
+    if 'map_type' not in st.session_state:
+        st.session_state['map_type'] = "Offline Map with GPS Markers"
 
-    if map_type == "Offline Map with GPS Markers":
+    # Display the appropriate map based on the current map type
+    if st.session_state['map_type'] == "Offline Map with GPS Markers":
         # Function to render offline map with markers
         def render_offline_map_with_markers(selected_stations_df):
             """Render an offline map with GPS markers for selected stations"""
@@ -265,8 +266,7 @@ with map_section:
                 st.info("No stations selected. All stations shown as dots on the map.")
         else:
             st.error("Unable to load the offline map. Please check the map file.")
-    else:
-        # Interactive GPS Map section
+    else:  # Interactive GPS Map
         # Create the map
         m = folium.Map(
             location=[16.5167, 80.6167],  # Centered around Vijayawada
@@ -293,42 +293,63 @@ with map_section:
             if code.upper() in selected_codes:
                 continue
 
-            # Add small circle markers for non-selected stations
-            folium.CircleMarker(
+            # Calculate position offsets for label placement
+            x_offset = 10
+            y_offset = -10
+
+            # Add box around dot with label with custom positioning
+            # Remove the arrow and make sizing consistent regardless of zoom
+            html_content = f'''
+            <div style="position:absolute; width:0; height:0;">
+                <!-- Box around station location -->
+                <div style="position:absolute; width:6px; height:6px; border:1px solid #800000; left:-3px; top:-3px; border-radius:1px; background-color:rgba(255,255,255,0.5);"></div>
+                <!-- Station label -->
+                <div style="position:absolute; left:{10 if x_offset < 0 else -40}px; top:{-18 if y_offset < 0 else 0}px; background-color:rgba(255,255,255,0.8); padding:1px 3px; border:1px solid #800000; border-radius:2px; font-size:9px; white-space:nowrap;">{code}</div>
+            </div>
+            '''
+
+            folium.DivIcon(
+                icon_size=(0, 0),  # Using zero size to improve positioning
+                icon_anchor=(0, 0),  # Centered anchor point
+                html=html_content
+            ).add_to(folium.Marker(
                 [info['lat'], info['lon']],
-                radius=3,  # Small radius
-                color='gray',
-                fill=True,
-                fill_color='gray',
-                fill_opacity=0.6,
-                opacity=0.6,
-                tooltip=code
-            ).add_to(m)
+                icon=folium.DivIcon(icon_size=(0, 0))  # Invisible marker
+            ).add_to(m))
 
         # Add markers only for selected stations
         if not selected_stations.empty:
             # Add markers for selected stations
             valid_points = []
             for _, station in selected_stations.iterrows():
-                # Create custom popup content
-                popup_content = f"""
-                <div style='font-family: Arial; font-size: 12px;'>
-                    <b>{station['Station Code']} - {station['Name']}</b><br>
-                    Lat: {station['Latitude']:.4f}<br>
-                    Lon: {station['Longitude']:.4f}
-                </div>
-                """
+                code = station['Station Code']
+                lat, lon = station['Latitude'], station['Longitude']
 
-                folium.Marker(
-                    [station['Latitude'], station['Longitude']],
-                    popup=folium.Popup(popup_content, max_width=200),
-                    tooltip=station['Station Code'],
-                    icon=folium.Icon(color='red', icon='train', prefix='fa'),
-                    opacity=0.9  # Fixed opacity
-                ).add_to(m)
+                # Calculate position offsets for label placement
+                x_offset = 10
+                y_offset = -10
+
+                # Add box around dot with label - remove arrow and make sizing consistent
+                html_content = f'''
+                <div style="position:absolute; width:0; height:0;">
+                    <!-- Larger box for selected station -->
+                    <div style="position:absolute; width:8px; height:8px; border:2px solid #800000; left:-4px; top:-4px; border-radius:2px; background-color:rgba(255,255,255,0.5);"></div>
+                    <!-- Prominent station label -->
+                    <div style="position:absolute; left:{15 if x_offset < 0 else -50}px; top:{-20 if y_offset < 0 else 0}px; background-color:rgba(255,255,255,0.9); padding:2px 4px; border:2px solid #800000; border-radius:3px; font-weight:bold; font-size:10px; color:#800000; white-space:nowrap;">{code}</div>
+                </div>
+                '''
+
+                folium.DivIcon(
+                    icon_size=(0, 0),  # Using zero size to improve positioning
+                    icon_anchor=(0, 0),  # Centered anchor point
+                    html=html_content
+                ).add_to(folium.Marker(
+                    [lat, lon],
+                    icon=folium.DivIcon(icon_size=(0, 0))
+                ).add_to(m))
 
                 # Add to points for railway line
-                valid_points.append([station['Latitude'], station['Longitude']])
+                valid_points.append([lat, lon])
 
             # Add railway lines between selected stations
             if len(valid_points) > 1:
@@ -336,13 +357,30 @@ with map_section:
                     valid_points,
                     weight=2,
                     color='gray',
-                    opacity=0.8,  # Fixed opacity
+                    opacity=0.8,
                     dash_array='5, 10'
                 ).add_to(m)
 
         # Display the map with increased width
         st.subheader("Interactive Map")
         folium_static(m, width=1300, height=650)
+
+    # Add a separator to separate the map from the radio buttons
+    st.markdown("---")
+
+    # Display the map type selection radio buttons below the map
+    selected_map_type = st.radio(
+        "Map Type", 
+        ["Offline Map with GPS Markers", "Interactive GPS Map"],
+        index=0 if st.session_state['map_type'] == "Offline Map with GPS Markers" else 1, 
+        horizontal=True,
+        key="map_type_selector"
+    )
+
+    # Update the session state when the selection changes
+    if selected_map_type != st.session_state['map_type']:
+        st.session_state['map_type'] = selected_map_type
+        st.rerun()  # Refresh to apply the new map type
 
 # Add instructions in collapsible section
 with st.expander("About GPS Coordinates"):
