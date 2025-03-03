@@ -2,6 +2,12 @@ import streamlit as st
 import pandas as pd
 import time
 from data_handler import DataHandler
+from database import init_db  # Import init_db function
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Page configuration
 st.set_page_config(
@@ -17,6 +23,18 @@ if 'data_handler' not in st.session_state:
 # Page title
 st.title("📊 Raw CSV Data")
 st.markdown("This page shows the raw data loaded from the CSV file.")
+
+# Add a database initialization button
+if st.button("Initialize Database"):
+    with st.spinner("Initializing database connection..."):
+        try:
+            init_db()
+            st.session_state['db_initialized'] = True
+            st.success("Database initialized successfully")
+            logger.info("Database initialized manually")
+        except Exception as e:
+            st.error(f"Database initialization error: {str(e)}")
+            logger.error(f"Database initialization error: {str(e)}")
 
 try:
     # Load data

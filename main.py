@@ -689,8 +689,8 @@ def extract_station_codes(selected_stations, station_column=None):
 # Create a function to render the offline map with GPS markers
 @st.cache_data(ttl=60)
 def render_offline_map_with_markers(selected_station_codes,
-                                    station_coords,
-                                    marker_opacity=0.8):
+                                     station_coords,
+                                     marker_opacity=0.8):
     """Render an offline map with GPS markers for selected stations"""
     # Get the map viewer from session state or create a new one
     map_viewer = st.session_state.get('map_viewer', MapViewer())
@@ -802,7 +802,7 @@ def render_offline_map_with_markers(selected_station_codes,
         # Convert to RGBA if not already
         if img.mode != 'RGBA':
             img = img.convert('RGBA')
-        #        # Create a copy to work with
+        # Create a copy to work with
         result = img.copy()
 
         # Get pixel data
@@ -836,17 +836,6 @@ with col2:
     if st.button("🔄", type="primary"):
         st.rerun()
 
-# Initialize database after page has loaded its main elements
-if not st.session_state.get('db_initialized', False):
-    with st.spinner("Initializing database connection..."):
-        try:
-            # Initialize the database
-            init_db()
-            st.session_state['db_initialized'] = True
-            logger.info("Database initialized after page load")
-        except Exception as e:
-            st.error(f"Database initialization error: {str(e)}")
-            logger.error(f"Database initialization error: {str(e)}")
 
 try:
     data_handler = st.session_state['icms_data_handler']
