@@ -798,14 +798,16 @@ def render_offline_map_with_markers(selected_station_codes,
         for y in range(height):
             for x in range(width):
                 r, g, b, a = pixdata[x, y]
-                if a > 0:  # Only modify non-transparent pixels                    pixdata[x, y] = (r, g, b, int(a * opacity))
+                if a > 0:  # Only modify non-transparent pixels
+                    pixdata[x, y] = (r, g, b, int(a * opacity))
 
         return result
 
     if marker_opacity < 1.0:
         display_image = apply_marker_opacity(display_image, marker_opacity)
 
-    returndisplay_image, displayed_stations
+    return display_image, displayed_stations
+
 
 # Initialize session state
 initialize_session_state()
@@ -1043,7 +1045,7 @@ try:
                                 all_stations = selected_rows[
                                     station_column].tolist()
                                 st.caption(
-                                    f"Debug - Raw station values from CRD/Station column: {all_stations}")
+                                    f"Debug - Raw station values from CRD column: {all_stations}")
 
                                 # Clean and filter station values with improved handling
                                 selected_stations = []
