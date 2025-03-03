@@ -20,9 +20,6 @@ from map_viewer import MapViewer  # Import MapViewer for offline map handling
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-# Initialize database
-init_db()
-
 
 def parse_time(time_str: str) -> Optional[datetime]:
     """Parse time string in HH:MM format to datetime object"""
@@ -155,6 +152,10 @@ def initialize_session_state():
         'map_viewer': {  # Add MapViewer to session state
             'default': MapViewer(),
             'type': MapViewer
+        },
+        'db_initialized': {  # New state variable to track database initialization
+            'default': False,
+            'type': bool
         }
     }
 
@@ -808,8 +809,8 @@ def render_offline_map_with_markers(selected_station_codes,
 
     return display_image, displayed_stations
 
-#
-#
+
+
 # Initialize session state
 initialize_session_state()
 
@@ -821,6 +822,18 @@ col1, col2 = st.columns([10, 2])
 with col2:
     if st.button("🔄", type="primary"):
         st.rerun()
+
+# Initialize database after page has loaded its main elements
+if not st.session_state.get('db_initialized', False):
+    with st.spinner("Initializing database connection..."):
+        try:
+            # Initialize the database
+            init_db()
+            st.session_state['db_initialized'] = True
+            logger.info("Database initialized after page load")
+        except Exception as e:
+            st.error(f"Database initialization error: {str(e)}")
+            logger.error(f"Database initialization error: {str(e)}")
 
 try:
     data_handler = st.session_state['icms_data_handler']
