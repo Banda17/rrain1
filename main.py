@@ -91,7 +91,7 @@ st.set_page_config(page_title="Train Tracking System",
 # Add headers
 st.markdown("""
     <div style='display: flex; align-items: center; justify-content: center; margin-bottom: 0.5rem;'>
-        <img src='scr_logo.svg' width='50' height='50' style='margin-right: 15px;'>
+        <img src='attached_assets/image_1740626085775.png' width='60' height='60' style='margin-right: 15px; object-fit: contain;'>
         <div>
             <h1 style='margin: 0; padding: 0; text-align: center; color: #1f497d;'>South Central Railway</h1>
             <h2 style='margin: 0; padding: 0; text-align: center; color: #4f81bd;'>Vijayawada Division</h2>
@@ -719,7 +719,7 @@ def render_offline_map_with_markers(selected_station_codes,
             dot_radius = 5
             draw.ellipse(
                 (x - dot_radius, y - dot_radius, x + dot_radius,
-                  y + dot_radius),
+                 y + dot_radius),
                 fill=(100, 100, 100, 180))  # Gray with some transparency
         else:
             # Convert GPS to approximate map coordinates
