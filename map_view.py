@@ -315,23 +315,39 @@ with map_section:
 
             counter += 1
 
-            # Add small circle marker for the station
+            # Add small circle marker for the station with maroon border
             folium.CircleMarker(
                 [info['lat'], info['lon']],
                 radius=3,  # Small radius
-                color='gray',
+                color='#800000',  # Maroon red border
                 fill=True,
                 fill_color='gray',
                 fill_opacity=0.6,
-                opacity=0.6,
+                opacity=0.8,
                 tooltip=code
             ).add_to(m)
 
-            # Add permanent label with custom positioning
+            # Determine arrow direction based on offset
+            arrow_direction = "←" if x_offset > 0 else "→"
+            if y_offset < 0:
+                arrow_direction = "↓"
+
+            # Add box around dot with arrow and label with custom positioning
+            html_content = f'''
+            <div style="position:relative;">
+                <!-- Box around station location -->
+                <div style="position:absolute; width:10px; height:10px; border:2px solid #800000; left:-7px; top:-7px; border-radius:2px;"></div>
+                <!-- Arrow pointing to station -->
+                <div style="position:absolute; left:{5 if x_offset < 0 else -15}px; top:{-3 if y_offset < 0 else 0}px; color:#800000; font-size:16px; font-weight:bold;">{arrow_direction}</div>
+                <!-- Station label -->
+                <div style="position:absolute; left:{15 if x_offset < 0 else -55}px; top:{-25 if y_offset < 0 else 0}px; background-color:rgba(255,255,255,0.7); padding:2px 4px; border:1px solid #800000; border-radius:3px; font-size:10px;">{code}</div>
+            </div>
+            '''
+
             folium.DivIcon(
                 icon_size=(150, 36),
                 icon_anchor=(75-x_offset, 18-y_offset),  # Adjust anchor based on offset
-                html=f'<div style="font-size: 10px; color: #555;">{code}</div>'
+                html=html_content
             ).add_to(folium.Marker(
                 [info['lat'], info['lon']],
                 icon=folium.DivIcon(icon_size=(0, 0))  # Invisible marker, just for the label
@@ -369,11 +385,27 @@ with map_section:
                     opacity=0.9  # Fixed opacity
                 ).add_to(m)
 
-                # Add prominent label with custom positioning
+                # Determine arrow direction based on offset
+                arrow_direction = "←" if x_offset > 0 else "→"
+                if y_offset < 0:
+                    arrow_direction = "↓"
+
+                # Add highlighted box, arrow, and prominent label
+                html_content = f'''
+                <div style="position:relative;">
+                    <!-- Larger box for selected station -->
+                    <div style="position:absolute; width:14px; height:14px; border:3px solid #800000; left:-9px; top:-9px; border-radius:3px;"></div>
+                    <!-- Bold arrow -->
+                    <div style="position:absolute; left:{10 if x_offset < 0 else -20}px; top:{-5 if y_offset < 0 else 0}px; color:#800000; font-size:20px; font-weight:bold;">{arrow_direction}</div>
+                    <!-- Prominent station label -->
+                    <div style="position:absolute; left:{25 if x_offset < 0 else -65}px; top:{-30 if y_offset < 0 else 0}px; background-color:rgba(255,255,255,0.9); padding:3px 6px; border:2px solid #800000; border-radius:4px; font-weight:bold; font-size:12px; color:#800000;">{code}</div>
+                </div>
+                '''
+
                 folium.DivIcon(
                     icon_size=(150, 36),
                     icon_anchor=(75-x_offset, 18-y_offset),
-                    html=f'<div style="background-color: rgba(255,255,255,0.7); padding: 2px 4px; border: 1px solid #d32f2f; border-radius: 3px; font-weight: bold; font-size: 11px; color: #d32f2f; text-align: center;">{code}</div>'
+                    html=html_content
                 ).add_to(folium.Marker(
                     [lat, lon],
                     icon=folium.DivIcon(icon_size=(0, 0))
