@@ -810,7 +810,6 @@ def render_offline_map_with_markers(selected_station_codes,
     return display_image, displayed_stations
 
 
-
 # Initialize session state
 initialize_session_state()
 
@@ -1109,11 +1108,12 @@ try:
                     selected_station_codes = extract_station_codes(
                         selected_rows, station_column)
 
-                    # Toggle between offline map and folium map
-                    map_type = st.radio("Map Type", ["Offline Map with GPS Markers", "Interactive GPS Map"],
-                                        index=0, horizontal=True)
+                    # First, set a default map type value to use
+                    if 'map_type' not in st.session_state:
+                        st.session_state['map_type'] = "Offline Map with GPS Markers"
 
-                    if map_type == "Offline Map with GPS Markers":
+                    # Display the appropriate map based on the current map type
+                    if st.session_state['map_type'] == "Offline Map with GPS Markers":
                         if selected_station_codes:
                             st.caption(
                                 f"Selected stations: {', '.join(selected_station_codes)}"
@@ -1301,6 +1301,23 @@ try:
                         # Render the map with increased width
                         st.subheader("Interactive Map")
                         folium_static(m, width=1200, height=650)
+
+                    # Add a separator to separate the map from the radio buttons
+                    st.markdown("---")
+
+                    # Display the map type selection radio buttons below the map
+                    selected_map_type = st.radio(
+                        "Map Type", 
+                        ["Offline Map with GPS Markers", "Interactive GPS Map"],
+                        index=0 if st.session_state['map_type'] == "Offline Map with GPS Markers" else 1, 
+                        horizontal=True,
+                        key="map_type_selector"
+                    )
+
+                    # Update the session state when the selection changes
+                    if selected_map_type != st.session_state['map_type']:
+                        st.session_state['map_type'] = selected_map_type
+                        st.rerun()  # Refresh to apply the new map type
 
                         # Add instructions in collapsible section for better UI performance
                         with st.expander("Map Instructions"):

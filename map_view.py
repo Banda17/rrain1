@@ -152,11 +152,12 @@ with map_section:
     # Get selected stations
     selected_stations = edited_df[edited_df['Select']]
 
-    # Toggle between offline map and folium map
-    map_type = st.radio("Map Type", ["Offline Map with GPS Markers", "Interactive GPS Map"],
-                        index=0, horizontal=True)
+    # First, set a default map type value to use
+    if 'map_type' not in st.session_state:
+        st.session_state['map_type'] = "Offline Map with GPS Markers"
 
-    if map_type == "Offline Map with GPS Markers":
+    # Display the appropriate map based on the current map type
+    if st.session_state['map_type'] == "Offline Map with GPS Markers":
         # Function to render offline map with markers
         def render_offline_map_with_markers(selected_stations_df):
             """Render an offline map with GPS markers for selected stations"""
@@ -273,8 +274,7 @@ with map_section:
                 st.info("No stations selected. All stations shown as dots on the map.")
         else:
             st.error("Unable to load the offline map. Please check the map file.")
-    else:
-        # Interactive GPS Map section
+    else:  # Interactive GPS Map
         # Create the map
         m = folium.Map(
             location=[16.5167, 80.6167],  # Centered around Vijayawada
@@ -428,6 +428,23 @@ with map_section:
         # Display the map with increased width
         st.subheader("Interactive Map")
         folium_static(m, width=1300, height=650)
+
+    # Add a separator to separate the map from the radio buttons
+    st.markdown("---")
+
+    # Display the map type selection radio buttons below the map
+    selected_map_type = st.radio(
+        "Map Type", 
+        ["Offline Map with GPS Markers", "Interactive GPS Map"],
+        index=0 if st.session_state['map_type'] == "Offline Map with GPS Markers" else 1, 
+        horizontal=True,
+        key="map_type_selector"
+    )
+
+    # Update the session state when the selection changes
+    if selected_map_type != st.session_state['map_type']:
+        st.session_state['map_type'] = selected_map_type
+        st.rerun()  # Refresh to apply the new map type
 
 # Add instructions in collapsible section
 with st.expander("About GPS Coordinates"):
