@@ -808,10 +808,10 @@ def render_offline_map_with_markers(selected_station_codes,
 
     return display_image, displayed_stations
 
-
 #
 #
-# Initialize session stateinitialize_session_state()
+# Initialize session state
+initialize_session_state()
 
 # Main page title
 st.title("ICMS Data - Vijayawada Division")
