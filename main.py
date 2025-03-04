@@ -186,7 +186,7 @@ def initialize_session_state():
         data_handler.spreadsheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRO2ZV-BOcL11_5NhlrOnn5Keph3-cVp7Tyr1t6RxsoDvxZjdOyDsmRkdvesJLbSnZwY8v3CATt1Of9/pub?gid=155911658&single=true&output=csv"
         st.session_state['icms_data_handler'] = data_handler
 
-# Rest of the original code from line 174 onwards
+
 def update_selected_train_details(selected):
     """Update the selected train details in session state"""
     try:
@@ -802,7 +802,8 @@ def render_offline_map_with_markers(selected_station_codes,
         # Convert to RGBA if not already
         if img.mode != 'RGBA':
             img = img.convert('RGBA')
-        # Create a copy to work withresult = img.copy()
+        # Create a copy to work with
+        result = img.copy()
 
         # Get pixel data
         pixdata = result.load()
@@ -946,7 +947,7 @@ try:
                             unsafe_allow_html=True)
 
                 # Create a more balanced column ratio with no gap - 60% table to 40% map
-                table_col, map_col = st.columns([3.5, 2.5], gap="none")
+                table_col, map_col = st.columns([3.5, 2.5], gap="small")
 
                 with table_col:
                     # Refresh animation placeholder right before displaying the table
