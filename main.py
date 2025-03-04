@@ -88,26 +88,6 @@ st.set_page_config(page_title="Train Tracking System",
                    layout="wide",
                    initial_sidebar_state="collapsed")
 
-# Apply custom CSS to remove gaps between elements
-st.markdown("""
-<style>
-/* Remove padding/margins between columns */
-.stColumn > div {
-    padding: 0 !important;
-    margin: 0 !important;
-}
-/* Remove padding/margins between header elements */
-[data-testid="column"] > div {
-    padding: 0 !important;
-    margin: 0 !important;
-}
-/* Reduce padding in the header */
-.block-container {
-    padding-top: 1rem !important;
-}
-</style>
-""", unsafe_allow_html=True)
-
 # Create a layout for the header with logo
 col1, col2 = st.columns([1, 5])
 
@@ -709,8 +689,8 @@ def extract_station_codes(selected_stations, station_column=None):
 # Create a function to render the offline map with GPS markers
 @st.cache_data(ttl=60)
 def render_offline_map_with_markers(selected_station_codes,
-                                    station_coords,
-                                    marker_opacity=0.8):
+                                     station_coords,
+                                     marker_opacity=0.8):
     """Render an offline map with GPS markers for selected stations"""
     # Get the map viewer from session state or create a new one
     map_viewer = st.session_state.get('map_viewer', MapViewer())
@@ -811,7 +791,7 @@ def render_offline_map_with_markers(selected_station_codes,
             displayed_stations.append(normalized_code)
 
     # Restore original marker size
-    map_viewer.base_marker_size= original_marker_size
+    map_viewer.base_marker_size = original_marker_size
 
     # Apply opacity to the image
     def apply_marker_opacity(img, opacity):
@@ -848,13 +828,14 @@ def render_offline_map_with_markers(selected_station_codes,
 initialize_session_state()
 
 # Main page title
-st.title("Train Tracking System using ML")
+st.title("ICMS Data - Vijayawada Division")
 
 # Add a refresh button at the top with just an icon
 col1, col2 = st.columns([10, 2])
 with col2:
     if st.button("🔄", type="primary"):
         st.rerun()
+
 
 try:
     data_handler = st.session_state['icms_data_handler']
@@ -950,6 +931,7 @@ try:
                 }
                 .block-container {
                     padding-left: 0.5rem !important;
+                    padding-right: 0.5rem !important;
                     max-width: 100% !important;
                 }
                 div[data-testid="stVerticalBlock"] {
@@ -957,43 +939,15 @@ try:
                 }
                 /* Custom styling to make table wider */
                 [data-testid="stDataFrame"] {
-                    max-width: none !important;
-                }
-                /* Custom styling for table and map layout */
-                .stColumn > div {
-                    padding: 0px !important;
-                }
-                div[data-testid="column"] {
-                    padding: 0px !important;
-                    margin: 0px !important;
-                }
-                .block-container {
-                    padding-left: 0.5rem !important;
-                    max-width: 100% !important;
-                }
-                div[data-testid="stVerticalBlock"] {
-                    gap: 0px !important;
-                }
-                /* Custom styling to make table wider */
-                [data-testid="stDataFrame"] {
+                    width: 100% !important;
                     max-width: none !important;
                 }
                 </style>
                 """,
                             unsafe_allow_html=True)
 
-                # Create a more balanced column ratio with minimum gap
+                # Create a more balanced column ratio with no gap - 60% table to 40% map
                 table_col, map_col = st.columns([3.5, 2.5], gap="small")
-
-                # Apply additional styling to force columns closer together
-                st.markdown("""
-                <style>
-                /* Force columns to have zero gap */
-                .row-widget.stHorizontal {
-                    gap: 0px !important;
-                }
-                </style>
-                """, unsafe_allow_html=True)
 
                 with table_col:
                     # Refresh animation placeholder right before displaying the table
@@ -1040,17 +994,7 @@ try:
 
                         # Apply red color only to the 'Delay' column if it exists
                         if 'Delay' in df.columns:
-                            delay_column_indices = df.columns.get_loc('Delay')
-                            for row_index in df.index:
-                                delay_value = df.iat[row_index,
-                                                     delay_column_indices]
-                                if delay_value is not None and isinstance(
-                                        delay_value, str
-                                ) and ('+' in delay_value
-                                       or delay_value.strip().startswith('(')):
-                                    styles.at[
-                                        row_index,
-                                        'Delay'] = 'color: red; font-weight: bold'
+                            styles['Delay'] = 'color: red; font-weight: bold'
 
                         return styles
 
