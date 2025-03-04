@@ -796,14 +796,13 @@ def render_offline_map_with_markers(selected_station_codes,
     # Apply opacity to the image
     def apply_marker_opacity(img, opacity):
         """Apply opacity to the non-background pixels of an image"""
-        if opacity >= 1.0:  # No change needed if fully opaque
+        if opacity >= 1.0:  # No change needed iffully opaque
             return img
 
         # Convert to RGBA if not already
         if img.mode != 'RGBA':
             img = img.convert('RGBA')
-        # Create a copy to work with
-        result = img.copy()
+        # Create a copy to work withresult = img.copy()
 
         # Get pixel data
         pixdata = result.load()
@@ -947,7 +946,7 @@ try:
                             unsafe_allow_html=True)
 
                 # Create a more balanced column ratio with no gap - 60% table to 40% map
-                table_col, map_col = st.columns([3, 3], gap="small")
+                table_col, map_col = st.columns([3.5, 2.5], gap="none")
 
                 with table_col:
                     # Refresh animation placeholder right before displaying the table
@@ -1308,7 +1307,7 @@ try:
 
                         # Render the map with increased width
                         st.subheader("Interactive Map")
-                        folium_static(m, width=1200, height=650)
+                        folium_static(m, width=900, height=650)
 
                     # Add a separator to separate the map from the radio buttons
                     st.markdown("---")
