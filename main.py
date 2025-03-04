@@ -803,7 +803,7 @@ def render_offline_map_with_markers(selected_station_codes,
         if img.mode != 'RGBA':
             img = img.convert('RGBA')
         # Create a copy to work with
-        result = img.copy()
+        result= img.copy()
 
         # Get pixel data
         pixdata = result.load()
@@ -941,6 +941,20 @@ try:
                 [data-testid="stDataFrame"] {
                     width: 100% !important;
                     max-width: none !important;
+                }
+                /* Add borders to tables */
+                [data-testid="stDataFrame"] table {
+                    border: 1px solid #c0c0c0 !important;
+                    border-collapse: collapse !important;
+                }
+                [data-testid="stDataFrame"] th {
+                    border: 1px solid #c0c0c0 !important;
+                    background-color: #f8f8f8 !important;
+                    padding: 5px !important;
+                }
+                [data-testid="stDataFrame"] td {
+                    border: 1px solid #c0c0c0 !important;
+                    padding: 5px !important;
                 }
                 </style>
                 """,
