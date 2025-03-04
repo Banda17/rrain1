@@ -16,25 +16,67 @@ st.set_page_config(
     layout="wide"
 )
 
+# Add Bootstrap CSS
+st.markdown("""
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <style>
+        /* Custom styles to enhance Bootstrap */
+        .stApp {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        /* Add bootstrap compatible styles for Streamlit elements */
+        [data-testid="stDataFrame"] table {
+            border: 1px solid #dee2e6 !important;
+            border-collapse: collapse !important;
+            width: 100% !important;
+        }
+        [data-testid="stDataFrame"] th {
+            background-color: #f8f9fa !important;
+            border: 1px solid #dee2e6 !important;
+            padding: 8px !important;
+            font-weight: 600 !important;
+        }
+        [data-testid="stDataFrame"] td {
+            border: 1px solid #dee2e6 !important;
+            padding: 8px !important;
+        }
+        [data-testid="stDataFrame"] tr:nth-of-type(odd) {
+            background-color: rgba(0,0,0,.05) !important;
+        }
+        [data-testid="stDataFrame"] tr:hover {
+            background-color: rgba(0,0,0,.075) !important;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
 # Initialize data handler
 if 'data_handler' not in st.session_state:
     st.session_state['data_handler'] = DataHandler()
 
 # Page title
 st.title("📊 Raw CSV Data")
-st.markdown("This page shows the raw data loaded from the CSV file.")
+st.markdown("""
+<div class="card mb-3">
+    <div class="card-body">
+        <p class="card-text">This page shows the raw data loaded from the CSV file.</p>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
 # Add a database initialization button
-if st.button("Initialize Database"):
-    with st.spinner("Initializing database connection..."):
-        try:
-            init_db()
-            st.session_state['db_initialized'] = True
-            st.success("Database initialized successfully")
-            logger.info("Database initialized manually")
-        except Exception as e:
-            st.error(f"Database initialization error: {str(e)}")
-            logger.error(f"Database initialization error: {str(e)}")
+col1, col2, col3 = st.columns([1, 2, 1])
+with col1:
+    if st.button("Initialize Database", type="primary", help="Click to initialize the database connection"):
+        with st.spinner("Initializing database connection..."):
+            try:
+                init_db()
+                st.session_state['db_initialized'] = True
+                st.success("Database initialized successfully")
+                logger.info("Database initialized manually")
+            except Exception as e:
+                st.error(f"Database initialization error: {str(e)}")
+                logger.error(f"Database initialization error: {str(e)}")
 
 try:
     # Load data
@@ -52,8 +94,10 @@ try:
             # Add last update time
             st.info(f"Last updated: {st.session_state['data_handler'].last_update.strftime('%Y-%m-%d %H:%M:%S')}")
 
-            # Add search functionality
+            # Add search functionality in a card
+            st.markdown('<div class="card mb-3"><div class="card-header bg-light">Data Search</div><div class="card-body">', unsafe_allow_html=True)
             search_term = st.text_input("🔍 Search in data", "")
+            st.markdown('</div></div>', unsafe_allow_html=True)
 
             # Filter data based on search term
             if search_term:
@@ -64,20 +108,26 @@ try:
             # Display data info
             st.info(f"Total rows: {len(filtered_data)} | Total columns: {len(filtered_data.columns)}")
 
+            # Display the data in a card
+            st.markdown('<div class="card shadow-sm mb-3"><div class="card-body p-0">', unsafe_allow_html=True)
             # Display the data
             st.dataframe(
                 filtered_data,
                 use_container_width=True,
                 height=500
             )
+            st.markdown('</div></div>', unsafe_allow_html=True)
 
-            # Download button
+            # Download button in a card
+            st.markdown('<div class="card mb-3"><div class="card-body text-center">', unsafe_allow_html=True)
             st.download_button(
                 label="📥 Download CSV",
                 data=filtered_data.to_csv(index=False),
                 file_name="train_data.csv",
-                mime="text/csv"
+                mime="text/csv",
+                help="Download the filtered data as a CSV file"
             )
+            st.markdown('</div></div>', unsafe_allow_html=True)
 
             # Auto-refresh every 5 minutes
             time.sleep(300)  # 5 minutes

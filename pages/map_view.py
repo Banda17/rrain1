@@ -7,18 +7,63 @@ from map_utils import OfflineMapHandler
 from map_viewer import MapViewer
 from PIL import ImageDraw
 
-# Page configuration
+# Page configuration - MUST be the first Streamlit command
 st.set_page_config(
     page_title="Map View - Train Tracking System",
     page_icon="🗺️",
     layout="wide"
 )
 
+# Add Bootstrap CSS to the page
+st.markdown("""
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <style>
+        /* Custom styles to enhance Bootstrap */
+        .stApp {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        /* Add bootstrap compatible styles for Streamlit elements */
+        [data-testid="stDataFrame"] table {
+            border: 1px solid #dee2e6 !important;
+            border-collapse: collapse !important;
+            width: 100% !important;
+        }
+        [data-testid="stDataFrame"] th {
+            background-color: #f8f9fa !important;
+            border: 1px solid #dee2e6 !important;
+            padding: 8px !important;
+            font-weight: 600 !important;
+        }
+        [data-testid="stDataFrame"] td {
+            border: 1px solid #dee2e6 !important;
+            padding: 8px !important;
+        }
+        [data-testid="stDataFrame"] tr:nth-of-type(odd) {
+            background-color: rgba(0,0,0,.05) !important;
+        }
+        [data-testid="stDataFrame"] tr:hover {
+            background-color: rgba(0,0,0,.075) !important;
+        }
+        .station-card {
+            border: 1px solid #dee2e6;
+            border-radius: 0.25rem;
+            padding: 0.5rem;
+            margin-bottom: 0.5rem;
+            background-color: #f8f9fa;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
 st.title("🗺️ Division Map View")
 st.markdown("""
-This interactive map shows the stations in Vijayawada Division with their GPS coordinates.
-Select stations from the table below to display them on the map.
-""")
+<div class="card mb-3">
+    <div class="card-body">
+        <p class="card-text">This interactive map shows the stations in Vijayawada Division with their GPS coordinates.
+        Select stations from the table below to display them on the map.</p>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
 # Define Andhra Pradesh center coordinates
 AP_CENTER = (16.5167, 80.6167)  # Centered around Vijayawada
@@ -75,19 +120,6 @@ def get_station_coordinates():
         'VAT': {'name': 'Vijayawada Thermal', 'lat': 16.69406, 'lon': 81.0399239},
     }
 
-# Apply custom CSS to remove all padding and margins between columns
-st.markdown("""
-<style>
-.stColumn > div {
-    padding: 0px !important;
-}
-div[data-testid="column"] {
-    padding: 0px !important;
-    margin: 0px !important;
-}
-</style>
-""", unsafe_allow_html=True)
-
 # Create DataFrame for station selection
 stations_df = pd.DataFrame([
     {
@@ -104,8 +136,13 @@ stations_df = pd.DataFrame([
 table_section, map_section = st.columns([2, 3], gap="small")
 
 with table_section:
-    st.subheader("Station Selection")
-    st.markdown("Select stations to display on the map:")
+    st.markdown("""
+    <div class="card mb-3">
+        <div class="card-header bg-primary text-white">
+            Station Selection
+        </div>
+        <div class="card-body p-0">
+    """, unsafe_allow_html=True)
 
     # Create a column layout to control table width
     table_col1, table_col2 = st.columns([3, 1])
@@ -130,17 +167,12 @@ with table_section:
         # Empty space to reduce table width
         st.empty()
 
-with map_section:
-    # Remove extra padding/margin to bring map closer to table
     st.markdown("""
-    <style>
-    .stColumn > div:first-child {
-        padding-left: 0;
-        margin-left: 0;
-    }
-    </style>
+        </div>
+    </div>
     """, unsafe_allow_html=True)
 
+with map_section:
     # Get selected stations
     selected_stations = edited_df[edited_df['Select']]
 
@@ -252,12 +284,23 @@ with map_section:
             height_ratio = max_height / original_height
             new_width = int(original_width * height_ratio * 1.2)  # Extra width factor
 
+            # Card container for the map
+            st.markdown("""
+            <div class="card mb-3">
+                <div class="card-header bg-secondary text-white">
+                    Vijayawada Division System Map
+                </div>
+                <div class="card-body p-0">
+            """, unsafe_allow_html=True)
+
             # Display the map
             st.image(
                 display_image.resize((new_width, max_height)), #resize image
                 use_container_width=True,
                 caption="Vijayawada Division System Map with Selected Stations"
             )
+
+            st.markdown("</div></div>", unsafe_allow_html=True)
 
             # Show station count
             if displayed_stations:
@@ -361,9 +404,19 @@ with map_section:
                     dash_array='5, 10'
                 ).add_to(m)
 
+        # Card container for the map
+        st.markdown("""
+        <div class="card mb-3">
+            <div class="card-header bg-secondary text-white">
+                Interactive GPS Map
+            </div>
+            <div class="card-body p-0">
+        """, unsafe_allow_html=True)
+
         # Display the map with increased width
-        st.subheader("Interactive Map")
-        folium_static(m, width=1300, height=650)
+        folium_static(m, width=900, height=650)
+
+        st.markdown("</div></div>", unsafe_allow_html=True)
 
     # Add a separator to separate the map from the radio buttons
     st.markdown("---")
@@ -385,14 +438,27 @@ with map_section:
 # Add instructions in collapsible section
 with st.expander("About GPS Coordinates"):
     st.markdown("""
-    ### GPS Coordinate System
-    - **Latitude**: North-South position (-90° to 90°)
-    - **Longitude**: East-West position (-180° to 180°)
-    - Coordinates shown are in decimal degrees format
-
-    ### Map Features
-    - Switch between offline map and interactive GPS view
-    - Railway lines automatically connect selected stations in sequence
-    - All stations shown as small dots, selected stations shown with train markers
-    - Select multiple stations to see their connections
-    """)
+    <div class="card">
+        <div class="card-header bg-light">
+            GPS Coordinate System
+        </div>
+        <div class="card-body">
+            <ul class="list-group list-group-flush">
+                <li class="list-group-item">Latitude: North-South position (-90° to 90°)</li>
+                <li class="list-group-item">Longitude: East-West position (-180° to 180°)</li>
+                <li class="list-group-item">Coordinates shown are in decimal degrees format</li>
+            </ul>
+        </div>
+        <div class="card-header bg-light">
+            Map Features
+        </div>
+        <div class="card-body">
+            <ul class="list-group list-group-flush">
+                <li class="list-group-item">Switch between offline map and interactive GPS view</li>
+                <li class="list-group-item">Railway lines automatically connect selected stations in sequence</li>
+                <li class="list-group-item">All stations shown as small dots, selected stations shown with train markers</li>
+                <li class="list-group-item">Select multiple stations to see their connections</li>
+            </ul>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
