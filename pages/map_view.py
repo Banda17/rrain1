@@ -7,12 +7,96 @@ from map_utils import OfflineMapHandler
 from map_viewer import MapViewer
 from PIL import ImageDraw
 
-# Page configuration
+# Page configuration must be the first Streamlit command
 st.set_page_config(
     page_title="Map View - Train Tracking System",
     page_icon="🗺️",
     layout="wide"
 )
+
+# Apply aggressive CSS to remove ALL gaps and padding throughout the application
+st.markdown("""
+<style>
+/* Global reset for all elements */
+* {
+    margin: 0 !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+}
+
+/* Remove ALL padding and spacing from Streamlit containers */
+.block-container, 
+.stApp, 
+[data-testid="stAppViewContainer"],
+[data-testid="stVerticalBlock"], 
+.stColumn,
+.row-widget,
+.stHorizontal,
+[data-testid="column"] {
+    padding: 0 !important;
+    margin: 0 !important;
+    gap: 0 !important;
+}
+
+/* Force zero spacing in all column layouts */
+[data-testid="column"] > div {
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+/* Eliminate gaps in column layouts */
+.row-widget.stHorizontal {
+    gap: 0 !important;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+}
+
+/* Reduce spacing around tables */
+[data-testid="stDataFrame"] {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+}
+
+/* Compact header styling */
+h1, h2, h3, h4, h5, h6 {
+    margin: 0 !important;
+    padding: 0 !important;
+    line-height: 1.2 !important;
+}
+
+/* Remove whitespace around images */
+img, [data-testid="stImage"] {
+    margin: 0 !important;
+    padding: 0 !important;
+    display: block !important;
+}
+
+/* Ensure map container has no spacing */
+.stFolium, .folium-map {
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* Remove spacing from markdown elements */
+.stMarkdown {
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* Add minimal spacing for readability only where absolutely necessary */
+.main-content > * {
+    margin-top: 0.25rem !important;
+}
+
+/* Override any streamlit-specific spacers */
+.css-1kyxreq, .css-12w0qpk {
+    padding: 0 !important;
+    margin: 0 !important;
+    gap: 0 !important;
+}
+</style>
+""", unsafe_allow_html=True)
 
 st.title("🗺️ Division Map View")
 st.markdown("""
@@ -75,19 +159,6 @@ def get_station_coordinates():
         'VAT': {'name': 'Vijayawada Thermal', 'lat': 16.69406, 'lon': 81.0399239},
     }
 
-# Apply custom CSS to remove all padding and margins between columns
-st.markdown("""
-<style>
-.stColumn > div {
-    padding: 0px !important;
-}
-div[data-testid="column"] {
-    padding: 0px !important;
-    margin: 0px !important;
-}
-</style>
-""", unsafe_allow_html=True)
-
 # Create DataFrame for station selection
 stations_df = pd.DataFrame([
     {
@@ -102,6 +173,16 @@ stations_df = pd.DataFrame([
 
 # Create a two-column layout for table and map display with more space for the map
 table_section, map_section = st.columns([2, 3], gap="small")
+
+# Apply additional styling to force columns closer together
+st.markdown("""
+<style>
+/* Force columns to have zero gap */
+.row-widget.stHorizontal {
+    gap: 0 !important;
+}
+</style>
+""", unsafe_allow_html=True)
 
 with table_section:
     st.subheader("Station Selection")
@@ -122,7 +203,7 @@ with table_section:
                 )
             },
             disabled=["Station Code", "Name", "Latitude", "Longitude"],
-            use_container_width=False,
+            use_container_width=True,
             height=800,  # Increased height further
             num_rows=40  # Show 40 rows at a time
         )
@@ -131,16 +212,6 @@ with table_section:
         st.empty()
 
 with map_section:
-    # Remove extra padding/margin to bring map closer to table
-    st.markdown("""
-    <style>
-    .stColumn > div:first-child {
-        padding-left: 0;
-        margin-left: 0;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
     # Get selected stations
     selected_stations = edited_df[edited_df['Select']]
 
@@ -250,7 +321,7 @@ with map_section:
             original_width, original_height = display_image.size
             max_height = 650  # Increased height
             height_ratio = max_height / original_height
-            new_width = int(original_width * height_ratio * 1.2)  # Extra width factor
+            new_width = int(original_width * height_ratio * 1.0)  # Reduced width factor
 
             # Display the map
             st.image(
@@ -363,7 +434,7 @@ with map_section:
 
         # Display the map with increased width
         st.subheader("Interactive Map")
-        folium_static(m, width=1300, height=650)
+        folium_static(m, width=800, height=650)
 
     # Add a separator to separate the map from the radio buttons
     st.markdown("---")
