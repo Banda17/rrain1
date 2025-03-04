@@ -9,66 +9,6 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Add responsive CSS for mobile layout
-st.markdown("""
-<style>
-    /* Base responsive styles */
-    .main .block-container {
-        padding-left: 1rem !important;
-        padding-right: 1rem !important;
-        max-width: 100% !important;
-    }
-
-    /* Header styles */
-    h1 {
-        font-size: 1.8rem !important;
-    }
-
-    /* Table responsiveness */
-    .dataframe-container {
-        overflow-x: auto;
-        width: 100%;
-    }
-
-    /* Adjustments for small screens */
-    @media screen and (max-width: 768px) {
-        .main .block-container {
-            padding-left: 0.5rem !important;
-            padding-right: 0.5rem !important;
-        }
-
-        h1 {
-            font-size: 1.5rem !important;
-        }
-
-        h2 {
-            font-size: 1.2rem !important;
-        }
-
-        /* Adjust button sizes */
-        .stButton button {
-            width: 100% !important;
-            padding: 0.5rem !important;
-        }
-
-        /* Adjust download button */
-        .stDownloadButton button {
-            width: 100% !important;
-        }
-    }
-
-    /* Make data tables horizontally scrollable */
-    [data-testid="stDataFrame"] {
-        width: 100% !important;
-        max-width: 100% !important;
-    }
-
-    [data-testid="stDataFrame"] > div {
-        overflow-x: auto !important;
-    }
-</style>
-""", unsafe_allow_html=True)
-
 # Page configuration
 st.set_page_config(
     page_title="Raw Data - Train Tracking System",
@@ -124,9 +64,6 @@ try:
             # Display data info
             st.info(f"Total rows: {len(filtered_data)} | Total columns: {len(filtered_data.columns)}")
 
-            # Wrap dataframe in a container for horizontal scrolling on mobile
-            st.markdown("<div class='dataframe-container'>", unsafe_allow_html=True)
-
             # Display the data
             st.dataframe(
                 filtered_data,
@@ -134,30 +71,17 @@ try:
                 height=500
             )
 
-            st.markdown("</div>", unsafe_allow_html=True)
+            # Download button
+            st.download_button(
+                label="📥 Download CSV",
+                data=filtered_data.to_csv(index=False),
+                file_name="train_data.csv",
+                mime="text/csv"
+            )
 
-            # Create a container for bottom controls to improve mobile layout
-            col1, col2 = st.columns([1, 1])
-
-            with col1:
-                # Download button
-                st.download_button(
-                    label="📥 Download CSV",
-                    data=filtered_data.to_csv(index=False),
-                    file_name="train_data.csv",
-                    mime="text/csv"
-                )
-
-            with col2:
-                # Add a manual refresh button
-                if st.button("🔄 Refresh Data"):
-                    st.rerun()
-
-            # Remove the auto-refresh timer to avoid unexpected reloads on mobile
-            # Auto-refresh every 5 minutes on desktop only
-            if st.session_state.get('auto_refresh', True) and not st.session_state.get('is_mobile', False):
-                time.sleep(300)  # 5 minutes
-                st.rerun()
+            # Auto-refresh every 5 minutes
+            time.sleep(300)  # 5 minutes
+            st.rerun()
         else:
             st.warning("No data available to display")
     else:
