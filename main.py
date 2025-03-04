@@ -161,6 +161,22 @@ st.markdown("""
     [data-testid="stDataFrame"] > div {
         overflow-x: auto !important;
     }
+
+    /* Reduce map size and gap */
+    .folium-map {
+        width: 95% !important;
+        margin: 0 auto !important;
+    }
+
+    /* Reduce vertical spacing between elements */
+    .stVerticalBlock {
+        gap: 0.5rem !important;
+    }
+
+    /* Tighten up the layout */
+    .stMarkdown {
+        margin-bottom: 0.5rem !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -816,7 +832,7 @@ def render_offline_map_with_markers(selected_station_codes,
             # Convert GPS to approximate map coordinates
             try:
                 # Approximate conversion
-                x_norm = (coords['lon'] - 79.0) / 5.0
+                x_norm = (coords['lon'] - 79.0)/ 5.0
                 y_norm = (coords['lat'] - 14.0) / 5.0
 
                 # Add to map_viewer's stationlocations for future use
@@ -935,7 +951,7 @@ try:
         if data_handler.last_update:
             # Convert last update to IST (UTC+5:30)
             last_update_ist = data_handler.last_update + timedelta(hours=5,
-                                                                   minutes=30)
+                                                                  minutes=30)
             st.info(
                 f"Last updated: {last_update_ist.strftime('%Y-%m-%d %H:%M:%S')} IST"
             )
@@ -1025,7 +1041,6 @@ try:
                     filtered_df = df
                     st.warning("Delay column not found in data")
 
-                # On mobile, stack the table and map vertically instead of side by side
                 # Apply red styling only to the Delay column
                 def highlight_delay(df):
                     # Create a DataFrame of styles with same shape as the input DataFrame
@@ -1039,72 +1054,175 @@ try:
 
                     return styles
 
-                # Using a container for the table to enable horizontal scrolling on mobile
-                st.markdown("<div class='dataframe-container'>", unsafe_allow_html=True)
-                st.dataframe(filtered_df.style.apply(highlight_delay, axis=None),
-                             use_container_width=True)
-                st.markdown("</div>", unsafe_allow_html=True)
+                # Add a "Select" column at the beginning of the DataFrame for checkboxes
+                if 'Select' not in filtered_df.columns:
+                    filtered_df.insert(0, 'Select', False)
 
-                # Get current station coordinates
-                station_coords = get_station_coordinates()
+                # Get station column name
+                station_column = next(
+                    (col for col in filtered_df.columns
+                     if col in ['Station', 'station', 'STATION']), None)
 
-                # Map section with responsive layout
-                st.subheader("Division Map View")
+                # Create a two-column layout with reduced spacing
+                st.markdown("""
+                <style>
+                .stColumn > div {
+                    padding: 0px !important;
+                }
+                div[data-testid="column"] {
+                    padding: 0px !important;
+                    margin: 0px !important;
+                }
+                </style>
+                """, unsafe_allow_html=True)
 
-                # Create a container for the map with responsive class
-                st.markdown("<div class='map-container'>", unsafe_allow_html=True)
+                # Create a more balanced column ratio with no gap - 60% table to 40% map
+                table_col, map_col = st.columns([6, 4], gap="small")
 
-                # Function to create responsive folium map
-                def create_responsive_map():
-                    m = folium.Map(location=[16.5167, 80.6167], zoom_start=8)
+                with table_col:
+                    # Use data_editor to make the table interactive with checkboxes
+                    edited_df = st.data_editor(
+                        filtered_df,
+                        hide_index=True,
+                        column_config={
+                            "Select":
+                            st.column_config.CheckboxColumn(
+                                "Select",
+                                help="Select to show on map",
+                                default=False),
+                            "Train No.":
+                            st.column_config.TextColumn(
+                                "Train No.", help="Train Number"),
+                            "FROM-TO":
+                            st.column_config.TextColumn(
+                                "FROM-TO", help="Source to Destination"),
+                            "IC Entry Delay":
+                            st.column_config.TextColumn(
+                                "IC Entry Delay", help="Entry Delay"),
+                            "Delay":
+                            st.column_config.TextColumn(
+                                "Delay", help="Delay in Minutes")
+                        },
+                        disabled=[
+                            col for col in filtered_df.columns
+                            if col != 'Select'
+                        ],
+                        use_container_width=True,  # Use full container width
+                        height=600,  # Reduced height
+                        num_rows=40  # Show 40 rows at a time
+                    )
 
-                    # Add markers for selected stations
-                    for code, coords in station_coords.items():
-                        if 'Station' in filtered_df.columns and code in filtered_df['Station'].values:
-                            folium.Marker(
-                                [coords['lat'], coords['lon']],
-                                tooltip=code,
-                                icon=folium.Icon(color='red', icon='train', prefix='fa')
-                            ).add_to(m)
+                # Display map with reduced width
+                with map_col:
+                    # Get cached station coordinates
+                    station_coords = get_station_coordinates()
 
-                    # Draw custom bounds
-                    custom_bounds = [[14.0, 79.0], [18.0, 84.0]]
-                    m.fit_bounds(custom_bounds)
+                    # Extract station codes from selected rows
+                    selected_rows = edited_df[edited_df['Select']]
+                    selected_station_codes = extract_station_codes(
+                        selected_rows, station_column)
 
-                    # Add controls
-                    folium.LayerControl().add_to(m)
-                    Draw(export=False).add_to(m)
+                    # First, set a default map type value to use
+                    if 'map_type' not in st.session_state:
+                        st.session_state[
+                            'map_type'] = "Offline Map with GPS Markers"
 
-                    return m
+                    # Display the appropriate map based on the current map type
+                    if st.session_state[
+                            'map_type'] == "Offline Map with GPS Markers":
+                        # Render offline map with markers
+                        display_image, displayed_stations = render_offline_map_with_markers(
+                            selected_station_codes, station_coords)
 
-                # Create and display the folium map
-                m = create_responsive_map()
-                folium_static(m, width=None, height=500)
+                        if display_image is not None:
+                            # Convert and resize for display if needed
+                            from PIL import Image
+                            display_image = display_image.convert('RGB')
+                            original_width, original_height = display_image.size
 
-                st.markdown("</div>", unsafe_allow_html=True)
+                            # Calculate new dimensions maintaining aspect ratio but with reduced width
+                            max_height = 500  # Reduced height
+                            height_ratio = max_height / original_height
+                            new_width = int(original_width * height_ratio * 0.9)  # 90% of the original width ratio
+                            new_height = max_height
 
-                # Add touch-friendly selection list for stations on mobile
-                st.subheader("Quick Station Selection")
-                selected_station = st.selectbox(
-                    "Select a station to view on the map",
-                    options=sorted(station_coords.keys()),
-                    index=None
-                )
+                            display_image = display_image.resize(
+                                (new_width, new_height),
+                                Image.Resampling.LANCZOS)
 
-                if selected_station:
-                    # Show selected station details
-                    coords = station_coords.get(selected_station)
-                    if coords:
-                        st.write(f"Station: {selected_station}")
-                        st.write(f"Coordinates: {coords['lat']}, {coords['lon']}")
+                            # Display the map with reduced width
+                            st.image(
+                                display_image,
+                                use_column_width=True,  # Use column width instead of container width
+                                caption=
+                                "Vijayawada Division Map"
+                            )
 
-                        # Show any trains at this station
-                        station_trains = filtered_df[filtered_df['Station'] == selected_station]
-                        if not station_trains.empty:
-                            st.write(f"Trains at {selected_station}:")
-                            st.dataframe(station_trains)
+                            # Show station count
+                            if displayed_stations:
+                                st.success(
+                                    f"Showing {len(displayed_stations)} selected stations"
+                                )
+
                         else:
-                            st.info(f"No trains currently at {selected_station}")
+                            st.error(
+                                "Unable to load the offline map. Please check the map file."
+                            )
+                    else:
+                        # Create the interactive map with reduced width
+                        m = folium.Map(
+                            location=[16.5167, 80.6167],  # Centered around Vijayawada
+                            zoom_start=7,
+                            control_scale=True)
+
+                        # Add markers for selected stations
+                        displayed_stations = []
+                        valid_points = []
+
+                        # Add train icon markers for selected stations
+                        for code in selected_station_codes:
+                            normalized_code = code.upper().strip()
+                            if normalized_code in station_coords:
+                                lat = station_coords[normalized_code]['lat']
+                                lon = station_coords[normalized_code]['lon']
+
+                                # Add train icon marker
+                                folium.Marker(
+                                    [lat, lon],
+                                    popup=f"<b>{normalized_code}</b><br>({lat:.4f}, {lon:.4f})",
+                                    tooltip=normalized_code,
+                                    icon=folium.Icon(color='red', icon='train', prefix='fa'),
+                                    opacity=0.8).add_to(m)
+
+                                displayed_stations.append(normalized_code)
+                                valid_points.append([lat, lon])
+
+                        # Add railway lines between selected stations
+                        if len(valid_points) > 1:
+                            folium.PolyLine(valid_points,
+                                            weight=2,
+                                            color='gray',
+                                            opacity=0.8,
+                                            dash_array='5, 10').add_to(m)
+
+                        # Render the map with reduced width
+                        folium_static(m, width=None, height=500)
+
+                    # Display the map type selection radio buttons below the map
+                    selected_map_type = st.radio(
+                        "Map Type", [
+                            "Offline Map with GPS Markers",
+                            "Interactive GPS Map"
+                        ],
+                        index=0 if st.session_state['map_type']
+                        == "Offline Map with GPS Markers" else 1,
+                        horizontal=True,
+                        key="map_type_selector")
+
+                    # Update the session state when the selection changes
+                    if selected_map_type != st.session_state['map_type']:
+                        st.session_state['map_type'] = selected_map_type
+                        st.rerun()  # Refresh to apply the new map type
 
             else:
                 st.error("No data available in the cached data frame")
