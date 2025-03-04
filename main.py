@@ -112,17 +112,6 @@ st.markdown("""
         width: 100%;
     }
 
-    /* Remove gap between columns */
-    .row-widget.stHorizontal {
-        gap: 0.5rem !important;
-    }
-
-    /* Reduce column spacing */
-    [data-testid="column"] {
-        padding-left: 0.2rem !important;
-        padding-right: 0.2rem !important;
-    }
-
     /* Adjustments for small screens */
     @media screen and (max-width: 768px) {
         .main .block-container {
@@ -172,18 +161,11 @@ st.markdown("""
     [data-testid="stDataFrame"] > div {
         overflow-x: auto !important;
     }
-
-    /* Limit max width of content for better readability */
-    .main .block-container {
-        max-width: 1200px !important;
-        margin-left: auto !important;
-        margin-right: auto !important;
-    }
 </style>
 """, unsafe_allow_html=True)
 
 # Create a layout for the header with logo
-col1, col2 = st.columns([1, 5], gap="small")
+col1, col2 = st.columns([1, 5])
 
 # Display the logo in the first column
 with col1:
@@ -925,7 +907,7 @@ initialize_session_state()
 st.title("ICMS Data - Vijayawada Division")
 
 # Add a refresh button at the top with just an icon
-col1, col2 = st.columns([10, 2], gap="small")
+col1, col2 = st.columns([10, 2])
 with col2:
     if st.button("🔄", type="primary"):
         st.rerun()
@@ -1043,96 +1025,86 @@ try:
                     filtered_df = df
                     st.warning("Delay column not found in data")
 
-                # Layout with reduced column gap for better spacing
-                data_col, map_col = st.columns([6, 6], gap="small")
+                # On mobile, stack the table and map vertically instead of side by side
+                # Apply red styling only to the Delay column
+                def highlight_delay(df):
+                    # Create a DataFrame of styles with same shape as the input DataFrame
+                    styles = pd.DataFrame('',
+                                          index=df.index,
+                                          columns=df.columns)
 
-                with data_col:
-                    # On mobile, stack the table and map vertically instead of side by side
-                    # Apply red styling only to the Delay column
-                    def highlight_delay(df):
-                        # Create a DataFrame of styles with same shape as the input DataFrame
-                        styles = pd.DataFrame('',
-                                              index=df.index,
-                                              columns=df.columns)
+                    # Apply red color only to the 'Delay' column if it exists
+                    if 'Delay' in df.columns:
+                        styles['Delay'] = 'color: red; font-weight: bold'
 
-                        # Apply red color only to the 'Delay' column if it exists
-                        if 'Delay' in df.columns:
-                            styles['Delay'] = 'color: red; font-weight: bold'
+                    return styles
 
-                        return styles
+                # Using a container for the table to enable horizontal scrolling on mobile
+                st.markdown("<div class='dataframe-container'>", unsafe_allow_html=True)
+                st.dataframe(filtered_df.style.apply(highlight_delay, axis=None),
+                             use_container_width=True)
+                st.markdown("</div>", unsafe_allow_html=True)
 
-                    # Using a container for the table to enable horizontal scrolling on mobile
-                    st.markdown("<div class='dataframe-container'>", unsafe_allow_html=True)
-                    st.dataframe(filtered_df.style.apply(highlight_delay, axis=None),
-                                 use_container_width=True)
-                    st.markdown("</div>", unsafe_allow_html=True)
+                # Get current station coordinates
+                station_coords = get_station_coordinates()
 
-                with map_col:
-                    # Get current station coordinates
-                    station_coords = get_station_coordinates()
+                # Map section with responsive layout
+                st.subheader("Division Map View")
 
-                    # Map section with responsive layout
-                    st.subheader("Division Map View")
+                # Create a container for the map with responsive class
+                st.markdown("<div class='map-container'>", unsafe_allow_html=True)
 
-                    # Create a container for the map with responsive class
-                    st.markdown("<div class='map-container'>", unsafe_allow_html=True)
+                # Function to create responsive folium map
+                def create_responsive_map():
+                    m = folium.Map(location=[16.5167, 80.6167], zoom_start=8)
 
-                    # Function to create responsive folium map
-                    def create_responsive_map():
-                        m = folium.Map(location=[16.5167, 80.6167], zoom_start=8)
+                    # Add markers for selected stations
+                    for code, coords in station_coords.items():
+                        if 'Station' in filtered_df.columns and code in filtered_df['Station'].values:
+                            folium.Marker(
+                                [coords['lat'], coords['lon']],
+                                tooltip=code,
+                                icon=folium.Icon(color='red', icon='train', prefix='fa')
+                            ).add_to(m)
 
-                        # Add markers for selected stations
-                        for code, coords in station_coords.items():
-                            if 'Station' in filtered_df.columns and code in filtered_df['Station'].values:
-                                folium.Marker(
-                                    [coords['lat'], coords['lon']],
-                                    tooltip=code,
-                                    icon=folium.Icon(color='red', icon='train', prefix='fa')
-                                ).add_to(m)
+                    # Draw custom bounds
+                    custom_bounds = [[14.0, 79.0], [18.0, 84.0]]
+                    m.fit_bounds(custom_bounds)
 
-                        # Draw custom bounds
-                        custom_bounds = [[14.0, 79.0], [18.0, 84.0]]
-                        m.fit_bounds(custom_bounds)
+                    # Add controls
+                    folium.LayerControl().add_to(m)
+                    Draw(export=False).add_to(m)
 
-                        # Add controls
-                        folium.LayerControl().add_to(m)
-                        Draw(export=False).add_to(m)
+                    return m
 
-                        return m
+                # Create and display the folium map
+                m = create_responsive_map()
+                folium_static(m, width=None, height=500)
 
-                    # Create and display the folium map
-                    m = create_responsive_map()
-                    folium_static(m, width=None, height=500)
-
-                    st.markdown("</div>", unsafe_allow_html=True)
+                st.markdown("</div>", unsafe_allow_html=True)
 
                 # Add touch-friendly selection list for stations on mobile
                 st.subheader("Quick Station Selection")
-                col1, col2 = st.columns([1, 1], gap="small")
+                selected_station = st.selectbox(
+                    "Select a station to view on the map",
+                    options=sorted(station_coords.keys()),
+                    index=None
+                )
 
-                with col1:
-                    selected_station = st.selectbox(
-                        "Select a station to view details",
-                        options=sorted(station_coords.keys()),
-                        index=None
-                    )
+                if selected_station:
+                    # Show selected station details
+                    coords = station_coords.get(selected_station)
+                    if coords:
+                        st.write(f"Station: {selected_station}")
+                        st.write(f"Coordinates: {coords['lat']}, {coords['lon']}")
 
-                with col2:
-                    if selected_station:
-                        # Show selected station details
-                        coords = station_coords.get(selected_station)
-                        if coords:
-                            st.write(f"Station: {selected_station}")
-                            st.write(f"Coordinates: {coords['lat']}, {coords['lon']}")
-
-                # Show any trains at the selected station
-                if selected_station and 'Station' in filtered_df.columns:
-                    station_trains = filtered_df[filtered_df['Station'] == selected_station]
-                    if not station_trains.empty:
-                        st.write(f"Trains at {selected_station}:")
-                        st.dataframe(station_trains)
-                    else:
-                        st.info(f"No trains currently at {selected_station}")
+                        # Show any trains at this station
+                        station_trains = filtered_df[filtered_df['Station'] == selected_station]
+                        if not station_trains.empty:
+                            st.write(f"Trains at {selected_station}:")
+                            st.dataframe(station_trains)
+                        else:
+                            st.info(f"No trains currently at {selected_station}")
 
             else:
                 st.error("No data available in the cached data frame")
