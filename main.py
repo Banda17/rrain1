@@ -792,7 +792,7 @@ def render_offline_map_with_markers(selected_station_codes,
                 draw.ellipse(
                     (x - dot_radius, y - dot_radius, x + dot_radius,
                      y + dot_radius),
-                    fill=(100, 100, 100, 180))  # Gray with some transparency
+                    fill=(100, 100, 10, 100, 180))  # Gray with some transparency
             except:
                 # Skip if conversion fails
                 continue
@@ -809,7 +809,7 @@ def render_offline_map_with_markers(selected_station_codes,
             display_image = map_viewer.draw_train_marker(
                 display_image, normalized_code)
             displayed_stations.append(normalized_code)
-        # If not in map_viewer,        elif normalized_code in station_coords:
+        elif normalized_code in station_coords:
             # GPS coordinates to normalized map coordinates (approximate conversion)
             # This is a simplified conversion - would need proper calibration for accuracy
             coords = station_coords[normalized_code]
@@ -1042,165 +1042,322 @@ try:
 
                         return styles
 
-                    # Convert DataFrame for display with bootstrap-compatible styling
-                    st.markdown('<div class="card shadow-sm mb-3"><div class="card-body p-0">', unsafe_allow_html=True)
-                    st.dataframe(filtered_df.style.apply(highlight_delay, axis=None),
-                                 height=600,
-                                 use_container_width=True)
-                    st.markdown('</div></div>', unsafe_allow_html=True)
+                    # Add a "Select" column at the beginning of the DataFrame for checkboxes
+                    if 'Select' not in filtered_df.columns:
+                        filtered_df.insert(0, 'Select', False)
 
+                    # Get station column name
+                    station_column = next(
+                        (col for col in filtered_df.columns
+                         if col in ['Station', 'station', 'STATION']), None)
+
+                    # Apply styling to the dataframe
+                    styled_df = filtered_df.style.apply(highlight_delay,
+                                                        axis=None)
+
+                    # Create a column layout to control table width
+                    table_col1, table_col2 = st.columns([3, 1])
+                    with table_col1:
+                        # Put the dataframe in a card with Bootstrap styling
+                        st.markdown('<div class="card shadow-sm mb-3"><div class="card-header bg-primary text-white">Train Data</div><div class="card-body p-0">', unsafe_allow_html=True)
+
+                        # Use data_editor to make the table interactive with checkboxes
+                        edited_df = st.data_editor(
+                            filtered_df,
+                            hide_index=True,
+                            column_config={
+                                "Select":
+                                st.column_config.CheckboxColumn(
+                                    "Select",
+                                    help="Select to show on map",
+                                    default=False),
+                                "Train No.":
+                                st.column_config.TextColumn(
+                                    "Train No.", help="Train Number"),
+                                "FROM-TO":
+                                st.column_config.TextColumn(
+                                    "FROM-TO", help="Source to Destination"),
+                                "IC Entry Delay":
+                                st.column_config.TextColumn(
+                                    "IC Entry Delay", help="Entry Delay"),
+                                "Delay":
+                                st.column_config.TextColumn(
+                                    "Delay", help="Delay in Minutes")
+                            },
+                            disabled=[
+                                col for col in filtered_df.columns
+                                if col != 'Select'
+                            ],
+                            use_container_width=True,  # Use full container width
+                            height=600,  # Set appropriate height
+                            num_rows=40  # Show 40 rows at a time
+                        )
+                        st.markdown('</div></div>', unsafe_allow_html=True)
+
+                    with table_col2:
+                        # Empty space to reduce table width
+                        st.empty()
+
+                    # Get selected stations for map
+                    if station_column:
+                        try:
+                            # Get all selected rows
+                            selected_rows = edited_df[edited_df['Select']]
+
+                            # Debug - show all stations in selected rows (in a small text area)
+                            if not selected_rows.empty and station_column in selected_rows.columns:
+                                all_stations = selected_rows[station_column].tolist()
+                                st.caption(f"Selected stations: {', '.join([str(s) for s in all_stations if s])}")
+
+                        except Exception as e:
+                            logger.error(f"Error processing selected stations: {str(e)}")
+                            st.error(f"Error processing selected stations: {str(e)}")
+
+                    refresh_table_placeholder.empty()  # Clear the placeholder after table display
+
+                # Display map with reduced left margin
                 with map_col:
-                    # Add a button to toggle selected stations on the map
-                    selected_stations = st.multiselect(
-                        "Select Stations to Display on Map",
-                        options=[
-                            col for col in filtered_df.columns
-                            if any(keyword in col for keyword in
-                                   ['CRD', 'Station', 'station', 'STATION'])
-                        ],
-                        default=[],
-                        key="station_selector")
+                    # Remove extra padding/margin to bring map closer to table
+                    st.markdown("""
+                    <style>
+                    .stColumn > div:first-child {
+                        padding-left: 0 !important;
+                        margin-left: 0 !important;
+                    }
+                    </style>
+                    """,
+                                unsafe_allow_html=True)
 
-                    # Show a spinner while extracting station codes
-                    with st.spinner("Loading stations..."):
-                        # Extract stations from selected columns
-                        selected_station_df = pd.DataFrame()
-                        for col in selected_stations:
-                            if col in filtered_df.columns:
-                                selected_station_df[col] = filtered_df[col]
+                    # Get cached station coordinates
+                    station_coords = get_station_coordinates()
 
-                        # Extract station codes if any columns were selected
-                        selected_station_codes = []
-                        if not selected_station_df.empty:
-                            selected_station_codes = extract_station_codes(
-                                selected_station_df)
+                    # Extract station codes from selected rows
+                    selected_rows = edited_df[edited_df['Select']]
+                    selected_station_codes = extract_station_codes(selected_rows, station_column)
 
-                    # Display a map with the selected stations
-                    with st.spinner("Rendering map..."):
-                        station_coords = get_station_coordinates()
+                    # First, set a default map type value to use
+                    if 'map_type' not in st.session_state:
+                        st.session_state['map_type'] = "Offline Map with GPS Markers"
 
-                        if not selected_station_codes:
-                            st.warning(
-                                "No station codes found in the selected data. Please select a column containing station codes."
+                    # Card container for the map
+                    st.markdown("""
+                    <div class="card mb-3">
+                        <div class="card-header bg-secondary text-white">
+                            Station Map
+                        </div>
+                        <div class="card-body p-0">
+                    """, unsafe_allow_html=True)
+
+                    # Display the appropriate map based on the current map type
+                    if st.session_state['map_type'] == "Offline Map with GPS Markers":
+                        if selected_station_codes:
+                            st.caption(f"Selected stations: {', '.join(selected_station_codes)}")
+
+                        # Render offline map with markers
+                        display_image, displayed_stations = render_offline_map_with_markers(
+                            selected_station_codes, station_coords)
+
+                        if display_image is not None:
+                            # Convert and resize for display if needed
+                            from PIL import Image
+                            display_image = display_image.convert('RGB')
+                            original_width, original_height = display_image.size
+
+                            # Calculate new dimensions maintaining aspect ratio
+                            max_height = 600  # Increased height for better visibility
+                            height_ratio = max_height / original_height
+                            new_width = int(original_width * height_ratio * 1.2)  # Extra width factor
+                            new_height = max_height
+
+                            display_image = display_image.resize(
+                                (new_width, new_height),
+                                Image.Resampling.LANCZOS)
+
+                            # Display the map
+                            st.image(
+                                display_image,
+                                use_container_width=True,
+                                caption="Vijayawada Division System Map with Selected Stations"
                             )
 
-                        # Create the map
+                            # Show station count
+                            if displayed_stations:
+                                st.success(f"Showing {len(displayed_stations)} selected stations with markers and all other stations as dots")
+                            else:
+                                st.info("No stations selected. All stations shown as dots on the map.")
+                        else:
+                            st.error("Unable to load the offline map. Please check the map file.")
+                    else:
+                        # Create the interactive map
                         m = folium.Map(
                             location=[16.5167, 80.6167],  # Centered around Vijayawada
                             zoom_start=7,
                             control_scale=True)
 
-                        # Display the map
-                        st.subheader("Station Map")
-
-                        # Add a basemap
+                        # Add a basemap with reduced opacity
                         folium.TileLayer(
                             tiles='OpenStreetMap',
-                            attr='&copy; OpenStreetMap contributors').add_to(m)
+                            attr='&copy; OpenStreetMap contributors',
+                            opacity=0.8).add_to(m)
 
-                        # Add SVG railway lines between major stations
-                        svg_lines = []
-
-                        # Add markers for selected stations
+                        # Add markers efficiently
+                        displayed_stations = []
                         valid_points = []
 
+                        # Create a counter to alternate label positions
+                        counter = 0
+
+                        # First add all non-selected stations as dots with alternating labels
+                        for code, coords in station_coords.items():
+                            # Skip selected stations - they'll get bigger markers later
+                            if code.upper() in selected_station_codes:
+                                continue
+
+                            # Determine offset for alternating left/right positioning
+                            x_offset = -50 if counter % 2 == 0 else 50  # Pixels left or right
+                            y_offset = 0  # No vertical offset
+
+                            # Every 3rd station, use vertical offset instead to further reduce overlap
+                            if counter % 3 == 0:
+                                x_offset = 0
+                                y_offset = -30  # Above the point
+
+                            counter += 1
+
+                            # Add small circle for the station with maroon border
+                            folium.CircleMarker(
+                                [coords['lat'], coords['lon']],
+                                radius=3,
+                                color='#800000',  # Maroon red border
+                                fill=True,
+                                fill_color='gray',
+                                fill_opacity=0.6,
+                                opacity=0.8,
+                                tooltip=code).add_to(m)
+
+                            # Add box around dot with label with custom positioning
+                            # Make sizing consistent regardless of zoom by using absolute elements
+                            html_content = f'''
+                            <div style="position:absolute; width:0; height:0;">
+                                <!-- Box around station location -->
+                                <div style="position:absolute; width:6px; height:6px; border:1px solid #800000; left:-3px; top:-3px; border-radius:1px; background-color:rgba(255,255,255,0.5);"></div>
+                                <!-- Station label -->
+                                <div style="position:absolute; left:{10 if x_offset < 0 else -40}px; top:{-18 if y_offset < 0 else 0}px; background-color:rgba(255,255,255,0.8); padding:1px 3px; border:1px solid #800000; border-radius:2px; font-size:9px; white-space:nowrap;">{code}</div>
+                            </div>
+                            '''
+
+                            folium.DivIcon(
+                                icon_size=(0, 0),  # Using zero size to improve positioning
+                                icon_anchor=(0, 0),  # Centered anchor point
+                                html=html_content).add_to(
+                                    folium.Marker(
+                                        [coords['lat'], coords['lon']],
+                                        icon=folium.DivIcon(icon_size=(0, 0))  # Invisible marker
+                                    ).add_to(m))
+
+                        # Then add larger markers for selected stations with prominent labels
                         for code in selected_station_codes:
-                            if code in station_coords:
-                                lat = station_coords[code]['lat']
-                                lon = station_coords[code]['lon']
+                            normalized_code = code.upper().strip()
+                            if normalized_code in station_coords:
+                                lat = station_coords[normalized_code]['lat']
+                                lon = station_coords[normalized_code]['lon']
 
-                                # Add popup with station info
-                                html = f"""
-                                <div class="card">
-                                    <div class="card-body">
-                                        <h5 class="card-title">{code}</h5>
-                                    </div>
-                                </div>
-                                """
+                                # Determine offset for selected stations - opposite to non-selected pattern
+                                x_offset = 50 if counter % 2 == 0 else -50
+                                y_offset = -30 if counter % 3 == 0 else 0
+                                counter += 1
 
+                                # Add train icon marker
                                 folium.Marker(
                                     [lat, lon],
-                                    popup=folium.Popup(html, max_width=300),
-                                    tooltip=f"Station: {code}",
-                                    icon=folium.Icon(
-                                        color='red',
-                                        icon='train',
-                                        prefix='fa')).add_to(m)
+                                    popup=f"<b>{normalized_code}</b><br>({lat:.4f}, {lon:.4f})",
+                                    tooltip=normalized_code,
+                                    icon=folium.Icon(color='red', icon='train', prefix='fa'),
+                                    opacity=0.8).add_to(m)
 
+                                # Add highlighted box and prominent label with zoom-stable positioning
+                                html_content = f'''
+                                <div style="position:absolute; width:0; height:0;">
+                                    <!-- Larger box for selected station -->
+                                    <div style="position:absolute; width:8px; height:8px; border:2px solid #800000; left:-4px; top:-4px; border-radius:2px; background-color:rgba(255,255,255,0.5);"></div>
+                                    <!-- Prominent station label -->
+                                    <div style="position:absolute; left:{15 if x_offset < 0 else -50}px; top:{-20 if y_offset < 0 else 0}px; background-color:rgba(255,255,255,0.9); padding:2px 4px; border:2px solid #800000; border-radius:3px; font-weight:bold; font-size:10px; color:#800000; white-space:nowrap;">{normalized_code}</div>
+                                </div>
+                                '''
+
+                                folium.DivIcon(
+                                    icon_size=(0, 0),  # Using zero size to improve positioning
+                                    icon_anchor=(0, 0),  # Centered anchor point
+                                    html=html_content).add_to(
+                                        folium.Marker(
+                                            [lat, lon],
+                                            icon=folium.DivIcon(icon_size=(0, 0))).add_to(m))
+
+                                displayed_stations.append(normalized_code)
                                 valid_points.append([lat, lon])
 
-                        # Add railway lines between markers in sequence
+                        # Add railway lines between selected stations
                         if len(valid_points) > 1:
-                            folium.PolyLine(
-                                valid_points,
-                                color='#800000',
-                                weight=2,
-                                opacity=0.8,
-                                dash_array='5, 10').add_to(m)
+                            folium.PolyLine(valid_points,
+                                            weight=2,
+                                            color='gray',
+                                            opacity=0.8,
+                                            dash_array='5, 10').add_to(m)
 
                         # Render the map with increased width
-                        st.subheader("Interactive Map")
                         folium_static(m, width=900, height=650)
+
+                    st.markdown("</div></div>", unsafe_allow_html=True)
 
                     # Add a separator to separate the map from the radio buttons
                     st.markdown("---")
 
-                    # Display a toggle to switch map type
-                    map_type = st.radio(
-                        "Map Type",
-                        ["GPS Coordinates", "System Map"],
-                        horizontal=True)
+                    # Display the map type selection radio buttons below the map
+                    selected_map_type = st.radio(
+                        "Map Type", [
+                            "Offline Map with GPS Markers",
+                            "Interactive GPS Map"
+                        ],
+                        index=0 if st.session_state['map_type']
+                        == "Offline Map with GPS Markers" else 1,
+                        horizontal=True,
+                        key="map_type_selector")
 
-                    # Add a button to download the data as Excel
-                    st.download_button(
-                        label="📥 Download Data as Excel",
-                        data=filtered_df.to_csv().encode('utf-8'),
-                        file_name='train_data.csv',
-                        mime='text/csv',
-                    )
+                    # Update the session state when the selection changes
+                    if selected_map_type != st.session_state['map_type']:
+                        st.session_state['map_type'] = selected_map_type
+                        st.rerun()  # Refresh to apply the new map type
 
-                # Display details of the selected train if available
-                if st.session_state.get('selected_train'):
-                    st.markdown("---")
-                    st.header("Selected Train Details")
-                    # Display the details in a more structured format
-                    cols = st.columns(5)
-
-                    with cols[0]:
-                        st.metric("Train",
-                                 st.session_state['selected_train'].get('train'))
-                    with cols[1]:
-                        st.metric("Station",
-                                 st.session_state['selected_train'].get('station'))
-
-                    with cols[2]:
-                        st.metric(
-                            "Scheduled Time",
-                            st.session_state['selected_train_details'].get(
-                                'Scheduled Time'))
-
-                    with cols[3]:
-                        st.metric(
-                            "Actual Time",
-                            st.session_state['selected_train_details'].get(
-                                'Actual Time'))
-
-                    with cols[4]:
-                        if 'Delay' in st.session_state['selected_train_details']:
-                            st.metric(
-                                "Delay",
-                                st.session_state['selected_train_details'].get(
-                                    'Delay', 'N/A'))
+                    # Add instructions in collapsible section
+                    with st.expander("Map Instructions"):
+                        st.markdown("""
+                        <div class="card">
+                            <div class="card-header bg-light">
+                                Using the Map
+                            </div>
+                            <div class="card-body">
+                                <ul class="list-group list-group-flush">
+                                    <li class="list-group-item">Select stations using the checkboxes in the table</li>
+                                    <li class="list-group-item">Selected stations will appear with markers on the map</li>
+                                    <li class="list-group-item">Use the radio buttons below to switch between map types</li>
+                                    <li class="list-group-item">Railway lines connect selected stations in sequence</li>
+                                </ul>
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
 
             else:
-                st.warning(
-                    "No data available in the cached result. Please try refreshing the page."
-                )
+                st.error("No data available in the cached data frame")
         else:
-            st.warning("No cached data available. Please try refreshing the page.")
+            st.error("No cached data available")
     else:
-        st.error(f"Error loading data: {message}")
-
+        st.error(f"Failed to load data: {message}")
 except Exception as e:
     st.error(f"An error occurred: {str(e)}")
-    logger.error(f"Exception in main app: {str(e)}", exc_info=True)
+    logger.error(f"Error in main app: {str(e)}")
+
+# Footer
+st.markdown("---")
+st.markdown(
+    '<div class="card"><div class="card-body text-center text-muted">© 2023 South Central Railway - Vijayawada Division</div></div>',
+    unsafe_allow_html=True)
