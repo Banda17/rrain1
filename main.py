@@ -144,6 +144,33 @@ st.markdown("""
             margin: 0 !important;
             max-width: 100% !important;
         }
+
+        /* Custom layout for side-by-side display */
+        #side-by-side-container {
+            display: flex;
+            width: 100%;
+            height: 650px;
+            margin: 0;
+            padding: 0;
+        }
+
+        #table-container {
+            width: 60%;
+            padding-right: 1px;
+            border-right: 1px solid #dee2e6;
+        }
+
+        #map-container {
+            width: 40%;
+            height: 100%;
+        }
+
+        /* Prevent Streamlit from breaking our layout */
+        div.stHorizontalBlock {
+            flex-direction: row !important;
+            width: 100% !important;
+            display: flex !important;
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -785,24 +812,11 @@ try:
                     'Divisional Actual [Entry-Exit]'
                 ]
 
-                # Drop each column individually if it exists
+                # Drop# Drop each column individually if it exists
                 for col in columns_to_drop:
                     if col in df.columns:
                         df = df.drop(columns=[col])
                         logger.debug(f"Dropped column: {col}")
-
-                # Start Bootstrap container for main content with zero-gap class
-                st.markdown("""
-                <div class="container-fluid p-0 no-gap-container">
-                    <div class="row g-0 p-0 main-row">
-                """, unsafe_allow_html=True)
-
-                # Table`section - 7/12 of width with zero padding
-                st.markdown('<div class="col-lg-7 p-0 table-col">', unsafe_allow_html=True)
-
-                # Refresh animation placeholder
-                refresh_table_placeholder = st.empty()
-                create_pulsing_refresh_animation(refresh_table_placeholder, "Refreshing Table...")
 
                 # Function to check if a value is positive or contains (+)
                 def is_positive_or_plus(value):
@@ -861,11 +875,21 @@ try:
                     (col for col in filtered_df.columns
                      if col in ['Station', 'station', 'STATION']), None)
 
+                # Create the side-by-side layout with HTML/CSS
+                st.markdown("""
+                <div id="side-by-side-container">
+                    <div id="table-container">
+                """, unsafe_allow_html=True)
+
+                # Refresh animation placeholder
+                refresh_table_placeholder = st.empty()
+                create_pulsing_refresh_animation(refresh_table_placeholder, "Refreshing Table...")
+
                 # Apply styling to the dataframe
                 styled_df = filtered_df.style.apply(highlight_delay, axis=None)
 
                 # Put the dataframe in a card with Bootstrap styling
-                st.markdown('<div class="card shadow-sm m-0"><div class="card-header bg-primary text-white p-1">Train Data</div><div class="card-body p-0">', unsafe_allow_html=True)
+                st.markdown('<div class="card shadow-sm m-0" style="height:100%;"><div class="card-header bg-primary text-white p-1">Train Data</div><div class="card-body p-0">', unsafe_allow_html=True)
 
                 # Use data_editor to make the table interactive with checkboxes
                 edited_df = st.data_editor(
@@ -896,14 +920,12 @@ try:
                     ],
                     use_container_width=True,  # Use full container width
                     height=650,  # Set appropriate height
-                    num_rows=40,  # Show 40 rows at a time
+                    num_rows="dynamic",  # Show dynamic rows
                     key="train_data_editor"
                 )
 
                 # Store the edited df in session state for later processing by update_selected_stations
                 st.session_state['edited_df'] = edited_df
-
-                st.markdown('</div></div>', unsafe_allow_html=True)
 
                 # Get selected stations for map
                 if station_column:
@@ -918,13 +940,16 @@ try:
 
                     except Exception as e:
                         logger.error(f"Error processing selected stations: {str(e)}")
-                        st.error(f"Error processing selected stations: {str(e)}")
 
-                refresh_table_placeholder.empty()  # Clear the placeholder after table display
-                st.markdown('</div>', unsafe_allow_html=True)  # Close the table column
+                st.markdown('</div></div>', unsafe_allow_html=True)
+                # Clear the placeholder after table display
+                refresh_table_placeholder.empty()
 
-                # Map section - 5/12 of width with zero padding
-                st.markdown('<div class="col-lg-5 p-0 map-col">', unsafe_allow_html=True)
+                # Close table container div and open map container div
+                st.markdown("""
+                    </div>
+                    <div id="map-container">
+                """, unsafe_allow_html=True)
 
                 # Get cached station coordinates
                 station_coords = get_station_coordinates()
@@ -964,9 +989,9 @@ try:
                         original_width, original_height = display_image.size
 
                         # Calculate new dimensions maintaining aspect ratio
-                        max_height = 650  # Increased height for better visibility
+                        max_height = 550  # Height for the map
                         height_ratio = max_height / original_height
-                        new_width = int(original_width * height_ratio * 1.2)  # Extra width factor
+                        new_width = int(original_width * height_ratio)
                         new_height = max_height
 
                         display_image = display_image.resize(
@@ -1035,37 +1060,12 @@ try:
                             opacity=0.8,
                             tooltip=code).add_to(m)
 
-                        # Add box around dot with label with custom positioning
-                        # Make sizing consistent regardless of zoom by using absolute elements
-                        html_content = f'''
-                        <div style="position:absolute; width:0; height:0;">
-                            <!-- Box around station location -->
-                            <div style="position:absolute; width:6px; height:6px; border:1px solid #800000; left:-3px; top:-3px; border-radius:1px; background-color:rgba(255,255,255,0.5);"></div>
-                            <!-- Station label -->
-                            <div style="position:absolute; left:{10 if x_offset < 0 else -40}px; top:{-18 if y_offset < 0 else 0}px; background-color:rgba(255,255,255,0.8); padding:1px 3px; border:1px solid #800000; border-radius:2px; font-size:9px; white-space:nowrap;">{code}</div>
-                        </div>
-                        '''
-
-                        folium.DivIcon(
-                            icon_size=(0, 0),  # Using zero size to improve positioning
-                            icon_anchor=(0, 0),  # Centered anchor point
-                            html=html_content).add_to(
-                                folium.Marker(
-                                    [coords['lat'], coords['lon']],
-                                    icon=folium.DivIcon(icon_size=(0, 0))  # Invisible marker
-                                ).add_to(m))
-
-                    # Then add larger markers for selected stations with prominent labels
+                    # Add train icon markers for selected stations
                     for code in selected_station_codes:
                         normalized_code = code.upper().strip()
                         if normalized_code in station_coords:
                             lat = station_coords[normalized_code]['lat']
                             lon = station_coords[normalized_code]['lon']
-
-                            # Determine offset for selected stations - opposite to non-selected pattern
-                            x_offset = 50 if counter % 2 == 0 else -50
-                            y_offset = -30 if counter % 3 == 0 else 0
-                            counter += 1
 
                             # Add train icon marker
                             folium.Marker(
@@ -1074,24 +1074,6 @@ try:
                                 tooltip=normalized_code,
                                 icon=folium.Icon(color='red', icon='train', prefix='fa'),
                                 opacity=0.8).add_to(m)
-
-                            # Add highlighted box and prominent label with zoom-stable positioning
-                            html_content = f'''
-                            <div style="position:absolute; width:0; height:0;">
-                                <!-- Larger box for selected station -->
-                                <div style="position:absolute; width:8px; height:8px; border:2px solid #800000; left:-4px; top:-4px; border-radius:2px; background-color:rgba(255,255,255,0.5);"></div>
-                                <!-- Prominent station label -->
-                                <div style="position:absolute; left:{15 if x_offset < 0 else -50}px; top:{-20 if y_offset < 0 else 0}px; background-color:rgba(255,255,255,0.9); padding:2px 4px; border:2px solid #800000; border-radius:3px; font-weight:bold; font-size:10px; color:#800000; white-space:nowrap;">{normalized_code}</div>
-                            </div>
-                            '''
-
-                            folium.DivIcon(
-                                icon_size=(0, 0),  # Using zero size to improve positioning
-                                icon_anchor=(0, 0),  # Centered anchor point
-                                html=html_content).add_to(
-                                    folium.Marker(
-                                        [lat, lon],
-                                        icon=folium.DivIcon(icon_size=(0, 0))).add_to(m))
 
                             displayed_stations.append(normalized_code)
                             valid_points.append([lat, lon])
@@ -1104,8 +1086,8 @@ try:
                                         opacity=0.8,
                                         dash_array='5, 10').add_to(m)
 
-                    # Render the map with increased height
-                    folium_static(m, width=900, height=650)
+                    # Render the map with appropriate size
+                    folium_static(m, width=600, height=550)
 
                 st.markdown("</div></div>", unsafe_allow_html=True)
 
@@ -1117,8 +1099,7 @@ try:
                         "Offline Map with GPS Markers",
                         "Interactive GPS Map"
                     ],
-                    index=0 if st.session_state['map_type']
-                    == "Offline Map with GPS Markers" else 1,
+                    index=0 if st.session_state['map_type'] == "Offline Map with GPS Markers" else 1,
                     horizontal=True,
                     key="map_type_selector")
                 st.markdown('</div>', unsafe_allow_html=True)
@@ -1128,26 +1109,11 @@ try:
                     st.session_state['map_type'] = selected_map_type
                     st.rerun()  # Refresh to apply the new map type
 
-                # Add instructions in collapsible section
-                with st.expander("Map Instructions"):
-                    st.markdown("""
-                    <div class="card">
-                        <div class="card-header bg-light">
-                            Using the Map
-                        </div>
-                        <div class="card-body">
-                            <ul class="list-group list-group-flush">
-                                <li class="list-group-item">Select stations using the checkboxes in the table</li>
-                                <li class="list-group-item">Selected stations will appear with markers on the map</li>
-                                <li class="list-group-item">Use the radio buttons below to switch between map types</li>
-                                <li class="list-group-item">Railway lines connect selected stations in sequence</li>
-                            </ul>
-                        </div>
+                # Close the map container div and whole side-by-side container
+                st.markdown("""
                     </div>
-                    """, unsafe_allow_html=True)
-
-                # Close the map column and the main row
-                st.markdown('</div></div></div>', unsafe_allow_html=True)
+                </div>
+                """, unsafe_allow_html=True)
 
             else:
                 st.error("No data available in the cached data frame")
@@ -1157,6 +1123,7 @@ try:
         st.error(f"Failed to load data: {message}")
 except Exception as e:
     st.error(f"An error occurred: {str(e)}")
+    st.exception(e)
     logger.error(f"Error in main app: {str(e)}")
 
 # Footer
