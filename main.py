@@ -809,8 +809,7 @@ def render_offline_map_with_markers(selected_station_codes,
             display_image = map_viewer.draw_train_marker(
                 display_image, normalized_code)
             displayed_stations.append(normalized_code)
-        # If not in map_viewer, try to convert GPS coordinates to map coordinates
-        elif normalized_code in station_coords:
+        # If not in map_viewer,        elif normalized_code in station_coords:
             # GPS coordinates to normalized map coordinates (approximate conversion)
             # This is a simplified conversion - would need proper calibration for accuracy
             coords = station_coords[normalized_code]
@@ -998,11 +997,34 @@ try:
                     # Function to check if a value is positive or contains (+)
                     def is_positive_or_plus(value):
                         try:
+                            if value is None:
+                                return False
+
                             if isinstance(value, str):
-                                return '+' in value or (float(value.replace('(', '').replace(')', '').strip()) > 0)
+                                # Check if the string contains a plus sign
+                                if '+' in value:
+                                    return True
+
+                                # Clean the string of any non-numeric characters except minus sign and decimal point
+                                # First handle the case with multiple values (like "-7 \xa0-36")
+                                if '\xa0' in value or '  ' in value:
+                                    # Take just the first part if there are multiple numbers
+                                    value = value.split('\xa0')[0].split('  ')[0].strip()
+
+                                # Remove parentheses and other characters
+                                clean_value = value.replace('(', '').replace(')', '').strip()
+
+                                # Try to convert to float
+                                if clean_value:
+                                    try:
+                                        return float(clean_value) > 0
+                                    except ValueError:
+                                        # If conversion fails, check if it starts with a minus sign
+                                        return not clean_value.startswith('-')
                             elif isinstance(value, (int, float)):
                                 return value > 0
-                        except:
+                        except Exception as e:
+                            logger.error(f"Error in is_positive_or_plus: {str(e)}")
                             return False
                         return False
 
@@ -1016,13 +1038,7 @@ try:
                         # Apply red color only to the 'Delay' column if it exists
                         if 'Delay' in df.columns:
                             styles['Delay'] = df['Delay'].apply(
-                                lambda x: 'color: red; font-weight: bold' if x and (
-                                    (isinstance(x, str) and
-                                     ('+' in x or float(
-                                         x.replace('(', '').replace(')',
-                                                                    '').strip())
-                                      > 0)) or (isinstance(x, (int, float))
-                                                and x > 0)) else '')
+                                lambda x: 'color: red; font-weight: bold' if x and is_positive_or_plus(x) else '')
 
                         return styles
 
