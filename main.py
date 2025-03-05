@@ -57,6 +57,23 @@ st.markdown("""
         [data-testid="stDataFrame"] tr:hover {
             background-color: rgba(0,0,0,.075) !important;
         }
+        /* Custom styles to minimize gaps between columns */
+        .stColumn > div {
+            padding: 0px !important;
+            margin: 0px !important;
+        }
+        div[data-testid="column"] {
+            padding: 0px !important;
+            margin: 0px !important;
+        }
+        /* Reduce card margins */
+        .card {
+            margin-bottom: 0.5rem !important;
+        }
+        /* Reduce padding in card body */
+        .card-body {
+            padding: 0.5rem !important;
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -784,7 +801,7 @@ def render_offline_map_with_markers(selected_station_codes,
 
                 # Convert normalized coordinates to pixel coordinates
                 width, height = display_image.size
-                x = int(x_norm * width)
+                x = int(xnorm * width)
                 y = int(y_norm * height)
 
                 # Draw a small dot
@@ -792,7 +809,7 @@ def render_offline_map_with_markers(selected_station_codes,
                 draw.ellipse(
                     (x - dot_radius, y - dot_radius, x + dot_radius,
                      y + dot_radius),
-                    fill=(100, 100, 10, 100, 180))  # Gray with some transparency
+                    fill=(100, 100, 100, 180))  # Gray with some transparency
             except:
                 # Skip if conversion fails
                 continue
@@ -949,6 +966,7 @@ try:
                 <style>
                 .stColumn > div {
                     padding: 0px !important;
+                    margin: 0px !important;
                 }
                 div[data-testid="column"] {
                     padding: 0px !important;
@@ -957,7 +975,7 @@ try:
                 .block-container {
                     padding-left: 0.5rem !important;
                     padding-right: 0 !important;
-                    max-width: 90% !important;
+                    max-width: 100% !important;
                 }
                 div[data-testid="stVerticalBlock"] {
                     gap: 0px !important;
@@ -981,12 +999,21 @@ try:
                     border: 1px solid #dee2e6 !important;
                     padding: 5px !important;
                 }
+                /* Remove streamlit's default padding */
+                .css-12oz5g7 {
+                    padding-top: 0px !important;
+                    padding-bottom: 0px !important;
+                }
+                .css-1offfwp {
+                    padding-top: 0px !important;
+                    padding-bottom: 0px !important;
+                }
                 </style>
                 """,
                             unsafe_allow_html=True)
 
-                # Create a more balanced column ratio with no gap - 60% table to 40% map
-                table_col, map_col = st.columns([3.5, 2.5], gap="small")
+                # Create a more balanced column ratio with minimal gap - 60% table to 40% map
+                table_col, map_col = st.columns([3.5, 2.5], gap="small")  # Use "small" as the minimal valid gap
 
                 with table_col:
                     # Refresh animation placeholder right before displaying the table
@@ -1059,7 +1086,7 @@ try:
                     table_col1, table_col2 = st.columns([3, 1])
                     with table_col1:
                         # Put the dataframe in a card with Bootstrap styling
-                        st.markdown('<div class="card shadow-sm mb-3"><div class="card-header bg-primary text-white">Train Data</div><div class="card-body p-0">', unsafe_allow_html=True)
+                        st.markdown('<div class="card shadow-sm mb-0"><div class="card-header bg-primary text-white p-1">Train Data</div><div class="card-body p-0">', unsafe_allow_html=True)
 
                         # Use data_editor to make the table interactive with checkboxes
                         edited_df = st.data_editor(
@@ -1115,7 +1142,6 @@ try:
 
                     refresh_table_placeholder.empty()  # Clear the placeholder after table display
 
-                # Display map with reduced left margin
                 with map_col:
                     # Remove extra padding/margin to bring map closer to table
                     st.markdown("""
@@ -1141,8 +1167,8 @@ try:
 
                     # Card container for the map
                     st.markdown("""
-                    <div class="card mb-3">
-                        <div class="card-header bg-secondary text-white">
+                    <div class="card mb-0">
+                        <div class="card-header bg-secondary text-white p-1">
                             Station Map
                         </div>
                         <div class="card-body p-0">
@@ -1309,9 +1335,8 @@ try:
 
                     st.markdown("</div></div>", unsafe_allow_html=True)
 
-                    # Add a separator to separate the map from the radio buttons
-                    st.markdown("---")
-
+                    # Add map type selection with minimal styling
+                    st.markdown('<div class="p-1 mt-0">', unsafe_allow_html=True)
                     # Display the map type selection radio buttons below the map
                     selected_map_type = st.radio(
                         "Map Type", [
@@ -1322,6 +1347,7 @@ try:
                         == "Offline Map with GPS Markers" else 1,
                         horizontal=True,
                         key="map_type_selector")
+                    st.markdown('</div>', unsafe_allow_html=True)
 
                     # Update the session state when the selection changes
                     if selected_map_type != st.session_state['map_type']:
@@ -1357,7 +1383,10 @@ except Exception as e:
     logger.error(f"Error in main app: {str(e)}")
 
 # Footer
-st.markdown("---")
-st.markdown(
-    '<div class="card"><div class="card-body text-center text-muted">© 2023 South Central Railway - Vijayawada Division</div></div>',
-    unsafe_allow_html=True)
+st.markdown("""
+<div class="card mt-2">
+    <div class="card-body text-center text-muted p-1">
+        © 2023 South Central Railway - Vijayawada Division
+    </div>
+</div>
+""", unsafe_allow_html=True)
