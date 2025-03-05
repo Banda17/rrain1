@@ -89,6 +89,28 @@ st.markdown("""
             padding-left: 0.25rem !important;
             padding-right: 0.25rem !important;
         }
+        /* Remove streamlit's default padding */
+        .css-12oz5g7, .css-1offfwp, .css-zt5igj {
+            padding-top: 0px !important;
+            padding-bottom: 0px !important;
+            margin-top: 0px !important;
+            margin-bottom: 0px !important;
+        }
+        /* Fix for map and table row */
+        .main-row {
+            display: flex !important;
+            flex-wrap: nowrap !important;
+        }
+        .table-col {
+            flex: 7 !important;
+        }
+        .map-col {
+            flex: 5 !important;
+        }
+        /* Hide streamlit branding */
+        #MainMenu {visibility: hidden;}
+        footer {visibility: hidden;}
+        .stDeployButton {display:none;}
     </style>
 """, unsafe_allow_html=True)
 
@@ -757,7 +779,7 @@ def render_offline_map_with_markers(selected_station_codes,
                 # Draw a small dot
                 dot_radius = 5
                 draw.ellipse(
-                    (x - dot_radius, y - dot_radius, x + dot_radius,
+                    (x - dot_radius, y -dot_radius, x + dot_radius,
                      y + dot_radius),
                     fill=(100, 100, 100, 180))  # Gray with some transparency
             except:
@@ -935,11 +957,11 @@ try:
                 # Start Bootstrap container for main content
                 st.markdown("""
                 <div class="container-fluid px-1">
-                    <div class="row g-1">
+                    <div class="row g-1 main-row">
                 """, unsafe_allow_html=True)
 
                 # Table section - 7/12 of width
-                st.markdown('<div class="col-lg-7">', unsafe_allow_html=True)
+                st.markdown('<div class="col-lg-7 table-col">', unsafe_allow_html=True)
 
                 # Refresh animation placeholder
                 refresh_table_placeholder = st.empty()
@@ -1065,7 +1087,7 @@ try:
                 st.markdown('</div>', unsafe_allow_html=True)  # Close the table column
 
                 # Map section - 5/12 of width
-                st.markdown('<div class="col-lg-5">', unsafe_allow_html=True)
+                st.markdown('<div class="col-lg-5 map-col">', unsafe_allow_html=True)
 
                 # Get cached station coordinates
                 station_coords = get_station_coordinates()
