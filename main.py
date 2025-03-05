@@ -86,8 +86,8 @@ st.markdown("""
         .col, .col-1, .col-2, .col-3, .col-4, .col-5, .col-6, .col-7, .col-8, .col-9, .col-10, .col-11, .col-12, 
         .col-lg, .col-lg-1, .col-lg-2, .col-lg-3, .col-lg-4, .col-lg-5, .col-lg-6, .col-lg-7, .col-lg-8, .col-lg-9, .col-lg-10, .col-lg-11, .col-lg-12, 
         .col-md, .col-md-1, .col-md-2, .col-md-3, .col-md-4, .col-md-5, .col-md-6, .col-md-7, .col-md-8, .col-md-9, .col-md-10, .col-md-11, .col-md-12 {
-            padding-left: 0.25rem !important;
-            padding-right: 0.25rem !important;
+            padding-left: 0 !important;
+            padding-right: 0 !important;
         }
         /* Remove streamlit's default padding */
         .css-12oz5g7, .css-1offfwp, .css-zt5igj {
@@ -100,17 +100,50 @@ st.markdown("""
         .main-row {
             display: flex !important;
             flex-wrap: nowrap !important;
+            margin: 0 !important;
+            padding: 0 !important;
         }
         .table-col {
             flex: 7 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            border-right: 1px solid #dee2e6 !important;
         }
         .map-col {
             flex: 5 !important;
+            padding: 0 !important;
+            margin: 0 !important;
         }
         /* Hide streamlit branding */
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
         .stDeployButton {display:none;}
+
+        /* Additional styles to ensure zero gap between components */
+        div[data-testid="stHorizontalBlock"] {
+            gap: 0 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+        .streamlit-container {
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+
+        /* Force adjacent elements */
+        .no-gap-container {
+            display: flex !important;
+            width: 100% !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+
+        /* Fix for Streamlit's block container */
+        .block-container {
+            padding: 0 !important;
+            margin: 0 !important;
+            max-width: 100% !important;
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -330,7 +363,7 @@ def get_station_coordinates():
             'lat': 17.0575,
             'lon': 79.2690
         },  # Nalgonda
-        'MGM': {
+        'MTM': {
             'lat': 16.4307,
             'lon': 80.5525
         },  # Mangalagiri
@@ -454,62 +487,6 @@ def get_station_coordinates():
             'lat': 15.830938,
             'lon': 80.3517708
         },
-        'IPPM': {
-            'lat': 15.85281,
-            'lon': 80.3814662
-        },
-        'SPF': {
-            'lat': 15.8752985,
-            'lon': 80.4140117
-        },
-        'BPP': {
-            'lat': 15.9087804,
-            'lon': 80.4652035
-        },
-        'APL': {
-            'lat': 15.9703661,
-            'lon': 80.5142194
-        },
-        'MCVM': {
-            'lat': 16.0251057,
-            'lon': 80.5391888
-        },
-        'NDO': {
-            'lat': 16.0673498,
-            'lon': 80.5553901
-        },
-        'MDKU': {
-            'lat': 16.1233333,
-            'lon': 80.5799375
-        },
-        'TSR': {
-            'lat': 16.1567184,
-            'lon': 80.5832601
-        },
-        'TEL': {
-            'lat': 16.2435852,
-            'lon': 80.6376458
-        },
-        'KLX': {
-            'lat': 16.2946856,
-            'lon': 80.6260305
-        },
-        'DIG': {
-            'lat': 16.329159,
-            'lon': 80.6232471
-        },
-        'CLVR': {
-            'lat': 16.3802036,
-            'lon': 80.6164899
-        },
-        'PVD': {
-            'lat': 16.4150823,
-            'lon': 80.6107384
-        },
-        'KCC': {
-            'lat': 16.4778294,
-            'lon': 80.600124
-        },
         'NZD': {
             'lat': 16.717923,
             'lon': 80.8230084
@@ -518,146 +495,6 @@ def get_station_coordinates():
             'lat': 16.69406,
             'lon': 81.0399239
         },
-        'PRH': {
-            'lat': 16.7132558,
-            'lon': 81.1025796
-        },
-        'EE': {
-            'lat': 16.7132548,
-            'lon': 81.0845549
-        },
-        'DEL': {
-            'lat': 16.7818664,
-            'lon': 81.1780754
-        },
-        'BMD': {
-            'lat': 16.818151,
-            'lon': 81.2627899
-        },
-        'PUA': {
-            'lat': 16.8096519,
-            'lon': 81.3207946
-        },
-        'CEL': {
-            'lat': 16.8213153,
-            'lon': 81.3900847
-        },
-        'BPY': {
-            'lat': 16.8279598,
-            'lon': 81.4719773
-        },
-        'TDD': {
-            'lat': 16.8067368,
-            'lon': 81.52052
-        },
-        'NBM': {
-            'lat': 16.83,
-            'lon': 81.5922511
-        },
-        'NDD': {
-            'lat': 16.8959685,
-            'lon': 81.6728381
-        },
-        'CU': {
-            'lat': 16.9702728,
-            'lon': 81.686414
-        },
-        'PSDA': {
-            'lat': 16.9888598,
-            'lon': 81.6959144
-        },
-        'KVR': {
-            'lat': 17.003964,
-            'lon': 81.7217881
-        },
-        'GVN': {
-            'lat': 17.0050447,
-            'lon': 81.7683895
-        },
-        'KYM': {
-            'lat': 16.9135426,
-            'lon': 81.8291201
-        },
-        'DWP': {
-            'lat': 16.9264801,
-            'lon': 81.9185066
-        },
-        'APT': {
-            'lat': 16.9353876,
-            'lon': 81.9510518
-        },
-        'BVL': {
-            'lat': 16.967466,
-            'lon': 82.0283906
-        },
-        'MPU': {
-            'lat': 17.0050166,
-            'lon': 82.0930538
-        },
-        'SLO': {
-            'lat': 17.0473849,
-            'lon': 82.1652452
-        },
-        'PAP': {
-            'lat': 17.1127264,
-            'lon': 82.2560612
-        },
-        'GLP': {
-            'lat': 17.1544365,
-            'lon': 82.2873605
-        },
-        'DGDG': {
-            'lat': 17.2108602,
-            'lon': 82.3447996
-        },
-        'RVD': {
-            'lat': 17.2280704,
-            'lon': 82.3631186
-        },
-        'HVM': {
-            'lat': 17.3127808,
-            'lon': 82.485711
-        },
-        'GLU': {
-            'lat': 17.4098079,
-            'lon': 82.6294254
-        },
-        'NRP': {
-            'lat': 17.4511567,
-            'lon': 82.7188935
-        },
-        'REG': {
-            'lat': 17.5052679,
-            'lon': 82.7880359
-        },
-        'YLM': {
-            'lat': 17.5534876,
-            'lon': 82.8428433
-        },
-        'NASP': {
-            'lat': 17.6057255,
-            'lon': 82.8899697
-        },
-        'BVM': {
-            'lat': 17.6600783,
-            'lon': 82.9259044
-        },
-        'KSK': {
-            'lat': 17.6732113,
-            'lon': 82.9564764
-        },
-        'AKP': {
-            'lat': 17.6934772,
-            'lon': 83.0049398
-        },
-        'THY': {
-            'lat': 17.6865433,
-            'lon': 83.0665228
-        },
-        'DVD': {
-            'lat': 17.7030476,
-            'lon': 83.1485371
-        }
     }
 
 @st.cache_data(ttl=300)
@@ -779,7 +616,7 @@ def render_offline_map_with_markers(selected_station_codes,
                 # Draw a small dot
                 dot_radius = 5
                 draw.ellipse(
-                    (x - dot_radius, y -dot_radius, x + dot_radius,
+                    (x - dot_radius, y - dot_radius, x + dot_radius,
                      y + dot_radius),
                     fill=(100, 100, 100, 180))  # Gray with some transparency
             except:
@@ -954,14 +791,14 @@ try:
                         df = df.drop(columns=[col])
                         logger.debug(f"Dropped column: {col}")
 
-                # Start Bootstrap container for main content
+                # Start Bootstrap container for main content with zero-gap class
                 st.markdown("""
-                <div class="container-fluid px-1">
-                    <div class="row g-1 main-row">
+                <div class="container-fluid p-0 no-gap-container">
+                    <div class="row g-0 p-0 main-row">
                 """, unsafe_allow_html=True)
 
-                # Table section - 7/12 of width
-                st.markdown('<div class="col-lg-7 table-col">', unsafe_allow_html=True)
+                # Table`section - 7/12 of width with zero padding
+                st.markdown('<div class="col-lg-7 p-0 table-col">', unsafe_allow_html=True)
 
                 # Refresh animation placeholder
                 refresh_table_placeholder = st.empty()
@@ -1028,7 +865,7 @@ try:
                 styled_df = filtered_df.style.apply(highlight_delay, axis=None)
 
                 # Put the dataframe in a card with Bootstrap styling
-                st.markdown('<div class="card shadow-sm mb-0"><div class="card-header bg-primary text-white p-1">Train Data</div><div class="card-body p-0">', unsafe_allow_html=True)
+                st.markdown('<div class="card shadow-sm m-0"><div class="card-header bg-primary text-white p-1">Train Data</div><div class="card-body p-0">', unsafe_allow_html=True)
 
                 # Use data_editor to make the table interactive with checkboxes
                 edited_df = st.data_editor(
@@ -1058,7 +895,7 @@ try:
                         if col != 'Select'
                     ],
                     use_container_width=True,  # Use full container width
-                    height=600,  # Set appropriate height
+                    height=650,  # Set appropriate height
                     num_rows=40,  # Show 40 rows at a time
                     key="train_data_editor"
                 )
@@ -1086,8 +923,8 @@ try:
                 refresh_table_placeholder.empty()  # Clear the placeholder after table display
                 st.markdown('</div>', unsafe_allow_html=True)  # Close the table column
 
-                # Map section - 5/12 of width
-                st.markdown('<div class="col-lg-5 map-col">', unsafe_allow_html=True)
+                # Map section - 5/12 of width with zero padding
+                st.markdown('<div class="col-lg-5 p-0 map-col">', unsafe_allow_html=True)
 
                 # Get cached station coordinates
                 station_coords = get_station_coordinates()
@@ -1102,9 +939,9 @@ try:
                 if 'map_type' not in st.session_state:
                     st.session_state['map_type'] = "Offline Map with GPS Markers"
 
-                # Card container for the map
+                # Card container for the map with no margin
                 st.markdown("""
-                <div class="card mb-0">
+                <div class="card m-0">
                     <div class="card-header bg-secondary text-white p-1">
                         Station Map
                     </div>
@@ -1127,7 +964,7 @@ try:
                         original_width, original_height = display_image.size
 
                         # Calculate new dimensions maintaining aspect ratio
-                        max_height = 600  # Increased height for better visibility
+                        max_height = 650  # Increased height for better visibility
                         height_ratio = max_height / original_height
                         new_width = int(original_width * height_ratio * 1.2)  # Extra width factor
                         new_height = max_height
@@ -1267,12 +1104,12 @@ try:
                                         opacity=0.8,
                                         dash_array='5, 10').add_to(m)
 
-                    # Render the map with increased width
+                    # Render the map with increased height
                     folium_static(m, width=900, height=650)
 
                 st.markdown("</div></div>", unsafe_allow_html=True)
 
-                # Add map type selection with minimal styling
+                # Add map type selection in a compact form with no margins
                 st.markdown('<div class="p-1 mt-0">', unsafe_allow_html=True)
                 # Display the map type selection radio buttons below the map
                 selected_map_type = st.radio(
@@ -1309,8 +1146,8 @@ try:
                     </div>
                     """, unsafe_allow_html=True)
 
-                st.markdown('</div>', unsafe_allow_html=True)  # Close the map column
-                st.markdown('</div></div>', unsafe_allow_html=True)  # Close the row and container
+                # Close the map column and the main row
+                st.markdown('</div></div></div>', unsafe_allow_html=True)
 
             else:
                 st.error("No data available in the cached data frame")
