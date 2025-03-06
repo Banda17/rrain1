@@ -803,7 +803,7 @@ try:
     if success:
         # Show last update time
         if data_handler.last_update:
-            # Convert last# Convert last updateupdate to IST (UTC+5:30)
+            # Convert last update to IST (UTC+5:30)
             last_update_ist = data_handler.last_update + timedelta(hours=5,
                                                                    minutes=30)
             st.info(
@@ -865,7 +865,7 @@ try:
                         df = df.drop(columns=[col])
                         logger.debug(f"Dropped column: {col}")
 
-                # Define styling function with specific colors
+                # Define styling function with specific colors and gradient backgrounds based on train types
                 def highlight_delay(data):
                     styles = pd.DataFrame('', index=data.index, columns=data.columns)
 
@@ -873,6 +873,27 @@ try:
                     if 'Delay' in df.columns:
                         styles['Delay'] = df['Delay'].apply(
                             lambda x: 'color: red; font-weight: bold' if x and is_positive_or_plus(x) else '')
+
+                    # Apply gradient backgrounds based on train types in FROM-TO column
+                    if 'FROM-TO' in df.columns:
+                        for idx, value in df['FROM-TO'].items():
+                            if pd.notna(value):
+                                value_upper = str(value).upper()
+
+                                # Blue gradient for DMU/MEMU trains
+                                if 'DMU' in value_upper or 'MEMU' in value_upper:
+                                    for col in styles.columns:
+                                        styles.loc[idx, col] += 'background: linear-gradient(90deg, #e6f2ff, #99ccff); '
+
+                                # Pink gradient for SUF/MEX/VNDB/RJ/PEXP trains
+                                elif any(train_type in value_upper for train_type in ['SUF', 'MEX', 'VNDB', 'RJ', 'PEXP']):
+                                    for col in styles.columns:
+                                        styles.loc[idx, col] += 'background: linear-gradient(90deg, #ffe6f2, #ffb3d9); '
+
+                                # Orange gradient for TOD trains
+                                elif 'TOD' in value_upper:
+                                    for col in styles.columns:
+                                        styles.loc[idx, col] += 'background: linear-gradient(90deg, #fff2e6, #ffcc99); '
 
                     return styles
 
