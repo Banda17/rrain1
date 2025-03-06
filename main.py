@@ -803,7 +803,7 @@ try:
     if success:
         # Show last update time
         if data_handler.last_update:
-            # Convert last# Convert last update to IST (UTC+5:30)
+            # Convert last# Convert last updateupdate to IST (UTC+5:30)
             last_update_ist = data_handler.last_update + timedelta(hours=5,
                                                                    minutes=30)
             st.info(
@@ -912,6 +912,12 @@ try:
                     st.success(f"Showing {len(filtered_df)} rows containing values with plus sign in brackets like '(+5)'")
                     display_df = filtered_df
 
+                # Reset index and add a sequential serial number column
+                display_df = display_df.reset_index(drop=True)
+
+                # Add a sequential S.No. column at the beginning (before Select)
+                display_df.insert(0, '#', range(1, len(display_df) + 1))
+
                 # Create a layout for train data and map side by side
                 train_data_col, map_col = st.columns((3, 2))
 
@@ -925,6 +931,7 @@ try:
                         display_df,
                         hide_index=True,
                         column_config={
+                            "#": st.column_config.NumberColumn("#", help="Serial Number", format="%d"),
                             "Select": st.column_config.CheckboxColumn("Select", help="Select to show on map", default=False),
                             "Train No.": st.column_config.TextColumn("Train No.", help="Train Number"),
                             "FROM-TO": st.column_config.TextColumn("FROM-TO", help="Source to Destination"),
