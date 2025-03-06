@@ -176,7 +176,6 @@ def format_delay_value(delay: Optional[int]) -> str:
         logger.error(f"Error formatting delay value: {str(e)}")
         return "N/A"
 
-
 # Create a layout for the header with logo
 header_col1, header_col2 = st.columns([1, 5])
 
@@ -807,9 +806,8 @@ try:
     if success:
         ## Show last update time
         if data_handler.last_update:
-            # Convert last update to IST (UTC+5:330)
-            last_update_ist = data_handler.last_update + timedelta(hours=5,
-                                                                   minutes=30)
+            # Convert last update to IST (UTC+5:30)
+            last_update_ist = data_handler.last_update + timedelta(hours=5, minutes=30)
             st.info(
                 f"Last updated: {last_update_ist.strftime('%Y-%m-%d %H:%M:%S')} IST"
             )
@@ -870,7 +868,7 @@ try:
                         df = df.drop(columns=[col])
                         logger.debug(f"Dropped column: {col}")
 
-                # Define styling function with specific colors and gradient backgrounds based on train types
+                # Define styling function with specific colors for train types
                 def highlight_delay(data):
                     styles = pd.DataFrame('', index=data.index, columns=data.columns)
 
@@ -892,18 +890,18 @@ try:
                                 # Log the value and extracted first three for debugging
                                 logger.debug(f"FROM-TO value: {value}, first three: {first_three}")
 
-                                # Apply styles based on the extracted train type
+                                # Apply font colors based on the extracted train type
                                 if first_three in ['DMU', 'MEM']:
                                     for col in styles.columns:
-                                        styles.loc[idx, col] += 'background: linear-gradient(90deg, #e6f2ff, #99ccff); '
+                                        styles.loc[idx, col] += 'color: blue; font-weight: bold; '
 
                                 elif first_three in ['SUF', 'MEX', 'VND', 'RJ', 'PEX']:
                                     for col in styles.columns:
-                                        styles.loc[idx, col] += 'background: linear-gradient(90deg, #ffe6f2, #ffb3d9); '
+                                        styles.loc[idx, col] += 'color: #e83e8c; font-weight: bold; '  # Pink/magenta color
 
                                 elif first_three == 'TOD':
                                     for col in styles.columns:
-                                        styles.loc[idx, col] += 'background: linear-gradient(90deg, #fff2e6, #ffcc99); '
+                                        styles.loc[idx, col] += 'color: #fd7e14; font-weight: bold; '  # Orange color
 
                     return styles
 
