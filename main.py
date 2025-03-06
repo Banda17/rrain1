@@ -874,27 +874,34 @@ try:
                         styles['Delay'] = df['Delay'].apply(
                             lambda x: 'color: red; font-weight: bold' if x and is_positive_or_plus(x) else '')
 
-                    # Apply gradient backgrounds based on train types in FROM-TO column
-                    if 'FROM-TO' in df.columns:
-                        for idx, value in df['FROM-TO'].items():
-                            if pd.notna(value):
-                                # Extract first three characters to determine train type
-                                first_three = str(value).upper()[:3]
+                    # Try both possible column names for FROM-TO
+                    from_to_columns = ['FROM-TO', 'FROM_TO']
 
-                                # Blue gradient for DMU/MEMU trains
-                                if first_three in ['DMU', 'MEM']:
-                                    for col in styles.columns:
-                                        styles.loc[idx, col] += 'background: linear-gradient(90deg, #e6f2ff, #99ccff); '
+                    # Check each possible column name
+                    for from_to_col in from_to_columns:
+                        if from_to_col in df.columns:
+                            for idx, value in df[from_to_col].items():
+                                if pd.notna(value):
+                                    # Extract first three characters to determine train type
+                                    first_three = str(value).upper()[:3]
 
-                                # Pink gradient for SUF/MEX/VNDB/RJ/PEXP trains
-                                elif first_three in ['SUF', 'MEX', 'VND', 'RJ', 'PEX']:
-                                    for col in styles.columns:
-                                        styles.loc[idx, col] += 'background: linear-gradient(90deg, #ffe6f2, #ffb3d9); '
+                                    # Log the value and extracted first three for debugging
+                                    logger.debug(f"FROM-TO value: {value}, first three: {first_three}")
 
-                                # Orange gradient for TOD trains
-                                elif first_three == 'TOD':
-                                    for col in styles.columns:
-                                        styles.loc[idx, col] += 'background: linear-gradient(90deg, #fff2e6, #ffcc99); '
+                                    # Blue gradient for DMU/MEMU trains
+                                    if first_three in ['DMU', 'MEM']:
+                                        for col in styles.columns:
+                                            styles.loc[idx, col] += 'background: linear-gradient(90deg, #e6f2ff, #99ccff); '
+
+                                    # Pink gradient for SUF/MEX/VNDB/RJ/PEXP trains
+                                    elif first_three in ['SUF', 'MEX', 'VND', 'RJ', 'PEX']:
+                                        for col in styles.columns:
+                                            styles.loc[idx, col] += 'background: linear-gradient(90deg, #ffe6f2, #ffb3d9); '
+
+                                    # Orange gradient for TOD trains
+                                    elif first_three == 'TOD':
+                                        for col in styles.columns:
+                                            styles.loc[idx, col] += 'background: linear-gradient(90deg, #fff2e6, #ffcc99); '
 
                     return styles
 
