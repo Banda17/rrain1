@@ -57,6 +57,60 @@ st.markdown("""
         [data-testid="stDataFrame"] tr:hover {
             background-color: rgba(0,0,0,.075) !important;
         }
+        .stColumn > div {
+            padding: 0px !important;
+        }
+        div[data-testid="column"] {
+            padding: 0px !important;
+            margin: 0px !important;
+        }
+        .block-container {
+            padding-left: 0.5rem !important;
+            padding-right: 0 !important;
+            max-width: 90% !important;
+        }
+        div[data-testid="stVerticalBlock"] {
+            gap: 0px !important;
+        }
+        /* Custom styling to make table wider */
+        [data-testid="stDataFrame"] {
+            width: 100% !important;
+            max-width: none !important;
+        }
+        /* Enhance Bootstrap table styles */
+        [data-testid="stDataFrame"] table {
+            border: 1px solid #dee2e6 !important;
+            border-collapse: collapse !important;
+            width: 100% !important;
+            margin-bottom: 0 !important;
+        }
+        [data-testid="stDataFrame"] th {
+            border: 1px solid #dee2e6 !important;
+            background-color: #f8f9fa !important;
+            padding: 8px !important;
+            font-weight: 600 !important;
+            position: sticky !important;
+            top: 0 !important;
+            z-index: 1 !important;
+        }
+        [data-testid="stDataFrame"] td {
+            border: 1px solid #dee2e6 !important;
+            padding: 8px !important;
+            vertical-align: middle !important;
+        }
+        [data-testid="stDataFrame"] tr:nth-of-type(odd) {
+            background-color: rgba(0,0,0,.05) !important;
+        }
+        [data-testid="stDataFrame"] tr:hover {
+            background-color: rgba(0,0,0,.075) !important;
+            transition: background-color 0.3s ease !important;
+        }
+        /* Style for checkboxes */
+        [data-testid="stDataFrame"] input[type="checkbox"] {
+            width: 18px !important;
+            height: 18px !important;
+            cursor: pointer !important;
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -826,7 +880,8 @@ try:
                     gap: 0px !important;
                 }
                 /* Custom styling to make table wider */
-                [data-testid="stDataFrame"] {                    width: 100% !important;
+                [data-testid="stDataFrame"] {
+                    width: 100% !important;
                     max-width: none !important;
                 }
                 /* Enhance Bootstrap table styles */
@@ -868,7 +923,7 @@ try:
                             unsafe_allow_html=True)
 
                 # Create a more balanced column ratio with no gap - 60% table to 40% map
-                table_col, map_col = st.columns([3.5, 2.5], gap="small")
+                table_col, map_col = st.columns([3.5, 2.5], gap="none")
 
                 with table_col:
                     # Refresh animation placeholder right before displaying the table

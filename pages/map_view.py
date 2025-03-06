@@ -23,6 +23,14 @@ st.markdown("""
         .stApp {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
+        .block-container {
+            padding-left: 0.5rem !important;
+            padding-right: 0 !important;
+            max-width: 90% !important;
+        }
+        div[data-testid="stVerticalBlock"] {
+            gap: 0px !important;
+        }
         /* Add bootstrap compatible styles for Streamlit elements */
         [data-testid="stDataFrame"] table {
             border: 1px solid #dee2e6 !important;
@@ -51,6 +59,14 @@ st.markdown("""
             padding: 0.5rem;
             margin-bottom: 0.5rem;
             background-color: #f8f9fa;
+        }
+        /* Remove all padding and margins between columns */
+        .stColumn > div {
+            padding: 0px !important;
+        }
+        div[data-testid="column"] {
+            padding: 0px !important;
+            margin: 0px !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -132,8 +148,8 @@ stations_df = pd.DataFrame([
     for code, info in get_station_coordinates().items()
 ])
 
-# Create a two-column layout for table and map display with more space for the map
-table_section, map_section = st.columns([2, 3], gap="small")
+# Create a two-column layout for table and map display with more space for the map and no gap
+table_section, map_section = st.columns([2, 3], gap="none")
 
 with table_section:
     st.markdown("""
@@ -141,7 +157,7 @@ with table_section:
         <div class="card-header bg-primary text-white">
             Station Selection
         </div>
-""", unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
     # Create a column layout to control table width
     table_col1, table_col2 = st.columns([3, 1])
     with table_col1:

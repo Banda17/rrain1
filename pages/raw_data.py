@@ -25,6 +25,14 @@ st.markdown("""
         .stApp {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
+        .block-container {
+            padding-left: 0.5rem !important;
+            padding-right: 0 !important;
+            max-width: 90% !important;
+        }
+        div[data-testid="stVerticalBlock"] {
+            gap: 0px !important;
+        }
         /* Add bootstrap compatible styles for Streamlit elements */
         [data-testid="stDataFrame"] table {
             border: 1px solid #dee2e6 !important;
@@ -46,6 +54,14 @@ st.markdown("""
         }
         [data-testid="stDataFrame"] tr:hover {
             background-color: rgba(0,0,0,.075) !important;
+        }
+        /* Remove all padding and margins between columns */
+        .stColumn > div {
+            padding: 0px !important;
+        }
+        div[data-testid="column"] {
+            padding: 0px !important;
+            margin: 0px !important;
         }
     </style>
 """, unsafe_allow_html=True)
