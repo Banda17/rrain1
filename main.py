@@ -1040,7 +1040,7 @@ try:
                             dash_array='5, 10').add_to(m)
 
                     # Render the map
-                    folium_static(m, width=500, height=600)
+                    folium_static(m, width=None, height=600)
 
                     st.markdown('</div></div>', unsafe_allow_html=True)
 
