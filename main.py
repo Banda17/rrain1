@@ -877,31 +877,43 @@ try:
                         styles['Delay'] = df['Delay'].apply(
                             lambda x: 'color: red; font-weight: bold' if x and is_positive_or_plus(x) else '')
 
-                    # Hidden column name
-                    from_to_col = 'FROM-TO'
+                    # Function to check if value is a positive number with "+" sign
+                    def is_positive_or_plus(value):
+                        """Check if a value is positive or contains '+' sign"""
+                        if pd.isna(value) or not value:
+                            return False
 
-                    # Check if the hidden column exists in the DataFrame
-                    if from_to_col in df.columns:
-                        for idx, value in df[from_to_col].items():
-                            if pd.notna(value):
-                                # Extract the train type from the "FROM-TO" value
-                                first_three = str(value).split(' ')[0].upper()  # Get the first word
+                        value_str = str(value).strip()
 
-                                # Log the value and extracted first three for debugging
-                                logger.debug(f"FROM-TO value: {value}, first three: {first_three}")
+                        # Check for '+' sign at start or inside brackets like '(+5)'
+                        return value_str.startswith('+') or '(+' in value_str or (value_str.isdigit() and int(value_str) > 0)
 
-                                # Apply font colors based on the extracted train type
-                                if first_three in ['DMU', 'MEM']:
-                                    for col in styles.columns:
-                                        styles.loc[idx, col] += 'color: blue; font-weight: bold; '
+                    # Try both possible FROM-TO column names
+                    from_to_columns = ['FROM-TO', 'FROM_TO']
 
-                                elif first_three in ['SUF', 'MEX', 'VND', 'RJ', 'PEX']:
-                                    for col in styles.columns:
-                                        styles.loc[idx, col] += 'color: #e83e8c; font-weight: bold; '  # Pink/magenta color
+                    for from_to_col in from_to_columns:
+                        if from_to_col in df.columns:
+                            logger.info(f"Found '{from_to_col}' column - applying train type styling")
+                            for idx, value in df[from_to_col].items():
+                                if pd.notna(value):
+                                    # Extract the train type - get the first word before any space
+                                    train_type = str(value).split(' ')[0].upper()
 
-                                elif first_three == 'TOD':
-                                    for col in styles.columns:
-                                        styles.loc[idx, col] += 'color: #fd7e14; font-weight: bold; '  # Orange color
+                                    # Log for debugging
+                                    logger.info(f"Row {idx} - Train: {value}, Type: {train_type}")
+
+                                    # Apply font colors based on train type
+                                    if train_type in ['DMU', 'MEM']:
+                                        for col in styles.columns:
+                                            styles.loc[idx, col] += 'color: blue; font-weight: bold; '
+
+                                    elif train_type in ['SUF', 'MEX', 'VND', 'RJ', 'PEX']:
+                                        for col in styles.columns:
+                                            styles.loc[idx, col] += 'color: #e83e8c; font-weight: bold; '  # Pink/magenta
+
+                                    elif train_type == 'TOD':
+                                        for col in styles.columns:
+                                            styles.loc[idx, col] += 'color: #fd7e14; font-weight: bold; '  # Orange
 
                     return styles
 
@@ -977,56 +989,37 @@ try:
                 with train_data_col:
                     # Add a card for the table content
                     st.markdown(
-                        '<div class="card shadow-sm mb-3"><div class="card-header bg-primary text-white d-flex justify-content-between align-items-center"><span>Train Data</span><span class="badge bg-light text-dark rounded-pill">Select stations to display on map</span></div><div class="card-body p-0">',
+                        """
+                        <div class="card">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="card-title mb-0">Train Status</h5>
+                            </div>
+                            <div class="card-body p-0">
+                        """,
                         unsafe_allow_html=True)
 
-                    # Use data_editor to make the table interactive with checkboxes
-                    edited_df = st.data_editor(
-                        display_df,
-                        hide_index=True,
-                        column_config={
-                            "#":
-                            st.column_config.NumberColumn("#",
-                                                          help="Serial Number",
-                                                          format="%d"),
-                            "Select":
-                            st.column_config.CheckboxColumn(
-                                "Select",
-                                help="Select to show on map",
-                                default=False),
-                            "Train No.":
-                            st.column_config.TextColumn("Train No.",
-                                                        help="Train Number"),
-                            "FROM-TO":
-                            st.column_config.TextColumn(
-                                "FROM-TO", help="Source to Destination"),
-                            "IC Entry Delay":
-                            st.column_config.TextColumn("IC Entry Delay",
-                                                        help="Entry Delay"),
-                            "Delay":
-                            st.column_config.TextColumn(
-                                "Delay", help="Delay in Minutes")
-                        },
-                        disabled=[
-                            col for col in display_df.columns
-                            if col != 'Select'
-                        ],
-                        use_container_width=True,
-                        height=600,
-                        num_rows="dynamic")
+                    # Apply the highlight_delay function to style the dataframe
+                    styled_df = display_df.style.apply(highlight_delay, axis=None)
 
-                    # Add a footer to the card with information about the data
-                    selected_count = len(edited_df[edited_df['Select']])
-                    st.markdown(
-                        f'<div class="card-footer bg-light d-flex justify-content-between align-items-center"><span>Total Rows: {len(display_df)}</span><span>Selected: {selected_count}</span></div>',
-                        unsafe_allow_html=True)
-                    st.markdown('</div></div>', unsafe_allow_html=True)
+                    # Display the styled dataframe
+                    st.dataframe(styled_df, use_container_width=True)
 
-                # Map section
+                    # Close the card
+                    st.markdown("""
+                            </div>
+                        </div>
+                    """, unsafe_allow_html=True)
+
+                # Map viewer section
                 with map_col:
-                    # Add a card for the map content
                     st.markdown(
-                        '<div class="card mb-3"><div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center"><span>Interactive GPS Map</span><span class="badge bg-light text-dark rounded-pill">Showing selected stations</span></div><div class="card-body p-0">',
+                        """
+                        <div class="card">
+                            <div class="card-header bg-success text-white">
+                                <h5 class="card-title mb-0">Division Map</h5>
+                            </div>
+                            <div class="card-body p-0">
+                        """,
                         unsafe_allow_html=True)
 
                     # Create the interactive map
@@ -1045,7 +1038,7 @@ try:
                     station_coords = get_station_coordinates()
 
                     # Extract station codes from selected rows
-                    selected_rows = edited_df[edited_df['Select']]
+                    selected_rows = df[df['Select']]
                     selected_station_codes = extract_station_codes(
                         selected_rows, station_column)
 
@@ -1177,7 +1170,7 @@ except Exception as e:
     logger.exception("Exception in main app")
 
 
-# Function to check if a value is positive or contains (+)
+# Function to check if a value represents a positive delay
 def is_positive_or_plus(value):
     try:
         if value is None:
