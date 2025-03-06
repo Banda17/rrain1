@@ -181,11 +181,20 @@ header_col1, header_col2 = st.columns([1, 5])
 # Display the logo in the first column
 with header_col1:
     try:
-        st.image("attached_assets/scr_logo.png", width=80)
+        # Add a container with custom padding to lower the logo
+        st.markdown("""
+            <div style="padding-top: 20px; display: flex; align-items: center; height: 100%;">
+                <img src="attached_assets/scr_logo.png" width="120">
+            </div>
+        """, unsafe_allow_html=True)
     except Exception as e:
         st.warning(f"Error loading new logo: {str(e)}")
         try:
-            st.image("scr_logo.png", width=80)
+            st.markdown("""
+                <div style="padding-top: 20px; display: flex; align-items: center; height: 100%;">
+                    <img src="scr_logo.png" width="120">
+                </div>
+            """, unsafe_allow_html=True)
         except Exception as e2:
             st.warning(f"Error loading any logo: {str(e2)}")
 
@@ -997,7 +1006,6 @@ try:
                                 tooltip=normalized_code,
                                 icon=folium.Icon(color='red', icon='train', prefix='fa'),
                                 opacity=0.8).add_to(m)
-
                             displayed_stations.append(normalized_code)
                             valid_points.append([lat, lon])
 
