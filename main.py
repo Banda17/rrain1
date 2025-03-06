@@ -796,70 +796,6 @@ col1, col2 = st.columns((10, 2))
 with col2:
     if st.button("🔄", type="primary"):
         st.rerun()
-
-# Move this function definition to the top of the file, before it's used
-def is_positive_or_plus(value):
-    """Check if a value is positive or contains '+' sign"""
-    if pd.isna(value) or not value:
-        return False
-
-    value_str = str(value).strip()
-
-    # Check for '+' sign at start or inside brackets like '(+5)'
-    return value_str.startswith('+') or '(+' in value_str or (value_str.isdigit() and int(value_str) > 0)
-
-# Define styling function with specific colors for train types
-def highlight_delay(data):
-    styles = pd.DataFrame('', index=data.index, columns=data.columns)
-
-    # Apply red color only to the 'Delay' column if it exists
-    if 'Delay' in df.columns:
-        styles['Delay'] = df['Delay'].apply(
-            lambda x: 'color: red; font-weight: bold' if x and is_positive_or_plus(x) else '')
-
-    # Try both possible FROM-TO column names
-    from_to_columns = ['FROM-TO', 'FROM_TO']
-
-    for from_to_col in from_to_columns:
-        if from_to_col in df.columns:
-            logger.info(f"Found '{from_to_col}' column - applying train type styling")
-            for idx, value in df[from_to_col].items():
-                if pd.notna(value):
-                    # Extract the train type - get the first word before any space
-                    train_type = str(value).split(' ')[0].upper()
-
-                    # Log for debugging
-                    logger.info(f"Row {idx} - Train: {value}, Type: {train_type}")
-
-                    # Find the train number column - try different possible column names
-                    train_number_columns = ['Train No.', 'Train No', 'Train Number', 'Train_No', 'Train_Number']
-
-                    # Apply font colors based on train type
-                    if train_type in ['DMU', 'MEM']:
-                        # Apply styling to all columns for this row
-                        for col in styles.columns:
-                            # Apply stronger styling to the train number column
-                            if any(train_col in col for train_col in train_number_columns):
-                                styles.loc[idx, col] = 'color: blue; font-weight: bold; font-size: 110%;'
-                            else:
-                                styles.loc[idx, col] += 'color: blue;'
-
-                    elif train_type in ['SUF', 'MEX', 'VND', 'RJ', 'PEX']:
-                        for col in styles.columns:
-                            if any(train_col in col for train_col in train_number_columns):
-                                styles.loc[idx, col] = 'color: #e83e8c; font-weight: bold; font-size: 110%;'
-                            else:
-                                styles.loc[idx, col] += 'color: #e83e8c;'
-
-                    elif train_type == 'TOD':
-                        for col in styles.columns:
-                            if any(train_col in col for train_col in train_number_columns):
-                                styles.loc[idx, col] = 'color: #fd7e14; font-weight: bold; font-size: 110%;'
-                            else:
-                                styles.loc[idx, col] += 'color: #fd7e14;'
-
-    return styles
-
 try:
     data_handler = st.session_state['icms_data_handler']
 
@@ -932,17 +868,6 @@ try:
                         df = df.drop(columns=[col])
                         logger.debug(f"Dropped column: {col}")
 
-                # Move this function definition to the top of the file, before it's used
-                def is_positive_or_plus(value):
-                    """Check if a value is positive or contains '+' sign"""
-                    if pd.isna(value) or not value:
-                        return False
-
-                    value_str = str(value).strip()
-
-                    # Check for '+' sign at start or inside brackets like '(+5)'
-                    return value_str.startswith('+') or '(+' in value_str or (value_str.isdigit() and int(value_str) > 0)
-
                 # Define styling function with specific colors for train types
                 def highlight_delay(data):
                     styles = pd.DataFrame('', index=data.index, columns=data.columns)
@@ -952,46 +877,31 @@ try:
                         styles['Delay'] = df['Delay'].apply(
                             lambda x: 'color: red; font-weight: bold' if x and is_positive_or_plus(x) else '')
 
-                    # Try both possible FROM-TO column names
-                    from_to_columns = ['FROM-TO', 'FROM_TO']
+                    # Hidden column name
+                    from_to_col = 'FROM-TO'
 
-                    for from_to_col in from_to_columns:
-                        if from_to_col in df.columns:
-                            logger.info(f"Found '{from_to_col}' column - applying train type styling")
-                            for idx, value in df[from_to_col].items():
-                                if pd.notna(value):
-                                    # Extract the train type - get the first word before any space
-                                    train_type = str(value).split(' ')[0].upper()
+                    # Check if the hidden column exists in the DataFrame
+                    if from_to_col in df.columns:
+                        for idx, value in df[from_to_col].items():
+                            if pd.notna(value):
+                                # Extract the train type from the "FROM-TO" value
+                                first_three = str(value).split(' ')[0].upper()  # Get the first word
 
-                                    # Log for debugging
-                                    logger.info(f"Row {idx} - Train: {value}, Type: {train_type}")
+                                # Log the value and extracted first three for debugging
+                                logger.debug(f"FROM-TO value: {value}, first three: {first_three}")
 
-                                    # Find the train number column - try different possible column names
-                                    train_number_columns = ['Train No.', 'Train No', 'Train Number', 'Train_No', 'Train_Number']
+                                # Apply font colors based on the extracted train type
+                                if first_three in ['DMU', 'MEM']:
+                                    for col in styles.columns:
+                                        styles.loc[idx, col] += 'color: blue; font-weight: bold; '
 
-                                    # Apply font colors based on train type
-                                    if train_type in ['DMU', 'MEM']:
-                                        # Apply styling to all columns for this row
-                                        for col in styles.columns:
-                                            # Apply stronger styling to the train number column
-                                            if any(train_col in col for train_col in train_number_columns):
-                                                styles.loc[idx, col] = 'color: blue; font-weight: bold; font-size: 110%;'
-                                            else:
-                                                styles.loc[idx, col] += 'color: blue;'
+                                elif first_three in ['SUF', 'MEX', 'VND', 'RJ', 'PEX']:
+                                    for col in styles.columns:
+                                        styles.loc[idx, col] += 'color: #e83e8c; font-weight: bold; '  # Pink/magenta color
 
-                                    elif train_type in ['SUF', 'MEX', 'VND', 'RJ', 'PEX']:
-                                        for col in styles.columns:
-                                            if any(train_col in col for train_col in train_number_columns):
-                                                styles.loc[idx, col] = 'color: #e83e8c; font-weight: bold; font-size: 110%;'
-                                            else:
-                                                styles.loc[idx, col] += 'color: #e83e8c;'
-
-                                    elif train_type == 'TOD':
-                                        for col in styles.columns:
-                                            if any(train_col in col for train_col in train_number_columns):
-                                                styles.loc[idx, col] = 'color: #fd7e14; font-weight: bold; font-size: 110%;'
-                                            else:
-                                                styles.loc[idx, col] += 'color: #fd7e14;'
+                                elif first_three == 'TOD':
+                                    for col in styles.columns:
+                                        styles.loc[idx, col] += 'color: #fd7e14; font-weight: bold; '  # Orange color
 
                     return styles
 
@@ -1067,37 +977,56 @@ try:
                 with train_data_col:
                     # Add a card for the table content
                     st.markdown(
-                        """
-                        <div class="card">
-                            <div class="card-header bg-primary text-white">
-                                <h5 class="card-title mb-0">Train Status</h5>
-                            </div>
-                            <div class="card-body p-0">
-                        """,
+                        '<div class="card shadow-sm mb-3"><div class="card-header bg-primary text-white d-flex justify-content-between align-items-center"><span>Train Data</span><span class="badge bg-light text-dark rounded-pill">Select stations to display on map</span></div><div class="card-body p-0">',
                         unsafe_allow_html=True)
 
-                    # Apply the highlight_delay function to style the dataframe
-                    styled_df = display_df.style.apply(highlight_delay, axis=None)
+                    # Use data_editor to make the table interactive with checkboxes
+                    edited_df = st.data_editor(
+                        display_df,
+                        hide_index=True,
+                        column_config={
+                            "#":
+                            st.column_config.NumberColumn("#",
+                                                          help="Serial Number",
+                                                          format="%d"),
+                            "Select":
+                            st.column_config.CheckboxColumn(
+                                "Select",
+                                help="Select to show on map",
+                                default=False),
+                            "Train No.":
+                            st.column_config.TextColumn("Train No.",
+                                                        help="Train Number"),
+                            "FROM-TO":
+                            st.column_config.TextColumn(
+                                "FROM-TO", help="Source to Destination"),
+                            "IC Entry Delay":
+                            st.column_config.TextColumn("IC Entry Delay",
+                                                        help="Entry Delay"),
+                            "Delay":
+                            st.column_config.TextColumn(
+                                "Delay", help="Delay in Minutes")
+                        },
+                        disabled=[
+                            col for col in display_df.columns
+                            if col != 'Select'
+                        ],
+                        use_container_width=True,
+                        height=600,
+                        num_rows="dynamic")
 
-                    # Display the styled dataframe
-                    st.dataframe(styled_df, use_container_width=True)
-
-                    # Close the card
-                    st.markdown("""
-                            </div>
-                        </div>
-                    """, unsafe_allow_html=True)
-
-                # Map viewer section
-                with map_col:
+                    # Add a footer to the card with information about the data
+                    selected_count = len(edited_df[edited_df['Select']])
                     st.markdown(
-                        """
-                        <div class="card">
-                            <div class="card-header bg-success text-white">
-                                <h5 class="card-title mb-0">Division Map</h5>
-                            </div>
-                            <div class="card-body p-0">
-                        """,
+                        f'<div class="card-footer bg-light d-flex justify-content-between align-items-center"><span>Total Rows: {len(display_df)}</span><span>Selected: {selected_count}</span></div>',
+                        unsafe_allow_html=True)
+                    st.markdown('</div></div>', unsafe_allow_html=True)
+
+                # Map section
+                with map_col:
+                    # Add a card for the map content
+                    st.markdown(
+                        '<div class="card mb-3"><div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center"><span>Interactive GPS Map</span><span class="badge bg-light text-dark rounded-pill">Showing selected stations</span></div><div class="card-body p-0">',
                         unsafe_allow_html=True)
 
                     # Create the interactive map
@@ -1116,7 +1045,7 @@ try:
                     station_coords = get_station_coordinates()
 
                     # Extract station codes from selected rows
-                    selected_rows = df[df['Select']]
+                    selected_rows = edited_df[edited_df['Select']]
                     selected_station_codes = extract_station_codes(
                         selected_rows, station_column)
 
@@ -1246,6 +1175,42 @@ try:
 except Exception as e:
     st.error(f"An error occurred: {str(e)}")
     logger.exception("Exception in main app")
+
+
+# Function to check if a value is positive or contains (+)
+def is_positive_or_plus(value):
+    try:
+        if value is None:
+            return False
+
+        if isinstance(value, str):
+            # Check if the string contains a plus sign
+            if '+' in value:
+                return True
+
+            # Clean the string of any non-numeric characters except minus sign and decimal point
+            # First handle the case with multiple values (like "-7 \xa0-36")
+            if '\xa0' in value or '  ' in value:
+                # Take just the first part if there are multiple numbers
+                value = value.split('\xa0')[0].split('  ')[0].strip()
+
+            # Remove parentheses and other characters
+            clean_value = value.replace('(', '').replace(')', '').strip()
+
+            # Try to convert to float
+            if clean_value:
+                try:
+                    return float(clean_value) > 0
+                except ValueError:
+                    # If conversion fails, check if it starts with a minus sign
+                    return not clean_value.startswith('-')
+        elif isinstance(value, (int, float)):
+            return value > 0
+    except Exception as e:
+        logger.error(f"Error in is_positive_or_plus: {str(e)}")
+        return False
+    return False
+
 
 # Footer
 st.markdown("---")
