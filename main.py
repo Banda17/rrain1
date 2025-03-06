@@ -234,7 +234,6 @@ with col2:
 # Add a horizontal line to separate the header from content
 st.markdown("<hr class='mt-2 mb-3'>", unsafe_allow_html=True)
 
-
 def initialize_session_state():
     """Initialize all session state variables with proper typing"""
     state_configs = {
@@ -828,7 +827,7 @@ try:
         if data_handler.last_update:
             # Convert last update to IST (UTC+5:30)
             last_update_ist = data_handler.last_update + timedelta(hours=5,
-                                                                  minutes=30)
+                                                                   minutes=30)
             st.info(
                 f"Last updated: {last_update_ist.strftime('%Y-%m-%d %H:%M:%S')} IST"
             )
@@ -1148,12 +1147,46 @@ try:
             else:
                 st.error("No data available in the cached data frame")
         else:
-            st.error("No cached data available")
+            st.error("No data available in the cached data")
     else:
-        st.error(f"Failed to load data: {message}")
+        st.error(f"Error loading data: {message}")
 except Exception as e:
     st.error(f"An error occurred: {str(e)}")
-    logger.error(f"Error in main app: {str(e)}")
+    st.exception(e)
+
+# Function to check if a value is positive or contains a plus sign
+def is_positive_or_plus(value):
+    try:
+        if value is None:
+            return False
+
+        if isinstance(value, str):
+            # Check if the string contains a plus sign
+            if '+' in value:
+                return True
+
+            # Clean the string of any non-numeric characters except minus sign and decimal point
+            # First handle the case with multiple values (like "-7 \xa0-36")
+            if '\xa0' in value or '  ' in value:
+                # Take just the first part if there are multiple numbers
+                value = value.split('\xa0')[0].split('  ')[0].strip()
+
+            # Remove parentheses and other characters
+            clean_value = value.replace('(', '').replace(')', '').strip()
+
+            # Try to convert to float
+            if clean_value:
+                try:
+                    return float(clean_value) > 0
+                except ValueError:
+                    # If conversion fails, check if it starts with a minus sign
+                    return not clean_value.startswith('-')
+        elif isinstance(value, (int, float)):
+            return value > 0
+    except Exception as e:
+        logger.error(f"Error in is_positive_or_plus: {str(e)}")
+        return False
+    return False
 
 # Footer
 st.markdown("---")
