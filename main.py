@@ -829,19 +829,39 @@ try:
                 [data-testid="stDataFrame"] {                    width: 100% !important;
                     max-width: none !important;
                 }
-                /* Add borders to tables */
+                /* Enhance Bootstrap table styles */
                 [data-testid="stDataFrame"] table {
                     border: 1px solid #dee2e6 !important;
                     border-collapse: collapse !important;
+                    width: 100% !important;
+                    margin-bottom: 0 !important;
                 }
                 [data-testid="stDataFrame"] th {
                     border: 1px solid #dee2e6 !important;
                     background-color: #f8f9fa !important;
-                    padding: 5px !important;
+                    padding: 8px !important;
+                    font-weight: 600 !important;
+                    position: sticky !important;
+                    top: 0 !important;
+                    z-index: 1 !important;
                 }
                 [data-testid="stDataFrame"] td {
                     border: 1px solid #dee2e6 !important;
-                    padding: 5px !important;
+                    padding: 8px !important;
+                    vertical-align: middle !important;
+                }
+                [data-testid="stDataFrame"] tr:nth-of-type(odd) {
+                    background-color: rgba(0,0,0,.05) !important;
+                }
+                [data-testid="stDataFrame"] tr:hover {
+                    background-color: rgba(0,0,0,.075) !important;
+                    transition: background-color 0.3s ease !important;
+                }
+                /* Style for checkboxes */
+                [data-testid="stDataFrame"] input[type="checkbox"] {
+                    width: 18px !important;
+                    height: 18px !important;
+                    cursor: pointer !important;
                 }
                 </style>
                 """,
@@ -921,7 +941,7 @@ try:
                     table_col1, table_col2 = st.columns([3, 1])
                     with table_col1:
                         # Put the dataframe in a card with Bootstrap styling
-                        st.markdown('<div class="card shadow-sm mb-3"><div class="card-header bg-primary text-white">Train Data</div><div class="card-body p-0">', unsafe_allow_html=True)
+                        st.markdown('<div class="card shadow-sm mb-3"><div class="card-header bg-primary text-white d-flex justify-content-between align-items-center"><span>Train Data</span><span class="badge bg-light text-dark rounded-pill">Select stations to display on map</span></div><div class="card-body p-0">', unsafe_allow_html=True)
 
                         # Use data_editor to make the table interactive with checkboxes
                         edited_df = st.data_editor(
@@ -954,6 +974,10 @@ try:
                             height=600,  # Set appropriate height
                             num_rows=40  # Show 40 rows at a time
                         )
+
+                        # Add a footer to the card with information about the data
+                        selected_count = len(edited_df[edited_df['Select']])
+                        st.markdown(f'<div class="card-footer bg-light d-flex justify-content-between align-items-center"><span>Total Rows: {len(filtered_df)}</span><span>Selected: {selected_count}</span></div>', unsafe_allow_html=True)
                         st.markdown('</div></div>', unsafe_allow_html=True)
 
                     with table_col2:

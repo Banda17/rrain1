@@ -106,16 +106,18 @@ try:
                 filtered_data = raw_data
 
             # Display data info
-            st.info(f"Total rows: {len(filtered_data)} | Total columns: {len(filtered_data.columns)}")
+            #st.info(f"Total rows: {len(filtered_data)} | Total columns: {len(filtered_data.columns)}")
 
-            # Display the data in a card
-            st.markdown('<div class="card shadow-sm mb-3"><div class="card-body p-0">', unsafe_allow_html=True)
+            # Display the data in a card with enhanced Bootstrap styling
+            st.markdown('<div class="card shadow-sm mb-3"><div class="card-header bg-primary text-white d-flex justify-content-between align-items-center"><span>Raw Data</span><span class="badge bg-light text-dark rounded-pill">Showing {len(filtered_data)} records</span></div><div class="card-body p-0">', unsafe_allow_html=True)
             # Display the data
             st.dataframe(
                 filtered_data,
                 use_container_width=True,
                 height=500
             )
+            # Add a footer with data summary
+            st.markdown(f'<div class="card-footer bg-light d-flex justify-content-between"><span>Total Rows: {len(filtered_data)}</span><span>Columns: {len(filtered_data.columns)}</span></div>', unsafe_allow_html=True)
             st.markdown('</div></div>', unsafe_allow_html=True)
 
             # Download button in a card

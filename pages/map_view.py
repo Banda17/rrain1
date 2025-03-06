@@ -141,13 +141,12 @@ with table_section:
         <div class="card-header bg-primary text-white">
             Station Selection
         </div>
-        <div class="card-body p-0">
-    """, unsafe_allow_html=True)
-
+""", unsafe_allow_html=True)
     # Create a column layout to control table width
     table_col1, table_col2 = st.columns([3, 1])
     with table_col1:
-        # Make the dataframe interactive with checkboxes
+        # Make the dataframe interactive with checkboxes - with enhanced Bootstrap styling
+        st.markdown('<div class="card-body p-0">', unsafe_allow_html=True)
         edited_df = st.data_editor(
             stations_df,
             hide_index=True,
@@ -163,14 +162,14 @@ with table_section:
             height=800,  # Increased height further
             num_rows=40  # Show 40 rows at a time
         )
+
+        # Add table footer with selection count
+        selected_count = len(edited_df[edited_df['Select']])
+        st.markdown(f'<div class="card-footer bg-light d-flex justify-content-between"><span>Total Stations: {len(stations_df)}</span><span>Selected: {selected_count}</span></div>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
     with table_col2:
         # Empty space to reduce table width
         st.empty()
-
-    st.markdown("""
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
 
 with map_section:
     # Get selected stations
