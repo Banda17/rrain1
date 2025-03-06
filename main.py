@@ -32,33 +32,18 @@ st.markdown("""
         .stApp {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
-        /* Bootstrap grid container for side-by-side layout */
+        /* Custom styling for the grid */
         .bs-grid-container {
             display: flex;
             width: 100%;
-            margin: 0;
-            padding: 0;
         }
         .bs-grid-left {
             flex: 6;
             padding-right: 10px;
-            min-width: 600px;
         }
         .bs-grid-right {
             flex: 6;
             padding-left: 10px;
-            min-width: 600px;
-        }
-        @media (max-width: 1200px) {
-            .bs-grid-container {
-                flex-direction: column;
-            }
-            .bs-grid-left, .bs-grid-right {
-                flex: 100%;
-                padding: 0;
-                width: 100%;
-                min-width: 100%;
-            }
         }
         /* Additional styling for tables and other elements */
         [data-testid="stDataFrame"] table {
@@ -114,6 +99,90 @@ def initialize_session_state():
         data_handler.spreadsheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRO2ZV-BOcL11_5NhlrOnn5Keph3-cVp7Tyr1t6RxsoDvxZjdOyDsmRkdvesJLbSnZwY8v3CATt1Of9/pub?gid=155911658&single=true&output=csv"
         st.session_state['icms_data_handler'] = data_handler
 
+# Function to check if a value is positive or contains (+)
+def is_positive_or_plus(value):
+    try:
+        if value is None:
+            return False
+
+        if isinstance(value, str):
+            # Check if the string contains a plus sign
+            if '+' in value:
+                return True
+
+            # Clean the string of any non-numeric characters except minus sign and decimal point
+            # First handle the case with multiple values (like "-7 \xa0-36")
+            if '\xa0' in value or '  ' in value:
+                # Take just the first part if there are multiple numbers
+                value = value.split('\xa0')[0].split('  ')[0].strip()
+
+            # Remove parentheses and other characters
+            clean_value = value.replace('(', '').replace(')', '').strip()
+
+            # Try to convert to float
+            if clean_value:
+                try:
+                    return float(clean_value) > 0
+                except ValueError:
+                    # If conversion fails, check if it starts with a minus sign
+                    return not clean_value.startswith('-')
+        elif isinstance(value, (int, float)):
+            return value > 0
+    except Exception as e:
+        logger.error(f"Error in is_positive_or_plus: {str(e)}")
+        return False
+    return False
+
+# Function to get station coordinates
+@st.cache_data(ttl=3600)  # Cache for 1 hour
+def get_station_coordinates():
+    """Cache station coordinates for faster access"""
+    return {
+        'BZA': {'lat': 16.5167, 'lon': 80.6167},  # Vijayawada
+        'GNT': {'lat': 16.3067, 'lon': 80.4365},  # Guntur
+        'VSKP': {'lat': 17.6868, 'lon': 83.2185},  # Visakhapatnam
+        'TUNI': {'lat': 17.3572, 'lon': 82.5483},  # Tuni
+        'RJY': {'lat': 17.0005, 'lon': 81.7799},  # Rajahmundry
+        'NLDA': {'lat': 17.0575, 'lon': 79.2690},  # Nalgonda
+        'MGM': {'lat': 16.4307, 'lon': 80.5525},  # Mangalagiri
+        'NDL': {'lat': 16.9107, 'lon': 81.6717},  # Nidadavolu
+        'ANV': {'lat': 17.6910, 'lon': 83.0037},  # Anakapalle
+        'VZM': {'lat': 18.1066, 'lon': 83.4205},  # Vizianagaram
+        'SKM': {'lat': 18.2949, 'lon': 83.8935},  # Srikakulam
+        'PLH': {'lat': 18.7726, 'lon': 84.4162},  # Palasa
+    }
+
+# Function to extract station codes from selected rows
+def extract_station_codes(selected_stations, station_column=None):
+    """Extract station codes from selected DataFrame"""
+    selected_station_codes = []
+
+    if selected_stations.empty:
+        return selected_station_codes
+
+    # Look for station code in various possible column names
+    potential_station_columns = [
+        'CRD', 'Station', 'Station Code', 'station', 'STATION'
+    ]
+
+    # If station_column is provided and exists in the DataFrame, use it
+    if station_column and station_column in selected_stations.columns:
+        potential_station_columns.insert(0, station_column)
+
+    # Try each potential column
+    for col_name in potential_station_columns:
+        if col_name in selected_stations.columns:
+            for _, row in selected_stations.iterrows():
+                if pd.notna(row[col_name]):
+                    # Extract station code from text
+                    text_value = str(row[col_name]).strip().upper()
+
+                    # Add to list if not already there
+                    if text_value and text_value not in selected_station_codes:
+                        selected_station_codes.append(text_value)
+
+    return selected_station_codes
+
 # Initialize sessionstate
 initialize_session_state()
 
@@ -159,84 +228,124 @@ try:
                 for column in df.columns:
                     df[column] = df[column].map(safe_convert)
 
+                # Add a "Select" column at the beginning of the DataFrame for checkboxes
+                if 'Select' not in df.columns:
+                    df.insert(0, 'Select', False)
+
+                # Get station column name
+                station_column = next(
+                    (col for col in df.columns
+                     if col in ['Station', 'station', 'STATION']), None)
+
                 # Create a layout for train data and map side by side
-                train_data_col, map_col = st.columns((3, 2))
+                st.markdown('<div class="bs-grid-container">', unsafe_allow_html=True)
 
-                # Train data section
-                with train_data_col:
-                    st.markdown("### Train Data")
-                    # Add a "Select" column for checkboxes if not present
-                    if 'Select' not in df.columns:
-                        df.insert(0, 'Select', False)
+                # Table container
+                st.markdown('<div class="bs-grid-left">', unsafe_allow_html=True)
+                st.markdown("### Train Data")
+                edited_df = st.data_editor(
+                    df,
+                    hide_index=True,
+                    column_config={
+                        "Select": st.column_config.CheckboxColumn("Select", help="Select to show on map", default=False),
+                        "Train No.": st.column_config.TextColumn("Train No.", help="Train Number"),
+                        "FROM-TO": st.column_config.TextColumn("FROM-TO", help="Source to Destination"),
+                        "IC Entry Delay": st.column_config.TextColumn("IC Entry Delay", help="Entry Delay"),
+                        "Delay": st.column_config.TextColumn("Delay", help="Delay in Minutes")
+                    },
+                    disabled=[col for col in df.columns if col != 'Select'],
+                    use_container_width=True,
+                    height=600,
+                    num_rows="dynamic"
+                )
 
-                    edited_df = st.data_editor(
-                        df,
-                        hide_index=True,
-                        column_config={
-                            "Select": st.column_config.CheckboxColumn("Select", default=False),
-                            "Train No.": st.column_config.TextColumn("Train No."),
-                            "FROM-TO": st.column_config.TextColumn("FROM-TO"),
-                            "IC Entry Delay": st.column_config.TextColumn("IC Entry Delay"),
-                            "Delay": st.column_config.TextColumn("Delay")
-                        },
-                        disabled=[col for col in df.columns if col != 'Select'],
-                        use_container_width=True,
-                        height=600,
-                        num_rows="dynamic"
-                    )
+                # Count selected stations
+                selected_count = len(edited_df[edited_df['Select']])
+                st.caption(f"Total Rows: {len(df)} | Selected: {selected_count}")
 
-                # Map section
-                with map_col:
-                    st.markdown("### Interactive GPS Map")
+                st.markdown('</div>', unsafe_allow_html=True)  # Close table container
 
-                    # Extract station codes from selected rows
-                    selected_rows = edited_df[edited_df['Select']]
-                    selected_station_codes = []
+                # Map container
+                st.markdown('<div class="bs-grid-right">', unsafe_allow_html=True)
+                st.markdown("### Interactive GPS Map")
 
-                    # Define a function to extract station codes
-                    def extract_station_codes(selected_stations):
-                        codes = []
-                        station_column = next(
-                            (col for col in selected_stations.columns
-                             if col in ['Station', 'station', 'STATION']), None)
+                # Extract station codes from selected rows
+                selected_rows = edited_df[edited_df['Select']]
+                selected_station_codes = extract_station_codes(selected_rows, station_column)
 
-                        if station_column and not selected_stations.empty:
-                            for _, row in selected_stations.iterrows():
-                                if pd.notna(row[station_column]):
-                                    code = str(row[station_column]).strip()
-                                    if code and code not in codes:
-                                        codes.append(code)
-                        return codes
+                # Station coordinates
+                station_coords = get_station_coordinates()
 
-                    # Get station coordinates using a dictionary
-                    def get_station_coordinates():
-                        return {
-                            'BZA': {'lat': 16.5167, 'lon': 80.6167},  # Vijayawada
-                            'GNT': {'lat': 16.3067, 'lon': 80.4365},  # Guntur
-                            'VSKP': {'lat': 17.6868, 'lon': 83.2185},  # Visakhapatnam
-                            # Add more stations as needed
-                        }
+                # Create the map
+                m = folium.Map(location=[16.5167, 80.6167], zoom_start=7, control_scale=True)
 
-                    # Extract station codes and create map
-                    selected_station_codes = extract_station_codes(selected_rows)
-                    station_coords = get_station_coordinates()
+                # Add a basemap with reduced opacity
+                folium.TileLayer(
+                    tiles='OpenStreetMap',
+                    attr='&copy; OpenStreetMap contributors',
+                    opacity=0.8
+                ).add_to(m)
 
-                    # Create the map
-                    m = folium.Map(location=[16.5167, 80.6167], zoom_start=7)
+                # First add all non-selected stations as small dots
+                for code, coords in station_coords.items():
+                    # Skip selected stations - they'll get bigger markers later
+                    if code.upper() in [s.upper() for s in selected_station_codes]:
+                        continue
 
-                    # Add markers for selected stations
-                    for code in selected_station_codes:
-                        if code in station_coords:
-                            coords = station_coords[code]
-                            folium.Marker(
-                                [coords['lat'], coords['lon']],
-                                popup=f"{code}",
-                                tooltip=code,
-                                icon=folium.Icon(color='red', icon='train', prefix='fa')
-                            ).add_to(m)
+                    # Add small circle for the station
+                    folium.CircleMarker(
+                        [coords['lat'], coords['lon']],
+                        radius=3,
+                        color='#800000',  # Maroon red border
+                        fill=True,
+                        fill_color='gray',
+                        fill_opacity=0.6,
+                        opacity=0.8,
+                        tooltip=f"{code}"
+                    ).add_to(m)
 
-                    # Display the map
-                    folium_static(m, width=650, height=600)
+                # Add markers for selected stations
+                valid_points = []
+                for code in selected_station_codes:
+                    normalized_code = code.upper().strip()
+                    if normalized_code in station_coords:
+                        lat = station_coords[normalized_code]['lat']
+                        lon = station_coords[normalized_code]['lon']
+
+                        # Add train icon marker for selected stations
+                        folium.Marker(
+                            [lat, lon],
+                            popup=f"<b>{normalized_code}</b><br>({lat:.4f}, {lon:.4f})",
+                            tooltip=normalized_code,
+                            icon=folium.Icon(color='red', icon='train', prefix='fa'),
+                            opacity=0.8
+                        ).add_to(m)
+
+                        # Store points for drawing lines
+                        valid_points.append([lat, lon])
+
+                # Add railway lines between selected stations
+                if len(valid_points) > 1:
+                    folium.PolyLine(
+                        valid_points,
+                        weight=2,
+                        color='gray',
+                        opacity=0.8,
+                        dash_array='5, 10'
+                    ).add_to(m)
+
+                # Display the map
+                folium_static(m, width=650, height=600)
+
+                # If stations are selected, show a message
+                if selected_station_codes:
+                    st.success(f"Showing {len(selected_station_codes)} selected stations on the map")
+                else:
+                    st.info("Select stations in the table to display them on the map")
+
+                st.markdown('</div>', unsafe_allow_html=True)  # Close map container
+
+                st.markdown('</div>', unsafe_allow_html=True)  # Close grid container
 
             else:
                 st.error("No data available in the cached data frame")
