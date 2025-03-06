@@ -936,9 +936,22 @@ try:
                     # Use data_editor to make the table interactive with checkboxes
                     # Create a DataFrame with only the columns we want to display in specific order
                     display_columns = ["Select", "Train No.", "Train Name", "Station", "Sch_Time", "Current Time", "Status", "Delay", "IC Entry Delay"]
+
                     # Filter the DataFrame to include only the columns that exist
                     display_cols_filtered = [col for col in display_columns if col in display_df.columns]
-                    display_df_filtered = display_df[display_cols_filtered]
+
+                    # Ensure the Select column exists in the dataframe
+                    if "Select" not in display_df.columns:
+                        display_df.insert(0, "Select", False)
+
+                    # Create a fresh dataframe with only the columns we want, in the exact order we want
+                    display_df_filtered = pd.DataFrame()
+                    display_df_filtered["Select"] = display_df["Select"]  # First ensure Select is first
+
+                    # Then add the rest of the desired columns that exist in the original dataframe
+                    for col in display_cols_filtered:
+                        if col != "Select" and col in display_df.columns:
+                            display_df_filtered[col] = display_df[col]
 
                     edited_df = st.data_editor(
                         display_df_filtered,
