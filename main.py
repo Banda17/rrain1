@@ -992,9 +992,9 @@ try:
                         folium.Marker(
                             [coords['lat'], coords['lon'] + 0.02],  # Offset to the right
                             icon=folium.DivIcon(
-                                icon_size=(100, 20),
+                                icon_size=(0, 0),  # Dynamic sizing based on content
                                 icon_anchor=(0, 0),
-                                html=f'<div style="font-size:10px; background-color:rgba(255,255,255,0.7); padding:2px; border-radius:3px; border:1px solid #800000;">{code}</div>'
+                                html=f'<div style="display: inline-block; font-size:10px; background-color:rgba(255,255,255,0.7); padding:2px; border-radius:3px; border:1px solid #800000; white-space: nowrap;">{code}</div>'
                             )
                         ).add_to(m)
 
@@ -1021,9 +1021,9 @@ try:
                             folium.Marker(
                                 [lat, lon + 0.03],  # Larger offset for selected stations
                                 icon=folium.DivIcon(
-                                    icon_size=(120, 24),
+                                    icon_size=(0, 0),  # Dynamic sizing based on content
                                     icon_anchor=(0, 0),
-                                    html=f'<div style="font-size:12px; font-weight:bold; background-color:rgba(255,255,255,0.8); padding:3px; border-radius:3px; border:2px solid red;">{normalized_code}</div>'
+                                    html=f'<div style="display: inline-block; font-size:12px; font-weight:bold; background-color:rgba(255,255,255,0.8); padding:3px; border-radius:3px; border:2px solid red; white-space: nowrap;">{normalized_code}</div>'
                                 )
                             ).add_to(m)
 
