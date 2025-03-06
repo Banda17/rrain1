@@ -803,7 +803,7 @@ try:
     if success:
         # Show last update time
         if data_handler.last_update:
-            # Convert last update to IST (UTC+5:30)
+            # Convert last# Convert last update to IST (UTC+5:30)
             last_update_ist = data_handler.last_update + timedelta(hours=5,
                                                                    minutes=30)
             st.info(
@@ -988,6 +988,16 @@ try:
                             tooltip=f"{code}"
                         ).add_to(m)
 
+                        # Add permanent text label for station with slight offset
+                        folium.Marker(
+                            [coords['lat'], coords['lon'] + 0.02],  # Offset to the right
+                            icon=folium.DivIcon(
+                                icon_size=(100, 20),
+                                icon_anchor=(0, 0),
+                                html=f'<div style="font-size:10px; background-color:rgba(255,255,255,0.7); padding:2px; border-radius:3px; border:1px solid #800000;">{code}</div>'
+                            )
+                        ).add_to(m)
+
                     # Then add larger markers for selected stations
                     for code in selected_station_codes:
                         # First normalize the station code to match our coordinate dictionary
@@ -1006,6 +1016,17 @@ try:
                                 tooltip=normalized_code,
                                 icon=folium.Icon(color='red', icon='train', prefix='fa'),
                                 opacity=0.8).add_to(m)
+
+                            # Add prominent text label for selected station with slight offset
+                            folium.Marker(
+                                [lat, lon + 0.03],  # Larger offset for selected stations
+                                icon=folium.DivIcon(
+                                    icon_size=(120, 24),
+                                    icon_anchor=(0, 0),
+                                    html=f'<div style="font-size:12px; font-weight:bold; background-color:rgba(255,255,255,0.8); padding:3px; border-radius:3px; border:2px solid red;">{normalized_code}</div>'
+                                )
+                            ).add_to(m)
+
                             displayed_stations.append(normalized_code)
                             valid_points.append([lat, lon])
 
