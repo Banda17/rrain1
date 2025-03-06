@@ -176,6 +176,21 @@ def format_delay_value(delay: Optional[int]) -> str:
         logger.error(f"Error formatting delay value: {str(e)}")
         return "N/A"
 
+# Add the missing helper function above the format_delay_value function
+def is_positive_or_plus(value):
+    """Check if a value is positive or contains a plus sign."""
+    if value is None:
+        return False
+    value_str = str(value).strip()
+    # Check if the value contains a plus sign or has a numerical value > 0
+    if '+' in value_str:
+        return True
+    try:
+        # Try to convert to float and check if positive
+        return float(value_str) > 0
+    except (ValueError, TypeError):
+        return False
+
 # Create a layout for the header with logo
 header_col1, header_col2 = st.columns([1, 5])
 
@@ -791,7 +806,7 @@ initialize_session_state()
 # Main page title
 st.title("ICMS Data- Vijayawada Division")
 
-# Add a refresh button at the top with just an icon
+# Add a refresh button atthe top with just an icon
 col1, col2 = st.columns((10, 2))
 with col2:
     if st.button("🔄", type="primary"):
@@ -884,25 +899,27 @@ try:
                     if from_to_col in df.columns:
                         for idx, value in df[from_to_col].items():
                             if pd.notna(value):
-                                # Extract the train type from the "FROM-TO" value
-                                first_three = str(value).split(' ')[0].upper()  # Get the first word
+                                logger.info(f"Processing row {idx} with value: {value}")
 
-                                # Log the value and extracted first three for debugging
-                                logger.debug(f"FROM-TO value: {value}, first three: {first_three}")
+                                extracted_value = str(value).split(' ')[0].upper()
 
-                                # Apply font colors based on the extracted train type
-                                if first_three in ['DMU', 'MEM']:
-                                    for col in styles.columns:
-                                        styles.loc[idx, col] += 'color: blue; font-weight: bold; '
+                                logger.debug(f"FROM-TO value: {value}, extracted value: {extracted_value}")
 
-                                elif first_three in ['SUF', 'MEX', 'VND', 'RJ', 'PEX']:
-                                    for col in styles.columns:
-                                        styles.loc[idx, col] += 'color: #e83e8c; font-weight: bold; '  # Pink/magenta color
+                                font_styles = {
+                                    'DMU': 'color: blue; font-weight: bold; ',
+                                    'MEM': 'color: blue; font-weight: bold; ',
+                                    'SUF': 'color: #e83e8c; font-weight: bold; ',
+                                    'MEX': 'color: #e83e8c; font-weight: bold; ',
+                                    'VND': 'color: #e83e8c; font-weight: bold; ',
+                                    'RJ': 'color: #e83e8c; font-weight: bold; ',
+                                    'PEX': 'color: #e83e8c; font-weight: bold; ',
+                                    'TOD': 'color: #fd7e14; font-weight: bold; '
+                                }
 
-                                elif first_three == 'TOD':
-                                    for col in styles.columns:
-                                        styles.loc[idx, col] += 'color: #fd7e14; font-weight: bold; '  # Orange color
-
+                                for col in styles.columns:
+                                    style_to_apply = font_styles.get(extracted_value, '')
+                                    if style_to_apply:
+                                        styles.loc[idx, col] += style_to_apply
                     return styles
 
                 # Add a "Select" column at the beginning of the DataFrame for checkboxes
