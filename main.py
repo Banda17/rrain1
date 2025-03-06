@@ -176,6 +176,25 @@ def format_delay_value(delay: Optional[int]) -> str:
         logger.error(f"Error formatting delay value: {str(e)}")
         return "N/A"
 
+def is_positive_or_plus(value):
+    """Check if a value is positive or contains a plus sign"""
+    try:
+        # Convert to string and check for plus sign
+        value_str = str(value)
+        if '+' in value_str:
+            return True
+
+        # Try to convert to float and check if positive
+        try:
+            float_val = float(value_str.replace(',', '.'))
+            return float_val > 0
+        except ValueError:
+            # If conversion fails, just check the first character
+            return value_str.strip().startswith('+')
+    except Exception as e:
+        logger.error(f"Error in is_positive_or_plus: {str(e)}")
+        return False
+
 # Create a layout for the header with logo
 header_col1, header_col2 = st.columns([1, 5])
 
@@ -788,8 +807,7 @@ def extract_station_codes(selected_stations, station_column=None):
 # Initialize sessionstate
 initialize_session_state()
 
-# Main page title
-st.title("Vijayawada Division")
+# Main pagetitle("Vijayawada Division")
 
 # Add a refresh button at the top with just an icon
 col1, col2 = st.columns((10, 2))
@@ -1226,40 +1244,6 @@ except Exception as e:
     st.error(f"An error occurred: {str(e)}")
     logger.exception("Exception in main app")
 
-
-# Function to check if a value is positive or contains (+)
-def is_positive_or_plus(value):
-    try:
-        if value is None:
-            return False
-
-        if isinstance(value, str):
-            # Check if the string contains a plus sign
-            if '+' in value:
-                return True
-
-            # Clean the string of any non-numeric characters except minus sign and decimal point
-            # First handle the case with multiple values (like "-7 \xa0-36")
-            if '\xa0' in value or '  ' in value:
-                # Take just the first part if there are multiple numbers
-                value = value.split('\xa0')[0].split('  ')[0].strip()
-
-            # Remove parentheses and other characters
-            clean_value = value.replace('(', '').replace(')', '').strip()
-
-            # Try to convert to float
-            if clean_value:
-                try:
-                    return float(clean_value) > 0
-                except ValueError:
-                    # If conversion fails, check if it starts with a minus sign
-                    return not clean_value.startswith('-')
-        elif isinstance(value, (int, float)):
-            return value > 0
-    except Exception as e:
-        logger.error(f"Error in is_positive_or_plus: {str(e)}")
-        return False
-    return False
 
 # Footer
 st.markdown("---")
