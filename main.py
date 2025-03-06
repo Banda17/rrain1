@@ -947,6 +947,22 @@ try:
                 # Add a sequential S.No. column at the beginning (before Select)
                 display_df.insert(0, '#', range(1, len(display_df) + 1))
 
+                # Log FROM-TO values for debugging
+                def log_from_to_values(df):
+                    """Print FROM-TO values for each train to help with debugging"""
+                    st.write("Logging FROM-TO values to console...")
+                    from_to_columns = ['FROM-TO', 'FROM_TO']
+                    for col_name in from_to_columns:
+                        if col_name in df.columns:
+                            logger.info(f"Found column: {col_name}")
+                            for idx, value in df[col_name].items():
+                                if pd.notna(value):
+                                    first_three = str(value).upper()[:3]
+                                    logger.info(f"Train {idx} - {col_name}: '{value}', First three chars: '{first_three}'")
+
+                # Call the logging function
+                log_from_to_values(display_df)
+
                 # Create a layout for train data and map side by side
                 train_data_col, map_col = st.columns((3, 2))
 
