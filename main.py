@@ -809,7 +809,8 @@ initialize_session_state()
 # Main page title
 st.title("ICMS Data - Vijayawada Division")
 
-# Add a refresh button at the top with just an iconcol1, col2 = st.columns((10, 2))
+# Add a refresh button at the top with just an icon
+col1, col2 = st.columns((10, 2))
 with col2:
     if st.button("🔄", type="primary"):
         st.rerun()
@@ -887,188 +888,6 @@ try:
                         df = df.drop(columns=[col])
                         logger.debug(f"Dropped column: {col}")
 
-                # Update the table and map section styling to remove column layout
-                st.markdown("""
-                <style>
-                /* Custom styling for stacked layout */
-                .stColumn > div {
-                    padding: 0px !important;
-                }
-                div[data-testid="column"] {
-                    padding: 0px !important;
-                    margin: 0px !important;
-                }
-                .block-container {
-                    padding-left: 0.5rem !important;
-                    padding-right: 0 !important;
-                    max-width: 90% !important;
-                }
-                div[data-testid="stVerticalBlock"] {
-                    gap: 0px !important;
-                }
-                /* Custom styling to make table wider */
-                [data-testid="stDataFrame"] {
-                    width: 100% !important;
-                    max-width: none !important;
-                }
-                /* Enhance Bootstrap table styles */
-                [data-testid="stDataFrame"] table {
-                    border: 1px solid #dee2e6 !important;
-                    border-collapse: collapse !important;
-                    width: 100% !important;
-                    margin-bottom: 0 !important;
-                }
-                [data-testid="stDataFrame"] th {
-                    border: 1px solid #dee2e6 !important;
-                    background-color: #f8f9fa !important;
-                    padding: 8px !important;
-                    font-weight: 600 !important;
-                    position: sticky !important;
-                    top: 0 !important;
-                    z-index: 1 !important;
-                }
-                [data-testid="stDataFrame"] td {
-                    border: 1px solid #dee2e6 !important;
-                    padding: 8px !important;
-                    vertical-align: middle !important;
-                }
-                [data-testid="stDataFrame"] tr:nth-of-type(odd) {
-                    background-color: rgba(0,0,0,.05) !important;
-                }
-                [data-testid="stDataFrame"] tr:hover {
-                    background-color: rgba(0,0,0,.075) !important;
-                    transition: background-color 0.3s ease !important;
-                }
-                </style>
-                """,
-                            unsafe_allow_html=True)
-
-                # Display data in a Bootstrap grid layout (side by side)
-                st.markdown("""
-                <style>
-                /* Bootstrap grid container for side-by-side layout */
-                .bs-grid-container {
-                    display: flex;
-                    width: 100%;
-                    margin: 0;
-                    padding: 0;
-                }
-                .bs-grid-left {
-                    flex: 6;
-                    padding-right: 10px;
-                    min-width: 600px;
-                }
-                .bs-grid-right {
-                    flex: 6;
-                    padding-left: 0;
-                    min-width: 600px;
-                }
-                @media (max-width: 1200px) {
-                    .bs-grid-container {
-                        flex-direction: column;
-                    }
-                    .bs-grid-left, .bs-grid-right {
-                        flex: 100%;
-                        padding: 0;
-                        width: 100%;
-                        min-width: 100%;
-                    }
-                }
-                </style>
-                <div style="display: none">
-                <!-- Streamlit elements below will be moved to our Bootstrap grid via JavaScript -->
-                <div id="table-container"></div>
-                <div id="map-container"></div>
-                </div>
-                <div class="bs-grid-container">
-                    <div class="bs-grid-left" id="bootstrap-table-container"></div>
-                    <div class="bs-grid-right" id="bootstrap-map-container"></div>
-                </div>
-                <script>
-                // Function to move elements after page loads
-                function moveElements() {
-                    // Get the table and map container placeholders
-                    var tableContainer = document.getElementById('table-container');
-                    var mapContainer = document.getElementById('map-container');
-
-                    // Get the target locations in the Bootstrap grid
-                    var bootstrapTableContainer = document.getElementById('bootstrap-table-container');
-                    var bootstrapMapContainer = document.getElementById('bootstrap-map-container');
-
-                    // Move elements to the Bootstrap grid
-                    if (tableContainer && bootstrapTableContainer) {
-                        // Move table elements
-                        var tableElements = tableContainer.nextElementSibling;
-                        if (tableElements) {
-                            bootstrapTableContainer.appendChild(tableElements);
-                        }
-                    }
-
-                    if (mapContainer && bootstrapMapContainer) {
-                        // Move map elements
-                        var mapElements = mapContainer.nextElementSibling;
-                        if (mapElements) {
-                            bootstrapMapContainer.appendChild(mapElements);
-                        }
-                    }
-                }
-
-                // Run the function after the page loads
-                document.addEventListener('DOMContentLoaded', moveElements);
-                // Also run it after a short delay to catch Streamlit's async loading
-                setTimeout(moveElements, 1000);
-                // Run it multiple times to ensure elements are moved after Streamlit updates
-                setTimeout(moveElements, 1500);
-                setTimeout(moveElements, 2000);
-                setTimeout(moveElements, 3000);
-                </script>
-                """, unsafe_allow_html=True)
-
-                # Table container - will be moved to Bootstrap grid
-                st.markdown('<div id="table-container"></div>', unsafe_allow_html=True)
-
-                # Refresh animation placeholder right before displaying the table
-                refresh_table_placeholder = st.empty()
-                create_pulsing_refresh_animation(refresh_table_placeholder,
-                                                 "Refreshing Table...")
-
-                # Function to check if a value is positive or contains (+)
-                def is_positive_or_plus(value):
-                    try:
-                        if value is None:
-                            return False
-
-                        if isinstance(value, str):
-                            # Check if the string contains a plus sign
-                            if '+' in value:
-                                return True
-
-                            # Clean the string of any non-numeric characters except minus sign and decimal point
-                            # First handle the case with multiple values (like "-7 \xa0-36")
-                            if '\xa0' in value or '  ' in value:
-                                # Take just the first part if there are multiple numbers
-                                value = value.split('\xa0')[0].split('  ')[0].strip()
-
-                            # Remove parentheses and other characters
-                            clean_value = value.replace('(', '').replace(')', '').strip()
-
-                            # Try to convert to float
-                            if clean_value:
-                                try:
-                                    return float(clean_value) > 0
-                                except ValueError:
-                                    # If conversion fails, check if it starts with a minus sign
-                                    return not clean_value.startswith('-')
-                        elif isinstance(value, (int, float)):
-                            return value > 0
-                    except Exception as e:
-                        logger.error(f"Error in is_positive_or_plus: {str(e)}")
-                        return False
-                    return False
-
-                # Get filtered dataframe for display
-                filtered_df = df.copy()
-
                 # Define styling function with specific colors
                 def highlight_delay(data):
                     styles = pd.DataFrame('', index=data.index, columns=data.columns)
@@ -1081,24 +900,34 @@ try:
                     return styles
 
                 # Add a "Select" column at the beginning of the DataFrame for checkboxes
-                if 'Select' not in filtered_df.columns:
-                    filtered_df.insert(0, 'Select', False)
+                if 'Select' not in df.columns:
+                    df.insert(0, 'Select', False)
 
                 # Get station column name
                 station_column = next(
-                    (col for col in filtered_df.columns
+                    (col for col in df.columns
                      if col in ['Station', 'station', 'STATION']), None)
 
-                # Apply styling to the dataframe
-                styled_df = filtered_df.style.apply(highlight_delay,
-                                                    axis=None)
+                # Refresh animation placeholder
+                refresh_table_placeholder = st.empty()
+                create_pulsing_refresh_animation(refresh_table_placeholder,
+                                                 "Refreshing data...")
 
-                # Put the dataframe in a card with Bootstrap styling - full width
+                # Apply styling to the dataframe
+                styled_df = df.style.apply(highlight_delay, axis=None)
+
+                # Start the Bootstrap grid layout
+                st.markdown('<div class="bs-grid-container">', unsafe_allow_html=True)
+
+                # Table container
+                st.markdown('<div class="bs-grid-left">', unsafe_allow_html=True)
+
+                # Put the dataframe in a card with Bootstrap styling
                 st.markdown('<div class="card shadow-sm mb-3"><div class="card-header bg-primary text-white d-flex justify-content-between align-items-center"><span>Train Data</span><span class="badge bg-light text-dark rounded-pill">Select stations to display on map</span></div><div class="card-body p-0">', unsafe_allow_html=True)
 
                 # Use data_editor to make the table interactive with checkboxes
                 edited_df = st.data_editor(
-                    filtered_df,
+                    df,
                     hide_index=True,
                     column_config={
                         "Select":
@@ -1120,7 +949,7 @@ try:
                             "Delay", help="Delay in Minutes")
                     },
                     disabled=[
-                        col for col in filtered_df.columns
+                        col for col in df.columns
                         if col != 'Select'
                     ],
                     use_container_width=True,  # Use full container width
@@ -1130,7 +959,7 @@ try:
 
                 # Add a footer to the card with information about the data
                 selected_count = len(edited_df[edited_df['Select']])
-                st.markdown(f'<div class="card-footer bg-light d-flex justify-content-between align-items-center"><span>Total Rows: {len(filtered_df)}</span><span>Selected: {selected_count}</span></div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="card-footer bg-light d-flex justify-content-between align-items-center"><span>Total Rows: {len(df)}</span><span>Selected: {selected_count}</span></div>', unsafe_allow_html=True)
                 st.markdown('</div></div>', unsafe_allow_html=True)
 
                 # Get selected stations for map
@@ -1150,8 +979,10 @@ try:
 
                 refresh_table_placeholder.empty()  # Clear the placeholder after table display
 
-                # Map container - will be moved to Bootstrap grid
-                st.markdown('<div id="map-container"></div>', unsafe_allow_html=True)
+                st.markdown('</div>', unsafe_allow_html=True)  # Close table container
+
+                # Map container
+                st.markdown('<div class="bs-grid-right">', unsafe_allow_html=True)
 
                 # Get cached station coordinates
                 station_coords = get_station_coordinates()
@@ -1160,7 +991,7 @@ try:
                 selected_rows = edited_df[edited_df['Select']]
                 selected_station_codes = extract_station_codes(selected_rows, station_column)
 
-                # Card container for the map - full width in its container
+                # Card container for the map
                 st.markdown("""
                 <div class="card mb-3">
                     <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
@@ -1309,6 +1140,10 @@ try:
                         </div>
                     </div>
                     """, unsafe_allow_html=True)
+
+                st.markdown('</div>', unsafe_allow_html=True)  # Close map container
+
+                st.markdown('</div>', unsafe_allow_html=True)  # Close grid container
 
             else:
                 st.error("No data available in the cached data frame")
