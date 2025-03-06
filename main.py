@@ -797,7 +797,68 @@ with col2:
     if st.button("🔄", type="primary"):
         st.rerun()
 
-# Move this function definition to the top of the file, before it'st.rerun()
+# Move this function definition to the top of the file, before it's used
+def is_positive_or_plus(value):
+    """Check if a value is positive or contains '+' sign"""
+    if pd.isna(value) or not value:
+        return False
+
+    value_str = str(value).strip()
+
+    # Check for '+' sign at start or inside brackets like '(+5)'
+    return value_str.startswith('+') or '(+' in value_str or (value_str.isdigit() and int(value_str) > 0)
+
+# Define styling function with specific colors for train types
+def highlight_delay(data):
+    styles = pd.DataFrame('', index=data.index, columns=data.columns)
+
+    # Apply red color only to the 'Delay' column if it exists
+    if 'Delay' in df.columns:
+        styles['Delay'] = df['Delay'].apply(
+            lambda x: 'color: red; font-weight: bold' if x and is_positive_or_plus(x) else '')
+
+    # Try both possible FROM-TO column names
+    from_to_columns = ['FROM-TO', 'FROM_TO']
+
+    for from_to_col in from_to_columns:
+        if from_to_col in df.columns:
+            logger.info(f"Found '{from_to_col}' column - applying train type styling")
+            for idx, value in df[from_to_col].items():
+                if pd.notna(value):
+                    # Extract the train type - get the first word before any space
+                    train_type = str(value).split(' ')[0].upper()
+
+                    # Log for debugging
+                    logger.info(f"Row {idx} - Train: {value}, Type: {train_type}")
+
+                    # Find the train number column - try different possible column names
+                    train_number_columns = ['Train No.', 'Train No', 'Train Number', 'Train_No', 'Train_Number']
+
+                    # Apply font colors based on train type
+                    if train_type in ['DMU', 'MEM']:
+                        # Apply styling to all columns for this row
+                        for col in styles.columns:
+                            # Apply stronger styling to the train number column
+                            if any(train_col in col for train_col in train_number_columns):
+                                styles.loc[idx, col] = 'color: blue; font-weight: bold; font-size: 110%;'
+                            else:
+                                styles.loc[idx, col] += 'color: blue;'
+
+                    elif train_type in ['SUF', 'MEX', 'VND', 'RJ', 'PEX']:
+                        for col in styles.columns:
+                            if any(train_col in col for train_col in train_number_columns):
+                                styles.loc[idx, col] = 'color: #e83e8c; font-weight: bold; font-size: 110%;'
+                            else:
+                                styles.loc[idx, col] += 'color: #e83e8c;'
+
+                    elif train_type == 'TOD':
+                        for col in styles.columns:
+                            if any(train_col in col for train_col in train_number_columns):
+                                styles.loc[idx, col] = 'color: #fd7e14; font-weight: bold; font-size: 110%;'
+                            else:
+                                styles.loc[idx, col] += 'color: #fd7e14;'
+
+    return styles
 
 try:
     data_handler = st.session_state['icms_data_handler']
@@ -905,18 +966,32 @@ try:
                                     # Log for debugging
                                     logger.info(f"Row {idx} - Train: {value}, Type: {train_type}")
 
+                                    # Find the train number column - try different possible column names
+                                    train_number_columns = ['Train No.', 'Train No', 'Train Number', 'Train_No', 'Train_Number']
+
                                     # Apply font colors based on train type
                                     if train_type in ['DMU', 'MEM']:
+                                        # Apply styling to all columns for this row
                                         for col in styles.columns:
-                                            styles.loc[idx, col] += 'color: blue; font-weight: bold; '
+                                            # Apply stronger styling to the train number column
+                                            if any(train_col in col for train_col in train_number_columns):
+                                                styles.loc[idx, col] = 'color: blue; font-weight: bold; font-size: 110%;'
+                                            else:
+                                                styles.loc[idx, col] += 'color: blue;'
 
                                     elif train_type in ['SUF', 'MEX', 'VND', 'RJ', 'PEX']:
                                         for col in styles.columns:
-                                            styles.loc[idx, col] += 'color: #e83e8c; font-weight: bold; '  # Pink/magenta
+                                            if any(train_col in col for train_col in train_number_columns):
+                                                styles.loc[idx, col] = 'color: #e83e8c; font-weight: bold; font-size: 110%;'
+                                            else:
+                                                styles.loc[idx, col] += 'color: #e83e8c;'
 
                                     elif train_type == 'TOD':
                                         for col in styles.columns:
-                                            styles.loc[idx, col] += 'color: #fd7e14; font-weight: bold; '  # Orange
+                                            if any(train_col in col for train_col in train_number_columns):
+                                                styles.loc[idx, col] = 'color: #fd7e14; font-weight: bold; font-size: 110%;'
+                                            else:
+                                                styles.loc[idx, col] += 'color: #fd7e14;'
 
                     return styles
 
@@ -1171,7 +1246,6 @@ try:
 except Exception as e:
     st.error(f"An error occurred: {str(e)}")
     logger.exception("Exception in main app")
-
 
 # Footer
 st.markdown("---")
