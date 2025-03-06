@@ -722,143 +722,6 @@ def extract_station_codes(selected_stations, station_column=None):
     return selected_station_codes
 
 
-# Create a function to render the offline map with GPS markers
-@st.cache_data(ttl=60)
-def render_offline_map_with_markers(selected_station_codes,
-                                     station_coords,
-                                     marker_opacity=0.8):
-    """Render an offline map with GPS markers for selected stations"""
-    # Get the map viewer from session state or create a new one
-    map_viewer = st.session_state.get('map_viewer', MapViewer())
-
-    # Temporarily increase marker size
-    original_marker_size = map_viewer.base_marker_size
-    map_viewer.base_marker_size = 25  # Increased from default 15 to 25
-
-    # Load the base map
-    base_map = map_viewer.load_map()
-    if base_map is None:
-        # Restore original marker size before returning
-        map_viewer.base_marker_size = original_marker_size
-        return None, []
-
-    # Create a copy of the base map to draw on
-    display_image = base_map.copy()
-
-    # First, draw small dots for all stations
-    from PIL import ImageDraw
-    draw = ImageDraw.Draw(display_image)
-
-    # Draw small dots for all stations (non-selected)
-    for code, coords in station_coords.items():
-        # Skip if this is a selected station (will be drawn with a marker later)
-        if code in selected_station_codes:
-            continue
-
-        # Try to convert GPS coordinates to map coordinates
-        if code in map_viewer.station_locations:
-            # Use existing map coordinates
-            x_norm = map_viewer.station_locations[code]['x']
-            y_norm = map_viewer.station_locations[code]['y']
-
-            # Convert normalized coordinates to pixel coordinates
-            width, height = display_image.size
-            x = int(x_norm * width)
-            y = int(y_norm * height)
-
-            # Draw a small dot (5 pixel radius)
-            dot_radius = 5
-            draw.ellipse(
-                (x - dot_radius, y - dot_radius, x + dot_radius,
-                 y + dot_radius),
-                fill=(100, 100, 100, 180))  # Gray with some transparency
-        else:
-            # Convert GPS to approximate map coordinates
-            try:
-                # Approximate conversion
-                x_norm = (coords['lon'] - 79.0) / 5.0
-                y_norm = (coords['lat'] - 14.0) / 5.0
-
-                # Add to map_viewer's station locations for future use
-                map_viewer.station_locations[code] = {'x': x_norm, 'y': y_norm}
-
-                # Convert normalized coordinates to pixel coordinates
-                width, height = display_image.size
-                x = int(x_norm * width)
-                y = int(y_norm * height)
-
-                # Draw a small dot
-                dot_radius = 5
-                draw.ellipse(
-                    (x - dot_radius, y - dot_radius, x + dot_radius,
-                     y + dot_radius),
-                    fill=(100, 100, 10, 100, 180))  # Gray with some transparency
-            except:
-                # Skip if conversion fails
-                continue
-
-    # Keep track of displayed stations
-    displayed_stations = []
-
-    # Draw markers for each selected station
-    for code in selected_station_codes:
-        normalized_code = code.upper().strip()
-
-        # Check if we have the station in the map_viewers station locations
-        if normalized_code in map_viewer.station_locations:
-            display_image = map_viewer.draw_train_marker(
-                display_image, normalized_code)
-            displayed_stations.append(normalized_code)
-        elif normalized_code in station_coords:
-            # GPS coordinates to normalized map coordinates (approximate conversion)
-            # This is a simplified conversion - would need proper calibration for accuracy
-            coords = station_coords[normalized_code]
-
-            # Add to map_viewer's station locations (temporary)
-            map_viewer.station_locations[normalized_code] = {
-                'x': (coords['lon'] - 79.0) / 5.0,  # Approximate conversion
-                'y': (coords['lat'] - 14.0) / 5.0  # Approximate conversion
-            }
-
-            # Draw the marker
-            display_image = map_viewer.draw_train_marker(
-                display_image, normalized_code)
-            displayed_stations.append(normalized_code)
-
-    # Restore original marker size
-    map_viewer.base_marker_size = original_marker_size
-
-    # Apply opacity to the image
-    def apply_marker_opacity(img, opacity):
-        """Apply opacity to the non-background pixels of an image"""
-        if opacity >= 1.0:  # No change needed if fully opaque
-            return img
-
-        # Convert to RGBA if not already
-        if img.mode != 'RGBA':
-            img = img.convert('RGBA')
-        # Create a copy to work with
-        result = img.copy()
-
-        # Get pixel data
-        pixdata = result.load()
-
-        # Adjust alpha channel for pixels that are not fully transparent
-        width, height = img.size
-        for y in range(height):
-            for x in range(width):
-                r, g, b, a = pixdata[x, y]
-                if a > 0:  # Only modify non-transparent pixels
-                    pixdata[x, y] = (r, g, b, int(a * opacity))
-
-        return result
-
-    if marker_opacity < 1.0:
-        display_image = apply_marker_opacity(display_image, marker_opacity)
-
-    return display_image, displayed_stations
-
-
 # Initialize session state
 initialize_session_state()
 
@@ -963,8 +826,7 @@ try:
                     gap: 0px !important;
                 }
                 /* Custom styling to make table wider */
-                [data-testid="stDataFrame"] {
-                    width: 100% !important;
+                [data-testid="stDataFrame"] {                    width: 100% !important;
                     max-width: none !important;
                 }
                 /* Add borders to tables */
@@ -1135,114 +997,109 @@ try:
                     selected_rows = edited_df[edited_df['Select']]
                     selected_station_codes = extract_station_codes(selected_rows, station_column)
 
-                    # First, set a default map type value to use
-                    if 'map_type' not in st.session_state:
-                        st.session_state['map_type'] = "Offline Map with GPS Markers"
-
                     # Card container for the map
                     st.markdown("""
                     <div class="card mb-3">
                         <div class="card-header bg-secondary text-white">
-                            Station Map
+                            Interactive GPS Map
                         </div>
                         <div class="card-body p-0">
                     """, unsafe_allow_html=True)
 
-                    # Display the appropriate map based on the current map type
-                    if st.session_state['map_type'] == "Offline Map with GPS Markers":
-                        if selected_station_codes:
-                            st.caption(f"Selected stations: {', '.join(selected_station_codes)}")
+                    # Create the interactive map
+                    m = folium.Map(
+                        location=[16.5167, 80.6167],  # Centered around Vijayawada
+                        zoom_start=7,
+                        control_scale=True)
 
-                        # Render offline map with markers
-                        display_image, displayed_stations = render_offline_map_with_markers(
-                            selected_station_codes, station_coords)
+                    # Add a basemap with reduced opacity
+                    folium.TileLayer(
+                        tiles='OpenStreetMap',
+                        attr='&copy; OpenStreetMap contributors',
+                        opacity=0.8).add_to(m)
 
-                        if display_image is not None:
-                            # Convert and resize for display if needed
-                            from PIL import Image
-                            display_image = display_image.convert('RGB')
-                            original_width, original_height = display_image.size
+                    # Add markers efficiently
+                    displayed_stations = []
+                    valid_points = []
 
-                            # Calculate new dimensions maintaining aspect ratio
-                            max_height = 600  # Increased height for better visibility
-                            height_ratio = max_height / original_height
-                            new_width = int(original_width * height_ratio * 1.2)  # Extra width factor
-                            new_height = max_height
+                    # Create a counter to alternate label positions
+                    counter = 0
 
-                            display_image = display_image.resize(
-                                (new_width, new_height),
-                                Image.Resampling.LANCZOS)
+                    # First add all non-selected stations as dots with alternating labels
+                    for code, coords in station_coords.items():
+                        # Skip selected stations - they'll get bigger markers later
+                        if code.upper() in selected_station_codes:
+                            continue
 
-                            # Display the map
-                            st.image(
-                                display_image,
-                                use_container_width=True,
-                                caption="Vijayawada Division System Map with Selected Stations"
-                            )
+                        # Determine offset for alternating left/right positioning
+                        x_offset = -50 if counter % 2 == 0 else 50  # Pixels left or right
+                        y_offset = 0  # No vertical offset
 
-                            # Show station count
-                            if displayed_stations:
-                                st.success(f"Showing {len(displayed_stations)} selected stations with markers and all other stations as dots")
-                            else:
-                                st.info("No stations selected. All stations shown as dots on the map.")
-                        else:
-                            st.error("Unable to load the offline map. Please check the map file.")
-                    else:
-                        # Create the interactive map
-                        m = folium.Map(
-                            location=[16.5167, 80.6167],  # Centered around Vijayawada
-                            zoom_start=7,
-                            control_scale=True)
+                        # Every 3rd station, use vertical offset instead to further reduce overlap
+                        if counter % 3 == 0:
+                            x_offset = 0
+                            y_offset = -30  # Above the point
 
-                        # Add a basemap with reduced opacity
-                        folium.TileLayer(
-                            tiles='OpenStreetMap',
-                            attr='&copy; OpenStreetMap contributors',
-                            opacity=0.8).add_to(m)
+                        counter += 1
 
-                        # Add markers efficiently
-                        displayed_stations = []
-                        valid_points = []
+                        # Add small circle for the station with maroon border
+                        folium.CircleMarker(
+                            [coords['lat'], coords['lon']],
+                            radius=3,
+                            color='#800000',  # Maroon red border
+                            fill=True,
+                            fill_color='gray',
+                            fill_opacity=0.6,
+                            opacity=0.8,
+                            tooltip=code).add_to(m)
 
-                        # Create a counter to alternate label positions
-                        counter = 0
+                        # Add box around dot with label with custom positioning
+                        # Make sizing consistent regardless of zoom by using absolute elements
+                        html_content = f'''
+                        <div style="position:absolute; width:0; height:0;">
+                            <!-- Box around station location -->
+                            <div style="position:absolute; width:6px; height:6px; border:1px solid #800000; left:-3px; top:-3px; border-radius:1px; background-color:rgba(255,255,255,0.5);"></div>
+                            <!-- Station label -->
+                            <div style="position:absolute; left:{10 if x_offset < 0 else -40}px; top:{-18 if y_offset < 0 else 0}px; background-color:rgba(255,255,255,0.8); padding:1px 3px; border:1px solid #800000; border-radius:2px; font-size:9px; white-space:nowrap;">{code}</div>
+                        </div>
+                        '''
 
-                        # First add all non-selected stations as dots with alternating labels
-                        for code, coords in station_coords.items():
-                            # Skip selected stations - they'll get bigger markers later
-                            if code.upper() in selected_station_codes:
-                                continue
+                        folium.DivIcon(
+                            icon_size=(0, 0),  # Using zero size to improve positioning
+                            icon_anchor=(0, 0),  # Centered anchor point
+                            html=html_content).add_to(
+                                folium.Marker(
+                                    [coords['lat'], coords['lon']],
+                                    icon=folium.DivIcon(icon_size=(0, 0))  # Invisible marker
+                                ).add_to(m))
 
-                            # Determine offset for alternating left/right positioning
-                            x_offset = -50 if counter % 2 == 0 else 50  # Pixels left or right
-                            y_offset = 0  # No vertical offset
+                    # Then add larger markers for selected stations with prominent labels
+                    for code in selected_station_codes:
+                        normalized_code = code.upper().strip()
+                        if normalized_code in station_coords:
+                            lat = station_coords[normalized_code]['lat']
+                            lon = station_coords[normalized_code]['lon']
 
-                            # Every 3rd station, use vertical offset instead to further reduce overlap
-                            if counter % 3 == 0:
-                                x_offset = 0
-                                y_offset = -30  # Above the point
-
+                            # Determine offset for selected stations - opposite to non-selected pattern
+                            x_offset = 50 if counter % 2 == 0 else -50
+                            y_offset = -30 if counter % 3 == 0 else 0
                             counter += 1
 
-                            # Add small circle for the station with maroon border
-                            folium.CircleMarker(
-                                [coords['lat'], coords['lon']],
-                                radius=3,
-                                color='#800000',  # Maroon red border
-                                fill=True,
-                                fill_color='gray',
-                                fill_opacity=0.6,
-                                opacity=0.8,
-                                tooltip=code).add_to(m)
+                            # Add train icon marker
+                            folium.Marker(
+                                [lat, lon],
+                                popup=f"<b>{normalized_code}</b><br>({lat:.4f}, {lon:.4f})",
+                                tooltip=normalized_code,
+                                icon=folium.Icon(color='red', icon='train', prefix='fa'),
+                                opacity=0.8).add_to(m)
 
-                            # Add box around dot with label with custom positioning
-                            # Make sizing consistent regardless of zoom by using absolute elements
+                            # Add highlighted box and prominent label with zoom-stable positioning
                             html_content = f'''
                             <div style="position:absolute; width:0; height:0;">
-                                <!-- Box around station location -->
-                                <div style="position:absolute; width:6px; height:6px; border:1px solid #800000; left:-3px; top:-3px; border-radius:1px; background-color:rgba(255,255,255,0.5);"></div>
-                                <!-- Station label -->
-                                <div style="position:absolute; left:{10 if x_offset < 0 else -40}px; top:{-18 if y_offset < 0 else 0}px; background-color:rgba(255,255,255,0.8); padding:1px 3px; border:1px solid #800000; border-radius:2px; font-size:9px; white-space:nowrap;">{code}</div>
+                                <!-- Larger box for selected station -->
+                                <div style="position:absolute; width:8px; height:8px; border:2px solid #800000; left:-4px; top:-4px; border-radius:2px; background-color:rgba(255,255,255,0.5);"></div>
+                                <!-- Prominent station label -->
+                                <div style="position:absolute; left:{15 if x_offset < 0 else -50}px; top:{-20 if y_offset < 0 else 0}px; background-color:rgba(255,255,255,0.9); padding:2px 4px; border:2px solid #800000; border-radius:3px; font-weight:bold; font-size:10px; color:#800000; white-space:nowrap;">{normalized_code}</div>
                             </div>
                             '''
 
@@ -1251,96 +1108,39 @@ try:
                                 icon_anchor=(0, 0),  # Centered anchor point
                                 html=html_content).add_to(
                                     folium.Marker(
-                                        [coords['lat'], coords['lon']],
-                                        icon=folium.DivIcon(icon_size=(0, 0))  # Invisible marker
-                                    ).add_to(m))
+                                        [lat, lon],
+                                        icon=folium.DivIcon(icon_size=(0, 0))).add_to(m))
 
-                        # Then add larger markers for selected stations with prominent labels
-                        for code in selected_station_codes:
-                            normalized_code = code.upper().strip()
-                            if normalized_code in station_coords:
-                                lat = station_coords[normalized_code]['lat']
-                                lon = station_coords[normalized_code]['lon']
+                            displayed_stations.append(normalized_code)
+                            valid_points.append([lat, lon])
 
-                                # Determine offset for selected stations - opposite to non-selected pattern
-                                x_offset = 50 if counter % 2 == 0 else -50
-                                y_offset = -30 if counter % 3 == 0 else 0
-                                counter += 1
-
-                                # Add train icon marker
-                                folium.Marker(
-                                    [lat, lon],
-                                    popup=f"<b>{normalized_code}</b><br>({lat:.4f}, {lon:.4f})",
-                                    tooltip=normalized_code,
-                                    icon=folium.Icon(color='red', icon='train', prefix='fa'),
-                                    opacity=0.8).add_to(m)
-
-                                # Add highlighted box and prominent label with zoom-stable positioning
-                                html_content = f'''
-                                <div style="position:absolute; width:0; height:0;">
-                                    <!-- Larger box for selected station -->
-                                    <div style="position:absolute; width:8px; height:8px; border:2px solid #800000; left:-4px; top:-4px; border-radius:2px; background-color:rgba(255,255,255,0.5);"></div>
-                                    <!-- Prominent station label -->
-                                    <div style="position:absolute; left:{15 if x_offset < 0 else -50}px; top:{-20 if y_offset < 0 else 0}px; background-color:rgba(255,255,255,0.9); padding:2px 4px; border:2px solid #800000; border-radius:3px; font-weight:bold; font-size:10px; color:#800000; white-space:nowrap;">{normalized_code}</div>
-                                </div>
-                                '''
-
-                                folium.DivIcon(
-                                    icon_size=(0, 0),  # Using zero size to improve positioning
-                                    icon_anchor=(0, 0),  # Centered anchor point
-                                    html=html_content).add_to(
-                                        folium.Marker(
-                                            [lat, lon],
-                                            icon=folium.DivIcon(icon_size=(0, 0))).add_to(m))
-
-                                displayed_stations.append(normalized_code)
-                                valid_points.append([lat, lon])
-
-                        # Add railway lines between selected stations
-                        if len(valid_points) > 1:
-                            folium.PolyLine(valid_points,
+                    # Add railway lines between selected stations
+                    if len(valid_points) > 1:
+                        folium.PolyLine(valid_points,
                                             weight=2,
                                             color='gray',
                                             opacity=0.8,
                                             dash_array='5, 10').add_to(m)
 
-                        # Render the map with increased width
-                        folium_static(m, width=900, height=650)
+                    # Render the map with increased width
+                    folium_static(m, width=900, height=650)
 
                     st.markdown("</div></div>", unsafe_allow_html=True)
-
-                    # Add a separator to separate the map from the radio buttons
-                    st.markdown("---")
-
-                    # Display the map type selection radio buttons below the map
-                    selected_map_type = st.radio(
-                        "Map Type", [
-                            "Offline Map with GPS Markers",
-                            "Interactive GPS Map"
-                        ],
-                        index=0 if st.session_state['map_type']
-                        == "Offline Map with GPS Markers" else 1,
-                        horizontal=True,
-                        key="map_type_selector")
-
-                    # Update the session state when the selection changes
-                    if selected_map_type != st.session_state['map_type']:
-                        st.session_state['map_type'] = selected_map_type
-                        st.rerun()  # Refresh to apply the new map type
 
                     # Add instructions in collapsible section
                     with st.expander("Map Instructions"):
                         st.markdown("""
                         <div class="card">
                             <div class="card-header bg-light">
-                                Using the Map
+                                Using the Interactive Map
                             </div>
                             <div class="card-body">
                                 <ul class="list-group list-group-flush">
                                     <li class="list-group-item">Select stations using the checkboxes in the table</li>
-                                    <li class="list-group-item">Selected stations will appear with markers on the map</li>
-                                    <li class="list-group-item">Use the radio buttons below to switch between map types</li>
-                                    <li class="list-group-item">Railway lines connect selected stations in sequence</li>
+                                    <li class="list-group-item">Selected stations will appear with red train markers on the map</li>
+                                    <li class="list-group-item">All other stations are shown as small gray dots</li>
+                                    <li class="list-group-item">Railway lines automatically connect selected stations in sequence</li>
+                                    <li class="list-group-item">Zoom and pan the map to explore different areas</li>
                                 </ul>
                             </div>
                         </div>
