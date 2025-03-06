@@ -209,11 +209,9 @@ header_col1, header_col2 = st.columns([1, 5])
 # Display the logo in the first column
 with header_col1:
     try:
-        # Try loading the new logo first
         st.image("attached_assets/scr_logo.png", width=80)
     except Exception as e:
         st.warning(f"Error loading new logo: {str(e)}")
-        # Try fallback to the original logo
         try:
             st.image("scr_logo.png", width=80)
         except Exception as e2:
@@ -814,8 +812,6 @@ col1, col2 = st.columns((10, 2))
 with col2:
     if st.button("🔄", type="primary"):
         st.rerun()
-
-
 try:
     data_handler = st.session_state['icms_data_handler']
 
@@ -919,10 +915,10 @@ try:
                 # Start the Bootstrap grid layout
                 st.markdown('<div class="bs-grid-container">', unsafe_allow_html=True)
 
-                # Table container
+                # Left container for the table
                 st.markdown('<div class="bs-grid-left">', unsafe_allow_html=True)
 
-                # Put the dataframe in a card with Bootstrap styling
+                # Add a card for the table content
                 st.markdown('<div class="card shadow-sm mb-3"><div class="card-header bg-primary text-white d-flex justify-content-between align-items-center"><span>Train Data</span><span class="badge bg-light text-dark rounded-pill">Select stations to display on map</span></div><div class="card-body p-0">', unsafe_allow_html=True)
 
                 # Use data_editor to make the table interactive with checkboxes
@@ -930,31 +926,16 @@ try:
                     df,
                     hide_index=True,
                     column_config={
-                        "Select":
-                        st.column_config.CheckboxColumn(
-                            "Select",
-                            help="Select to show on map",
-                            default=False),
-                        "Train No.":
-                        st.column_config.TextColumn(
-                            "Train No.", help="Train Number"),
-                        "FROM-TO":
-                        st.column_config.TextColumn(
-                            "FROM-TO", help="Source to Destination"),
-                        "IC Entry Delay":
-                        st.column_config.TextColumn(
-                            "IC Entry Delay", help="Entry Delay"),
-                        "Delay":
-                        st.column_config.TextColumn(
-                            "Delay", help="Delay in Minutes")
+                        "Select": st.column_config.CheckboxColumn("Select", help="Select to show on map", default=False),
+                        "Train No.": st.column_config.TextColumn("Train No.", help="Train Number"),
+                        "FROM-TO": st.column_config.TextColumn("FROM-TO", help="Source to Destination"),
+                        "IC Entry Delay": st.column_config.TextColumn("IC Entry Delay", help="Entry Delay"),
+                        "Delay": st.column_config.TextColumn("Delay", help="Delay in Minutes")
                     },
-                    disabled=[
-                        col for col in df.columns
-                        if col != 'Select'
-                    ],
-                    use_container_width=True,  # Use full container width
-                    height=600,  # Set appropriate height
-                    num_rows="dynamic"  # Dynamic row count
+                    disabled=[col for col in df.columns if col != 'Select'],
+                    use_container_width=True,
+                    height=600,
+                    num_rows="dynamic"
                 )
 
                 # Add a footer to the card with information about the data
@@ -962,27 +943,14 @@ try:
                 st.markdown(f'<div class="card-footer bg-light d-flex justify-content-between align-items-center"><span>Total Rows: {len(df)}</span><span>Selected: {selected_count}</span></div>', unsafe_allow_html=True)
                 st.markdown('</div></div>', unsafe_allow_html=True)
 
-                # Get selected stations for map
-                if station_column:
-                    try:
-                        # Get all selected rows
-                        selected_rows = edited_df[edited_df['Select']]
+                # Close the left container
+                st.markdown('</div>', unsafe_allow_html=True)
 
-                        # Debug - show all stations in selected rows (in a small text area)
-                        if not selected_rows.empty and station_column in selected_rows.columns:
-                            all_stations = selected_rows[station_column].tolist()
-                            st.caption(f"Selected stations: {', '.join([str(s) for s in all_stations if s])}")
-
-                    except Exception as e:
-                        logger.error(f"Error processing selected stations: {str(e)}")
-                        st.error(f"Error processing selected stations: {str(e)}")
-
-                refresh_table_placeholder.empty()  # Clear the placeholder after table display
-
-                st.markdown('</div>', unsafe_allow_html=True)  # Close table container
-
-                # Map container
+                # Right container for the map
                 st.markdown('<div class="bs-grid-right">', unsafe_allow_html=True)
+
+                # Add a card for the map content
+                st.markdown('<div class="card mb-3"><div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center"><span>Interactive GPS Map</span><span class="badge bg-light text-dark rounded-pill">Showing selected stations</span></div><div class="card-body p-0">', unsafe_allow_html=True)
 
                 # Get cached station coordinates
                 station_coords = get_station_coordinates()
@@ -990,16 +958,6 @@ try:
                 # Extract station codes from selected rows
                 selected_rows = edited_df[edited_df['Select']]
                 selected_station_codes = extract_station_codes(selected_rows, station_column)
-
-                # Card container for the map
-                st.markdown("""
-                <div class="card mb-3">
-                    <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
-                        <span>Interactive GPS Map</span>
-                        <span class="badge bg-light text-dark rounded-pill">Showing selected stations</span>
-                    </div>
-                    <div class="card-body p-0">
-                """, unsafe_allow_html=True)
 
                 # Create the interactive map
                 m = folium.Map(
@@ -1019,6 +977,40 @@ try:
 
                 # Create a counter to alternate label positions
                 counter = 0
+
+                # Function to check if a value is positive or contains (+)
+                def is_positive_or_plus(value):
+                    try:
+                        if value is None:
+                            return False
+
+                        if isinstance(value, str):
+                            # Check if the string contains a plus sign
+                            if '+' in value:
+                                return True
+
+                            # Clean the string of any non-numeric characters except minus sign and decimal point
+                            # First handle the case with multiple values (like "-7 \xa0-36")
+                            if '\xa0' in value or '  ' in value:
+                                # Take just the first part if there are multiple numbers
+                                value = value.split('\xa0')[0].split('  ')[0].strip()
+
+                            # Remove parentheses and other characters
+                            clean_value = value.replace('(', '').replace(')', '').strip()
+
+                            # Try to convert to float
+                            if clean_value:
+                                try:
+                                    return float(clean_value) > 0
+                                except ValueError:
+                                    # If conversion fails, check if it starts with a minus sign
+                                    return not clean_value.startswith('-')
+                        elif isinstance(value, (int, float)):
+                            return value > 0
+                    except Exception as e:
+                        logger.error(f"Error in is_positive_or_plus: {str(e)}")
+                        return False
+                    return False
 
                 # First add all non-selected stations as dots with alternating labels
                 for code, coords in station_coords.items():
@@ -1122,6 +1114,12 @@ try:
 
                 st.markdown("</div></div>", unsafe_allow_html=True)
 
+                # Close the right container
+                st.markdown('</div>', unsafe_allow_html=True)
+
+                # Close the grid container
+                st.markdown('</div>', unsafe_allow_html=True)
+
                 # Add instructions in collapsible section
                 with st.expander("Map Instructions"):
                     st.markdown("""
@@ -1141,9 +1139,7 @@ try:
                     </div>
                     """, unsafe_allow_html=True)
 
-                st.markdown('</div>', unsafe_allow_html=True)  # Close map container
-
-                st.markdown('</div>', unsafe_allow_html=True)  # Close grid container
+                refresh_table_placeholder.empty()  # Clear the placeholder after table display
 
             else:
                 st.error("No data available in the cached data frame")
