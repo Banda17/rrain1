@@ -789,7 +789,7 @@ def extract_station_codes(selected_stations, station_column=None):
 initialize_session_state()
 
 # Main page title
-st.title("ICMS Data- Vijayawada Division")
+st.title("Vijayawada Division")
 
 # Add a refresh button at the top with just an icon
 col1, col2 = st.columns((10, 2))
@@ -806,8 +806,9 @@ try:
     if success:
         ## Show last update time
         if data_handler.last_update:
-            # Convert last update to IST (UTC+5:30)
-            last_update_ist = data_handler.last_update + timedelta(hours=5, minutes=30)
+            # Convert last update toIST (UTC+5:30)
+            last_update_ist = data_handler.last_update + timedelta(hours=5,
+                                                                   minutes=30)
             st.info(
                 f"Last updated: {last_update_ist.strftime('%Y-%m-%d %H:%M:%S')} IST"
             )
@@ -870,38 +871,56 @@ try:
 
                 # Define styling function with specific colors for train types
                 def highlight_delay(data):
-                    styles = pd.DataFrame('', index=data.index, columns=data.columns)
+                    styles = pd.DataFrame('',
+                                          index=data.index,
+                                          columns=data.columns)
 
                     # Apply red color only to the 'Delay' column if it exists
                     if 'Delay' in df.columns:
                         styles['Delay'] = df['Delay'].apply(
-                            lambda x: 'color: red; font-weight: bold' if x and is_positive_or_plus(x) else '')
+                            lambda x: 'color: red; font-weight: bold'
+                            if x and is_positive_or_plus(x) else '')
 
                     # Hidden column name
                     from_to_col = 'FROM-TO'
 
-                    # Check if the hidden column exists in the DataFrame
+                    # Verify if the hidden 'FROM-TO' column is in the DataFrame
                     if from_to_col in df.columns:
                         for idx, value in df[from_to_col].items():
                             if pd.notna(value):
-                                # Extract the train type from the "FROM-TO" value
-                                first_three = str(value).split(' ')[0].upper()  # Get the first word
+                                # Attempt to extract the train type from the "FROM-TO" value by splitting
+                                try:
+                                    first_three = str(value).split(' ')[0].upper()  # Assume the first word is the code
 
-                                # Log the value and extracted first three for debugging
-                                logger.debug(f"FROM-TO value: {value}, first three: {first_three}")
+                                    # Debug log for tracing extraction
+                                    logger.debug(
+                                        f"Evaluating FROM-TO value: {value}, extracted prefix: {first_three}"
+                                    )
 
-                                # Apply font colors based on the extracted train type
-                                if first_three in ['DMU', 'MEM']:
-                                    for col in styles.columns:
-                                        styles.loc[idx, col] += 'color: blue; font-weight: bold; '
+                                    # Apply styles based on extracted train type prefix
+                                    if first_three in ['DMU', 'MEM']:
+                                        for col in styles.columns:
+                                            # Apply reinforcement with blue
+                                            styles.loc[
+                                                idx,
+                                                col] += 'color: blue; font-weight: bold; '
 
-                                elif first_three in ['SUF', 'MEX', 'VND', 'RJ', 'PEX']:
-                                    for col in styles.columns:
-                                        styles.loc[idx, col] += 'color: #e83e8c; font-weight: bold; '  # Pink/magenta color
+                                    elif first_three in ['SUF', 'MEX', 'VND', 'RAJ', 'PEX']:
+                                        for col in styles.columns:
+                                            # Apply pink/magenta for these prefixes
+                                            styles.loc[
+                                                idx,
+                                                col] += 'color: #e83e8c; font-weight: bold; '
 
-                                elif first_three == 'TOD':
-                                    for col in styles.columns:
-                                        styles.loc[idx, col] += 'color: #fd7e14; font-weight: bold; '  # Orange color
+                                    elif first_three == 'TOD':
+                                        for col in styles.columns:
+                                            # Highlight with orange for 'TOD'
+                                            styles.loc[
+                                                idx,
+                                                col] += 'color: #fd7e14; font-weight: bold; '
+                                except Exception as e:
+                                    # Log any issues in processing to debug
+                                    logger.error(f"Error processing FROM-TO value: {value}, error: {str(e)}")
 
                     return styles
 
@@ -919,8 +938,39 @@ try:
                 create_pulsing_refresh_animation(refresh_table_placeholder,
                                                  "Refreshing data...")
 
-                # Apply styling to the dataframe
-                styled_df = df.style.apply(highlight_delay, axis=None)
+                # Add a sequential S.No. column at the beginning (before Select)
+                display_df = df
+                display_df.insert(0, '#', range(1, len(display_df) + 1))
+
+                # Log FROM-TO values for debugging
+                def log_from_to_values(df):
+                    """Print FROM-TO values for each train to help with debugging"""
+                    st.write("Logging FROM-TO values to console...")
+                    from_to_columns = ['FROM-TO', 'FROM_TO']
+                    for col_name in from_to_columns:
+                        if col_name in df.columns:
+                            logger.info(f"Found column: {col_name}")
+                            for idx, value in df[col_name].items():
+                                if pd.notna(value):
+                                    first_three = str(value).split(' ')[0].upper()
+                                    logger.info(
+                                        f"Train {idx} - {col_name}: '{value}', First three chars: '{first_three}'"
+                                    )
+
+                # Call the logging function
+                log_from_to_values(display_df)
+
+                # Apply the highlighting function to the DataFrame
+                styled_df = display_df.style.apply(highlight_delay, axis=None)
+
+                # Create a layout for train data and map side by side
+                train_data_col, map_col = st.columns((3, 2))
+
+                # Display the styled dataframe in the left column
+                with train_data_col:
+                    st.markdown("### Train Status Table")
+                    st.dataframe(styled_df, height=500)
+
 
                 # Replacing just the filter implementation to look for "(+X)" pattern:
 
@@ -942,7 +992,7 @@ try:
                     display_df = df
                 else:
                     st.success(
-                        f"Showing {len(filtered_df)} rows containing values with plus sign in brackets like '(+5)'"
+                        f"Showing {len(filtered_df)} rows"
                     )
                     display_df = filtered_df
 
@@ -1210,7 +1260,6 @@ def is_positive_or_plus(value):
         logger.error(f"Error in is_positive_or_plus: {str(e)}")
         return False
     return False
-
 
 # Footer
 st.markdown("---")
