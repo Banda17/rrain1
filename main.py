@@ -111,6 +111,31 @@ st.markdown("""
             height: 18px !important;
             cursor: pointer !important;
         }
+        /* Bootstrap grid container for side-by-side layout */
+        .bs-grid-container {
+            display: flex;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        .bs-grid-left {
+            flex: 6;
+            padding-right: 10px;
+        }
+        .bs-grid-right {
+            flex: 6;
+            padding-left: 0;
+        }
+        @media (max-width: 992px) {
+            .bs-grid-container {
+                flex-direction: column;
+            }
+            .bs-grid-left, .bs-grid-right {
+                flex: 100%;
+                padding: 0;
+                width: 100%;
+            }
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -781,7 +806,7 @@ initialize_session_state()
 # Main page title
 st.title("ICMS Data - Vijayawada Division")
 
-# Add a refresh button at the top with just an icon
+# Add a refresh button at thetop with just an icon
 col1, col2 = st.columns([10, 2])
 with col2:
     if st.button("🔄", type="primary"):
@@ -912,15 +937,62 @@ try:
                     background-color: rgba(0,0,0,.075) !important;
                     transition: background-color 0.3s ease !important;
                 }
-                /* Style for checkboxes */
-                [data-testid="stDataFrame"] input[type="checkbox"] {
-                    width: 18px !important;
-                    height: 18px !important;
-                    cursor: pointer !important;
-                }
                 </style>
                 """,
                             unsafe_allow_html=True)
+
+                # Display data in a Bootstrap grid layout (side by side)
+                st.markdown("""
+                <div style="display: none">
+                <!-- Streamlit elements below will be moved to our Bootstrap grid via JavaScript -->
+                <div id="table-container"></div>
+                <div id="map-container"></div>
+                </div>
+                <div class="bs-grid-container">
+                    <div class="bs-grid-left" id="bootstrap-table-container"></div>
+                    <div class="bs-grid-right" id="bootstrap-map-container"></div>
+                </div>
+                <script>
+                // Function to move elements after page loads
+                function moveElements() {
+                    // Streamlit loads elements asynchronously, so we need to use a timeout
+                    setTimeout(function() {
+                        // Get the table and map container placeholders
+                        var tableContainer = document.getElementById('table-container');
+                        var mapContainer = document.getElementById('map-container');
+
+                        // Get the target locations in the Bootstrap grid
+                        var bootstrapTableContainer = document.getElementById('bootstrap-table-container');
+                        var bootstrapMapContainer = document.getElementById('bootstrap-map-container');
+
+                        // Move elements to the Bootstrap grid
+                        if (tableContainer && bootstrapTableContainer) {
+                            // Move table elements
+                            var tableElements = tableContainer.nextElementSibling;
+                            if (tableElements) {
+                                bootstrapTableContainer.appendChild(tableElements);
+                            }
+                        }
+
+                        if (mapContainer && bootstrapMapContainer) {
+                            // Move map elements
+                            var mapElements = mapContainer.nextElementSibling;
+                            if (mapElements) {
+                                bootstrapMapContainer.appendChild(mapElements);
+                            }
+                        }
+                    }, 1000); // Adjust timeout as needed
+                }
+
+                // Run the function after the page loads
+                document.addEventListener('DOMContentLoaded', moveElements);
+                // Also run it after a short delay to catch Streamlit's async loading
+                setTimeout(moveElements, 1500);
+                </script>
+                """, unsafe_allow_html=True)
+
+                # Table container - will be moved to Bootstrap grid
+                st.markdown('<div id="table-container"></div>', unsafe_allow_html=True)
 
                 # Display data table without column layout
                 # Refresh animation placeholder right before displaying the table
@@ -1045,6 +1117,9 @@ try:
                         st.error(f"Error processing selected stations: {str(e)}")
 
                 refresh_table_placeholder.empty()  # Clear the placeholder after table display
+
+                # Map container - will be moved to Bootstrap grid
+                st.markdown('<div id="map-container"></div>', unsafe_allow_html=True)
 
                 # Get cached station coordinates
                 station_coords = get_station_coordinates()
@@ -1179,7 +1254,7 @@ try:
                                     dash_array='5, 10').add_to(m)
 
                 # Render the map with increased width for better visibility
-                folium_static(m, width=1200, height=650)
+                folium_static(m, width=700, height=600)
 
                 st.markdown("</div></div>", unsafe_allow_html=True)
 
