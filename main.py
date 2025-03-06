@@ -803,7 +803,7 @@ try:
     if success:
         # Show last update time
         if data_handler.last_update:
-            # Convert last update to IST (UTC+5:30)
+            # Convert last update to IST (UTC+5:330)
             last_update_ist = data_handler.last_update + timedelta(hours=5,
                                                                    minutes=30)
             st.info(
@@ -878,20 +878,21 @@ try:
                     if 'FROM-TO' in df.columns:
                         for idx, value in df['FROM-TO'].items():
                             if pd.notna(value):
-                                value_upper = str(value).upper()
+                                # Extract first three characters to determine train type
+                                first_three = str(value).upper()[:3]
 
                                 # Blue gradient for DMU/MEMU trains
-                                if 'DMU' in value_upper or 'MEMU' in value_upper:
+                                if first_three in ['DMU', 'MEM']:
                                     for col in styles.columns:
                                         styles.loc[idx, col] += 'background: linear-gradient(90deg, #e6f2ff, #99ccff); '
 
                                 # Pink gradient for SUF/MEX/VNDB/RJ/PEXP trains
-                                elif any(train_type in value_upper for train_type in ['SUF', 'MEX', 'VNDB', 'RJ', 'PEXP']):
+                                elif first_three in ['SUF', 'MEX', 'VND', 'RJ', 'PEX']:
                                     for col in styles.columns:
                                         styles.loc[idx, col] += 'background: linear-gradient(90deg, #ffe6f2, #ffb3d9); '
 
                                 # Orange gradient for TOD trains
-                                elif 'TOD' in value_upper:
+                                elif first_three == 'TOD':
                                     for col in styles.columns:
                                         styles.loc[idx, col] += 'background: linear-gradient(90deg, #fff2e6, #ffcc99); '
 
