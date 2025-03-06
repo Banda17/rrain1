@@ -797,7 +797,7 @@ with col2:
     if st.button("🔄", type="primary"):
         st.rerun()
 
-# Define the `is_positive_or_plus` function only once at the top level
+# Move this function definition to the top of the file, before it's used
 def is_positive_or_plus(value):
     """Check if a value is positive or contains '+' sign"""
     if pd.isna(value) or not value:
@@ -808,9 +808,8 @@ def is_positive_or_plus(value):
     # Check for '+' sign at start or inside brackets like '(+5)'
     return value_str.startswith('+') or '(+' in value_str or (value_str.isdigit() and int(value_str) > 0)
 
-# Define the `highlight_delay` function only once
+# Define styling function with specific colors for train types
 def highlight_delay(data):
-    """Style the dataframe based on train types from FROM-TO column"""
     styles = pd.DataFrame('', index=data.index, columns=data.columns)
 
     # Apply red color only to the 'Delay' column if it exists
@@ -933,8 +932,68 @@ try:
                         df = df.drop(columns=[col])
                         logger.debug(f"Dropped column: {col}")
 
-                # Apply the styles and create a display copy
-                display_df = df.copy()
+                # Move this function definition to the top of the file, before it's used
+                def is_positive_or_plus(value):
+                    """Check if a value is positive or contains '+' sign"""
+                    if pd.isna(value) or not value:
+                        return False
+
+                    value_str = str(value).strip()
+
+                    # Check for '+' sign at start or inside brackets like '(+5)'
+                    return value_str.startswith('+') or '(+' in value_str or (value_str.isdigit() and int(value_str) > 0)
+
+                # Define styling function with specific colors for train types
+                def highlight_delay(data):
+                    styles = pd.DataFrame('', index=data.index, columns=data.columns)
+
+                    # Apply red color only to the 'Delay' column if it exists
+                    if 'Delay' in df.columns:
+                        styles['Delay'] = df['Delay'].apply(
+                            lambda x: 'color: red; font-weight: bold' if x and is_positive_or_plus(x) else '')
+
+                    # Try both possible FROM-TO column names
+                    from_to_columns = ['FROM-TO', 'FROM_TO']
+
+                    for from_to_col in from_to_columns:
+                        if from_to_col in df.columns:
+                            logger.info(f"Found '{from_to_col}' column - applying train type styling")
+                            for idx, value in df[from_to_col].items():
+                                if pd.notna(value):
+                                    # Extract the train type - get the first word before any space
+                                    train_type = str(value).split(' ')[0].upper()
+
+                                    # Log for debugging
+                                    logger.info(f"Row {idx} - Train: {value}, Type: {train_type}")
+
+                                    # Find the train number column - try different possible column names
+                                    train_number_columns = ['Train No.', 'Train No', 'Train Number', 'Train_No', 'Train_Number']
+
+                                    # Apply font colors based on train type
+                                    if train_type in ['DMU', 'MEM']:
+                                        # Apply styling to all columns for this row
+                                        for col in styles.columns:
+                                            # Apply stronger styling to the train number column
+                                            if any(train_col in col for train_col in train_number_columns):
+                                                styles.loc[idx, col] = 'color: blue; font-weight: bold; font-size: 110%;'
+                                            else:
+                                                styles.loc[idx, col] += 'color: blue;'
+
+                                    elif train_type in ['SUF', 'MEX', 'VND', 'RJ', 'PEX']:
+                                        for col in styles.columns:
+                                            if any(train_col in col for train_col in train_number_columns):
+                                                styles.loc[idx, col] = 'color: #e83e8c; font-weight: bold; font-size: 110%;'
+                                            else:
+                                                styles.loc[idx, col] += 'color: #e83e8c;'
+
+                                    elif train_type == 'TOD':
+                                        for col in styles.columns:
+                                            if any(train_col in col for train_col in train_number_columns):
+                                                styles.loc[idx, col] = 'color: #fd7e14; font-weight: bold; font-size: 110%;'
+                                            else:
+                                                styles.loc[idx, col] += 'color: #fd7e14;'
+
+                    return styles
 
                 # Add a "Select" column at the beginning of the DataFrame for checkboxes
                 if 'Select' not in df.columns:
@@ -1002,7 +1061,7 @@ try:
                 log_from_to_values(display_df)
 
                 # Create a layout for train data and map side by side
-                train_data_col, map_col = st.columns((3, 2))
+                train_data_col, map_col = st.columns((2.4, 2.6))
 
                 # Train data section
                 with train_data_col:
@@ -1042,82 +1101,148 @@ try:
                         unsafe_allow_html=True)
 
                     # Create the interactive map
-                    try:
-                        # Create a map centered on Vijayawada
-                        m = folium.Map(location=[16.5167, 80.6167],
-                                      zoom_start=7,
-                                      tiles='OpenStreetMap')
+                    m = folium.Map(
+                        location=[16.5167,
+                                  80.6167],  # Centered around Vijayawada
+                        zoom_start=7,
+                        control_scale=True)
 
-                        # Add Folium Draw plugin for interactivity
-                        Draw(export=True).add_to(m)
+                    # Add a basemap with reduced opacity
+                    folium.TileLayer(tiles='OpenStreetMap',
+                                     attr='&copy; OpenStreetMap contributors',
+                                     opacity=0.8).add_to(m)
 
-                        # Add markers for each station in the dataframe
-                        station_column = None
-                        station_coords = get_station_coordinates()
+                    # Get cached station coordinates
+                    station_coords = get_station_coordinates()
 
-                        # Extract station codes from selected rows
-                        selected_rows = df[df['Select']]
-                        selected_station_codes = extract_station_codes(
-                            selected_rows, station_column)
+                    # Extract station codes from selected rows
+                    selected_rows = df[df['Select']]
+                    selected_station_codes = extract_station_codes(
+                        selected_rows, station_column)
 
-                        logger.debug(
-                            f"Selected station codes: {selected_station_codes}")
+                    # Add markers efficiently
+                    displayed_stations = []
+                    valid_points = []
 
-                        # Add markers for all stations with coordinates
-                        for station_code, coords in station_coords.items():
-                            # Check if this station is in the selected stations
-                            is_selected = station_code in selected_station_codes
+                    # First add all non-selected stations as dots with alternating labels
+                    for code, coords in station_coords.items():
+                        # Skip selected stations - they'll get bigger markers later
+                        if code in selected_station_codes:
+                            continue
 
-                            # Determine the marker color based on selection
-                            marker_color = 'red' if is_selected else 'blue'
-                            marker_icon = folium.Icon(
-                                color=marker_color,
-                                icon='train',
-                                prefix='fa')
+                        # Add small circle for the station
+                        folium.CircleMarker(
+                            [coords['lat'], coords['lon']],
+                            radius=3,
+                            color='#800000',  # Maroon red border
+                            fill=True,
+                            fill_color='gray',
+                            fill_opacity=0.6,
+                            opacity=0.8,
+                            tooltip=f"{code}").add_to(m)
 
-                            # Add the marker
+                        # Add permanent text label for station with slight offset
+                        folium.Marker(
+                            [coords['lat'], coords['lon'] + 0.005
+                             ],  # Smaller offset to the right
+                            icon=folium.DivIcon(
+                                icon_size=(
+                                    0, 0),  # Dynamic sizing based on content
+                                icon_anchor=(0, 0),
+                                html=
+                                f'<div style="display: inline-block; font-size:10px; background-color:rgba(255,255,255,0.7); padding:2px; border-radius:3px; border:1px solid #800000; white-space: nowrap;">{code}</div>'
+                            )).add_to(m)
+
+                    # Then add larger markers for selected stations
+                    for code in selected_station_codes:
+                        # First normalize the station code to match our coordinate dictionary
+                        # Some codes might have spaces or different casing
+                        normalized_code = code.strip().upper()
+
+                        # Check if we have coordinates for this station
+                        if normalized_code in station_coords:
+                            lat = station_coords[normalized_code]['lat']
+                            lon = station_coords[normalized_code]['lon']
+
+                            # Add train icon marker
                             folium.Marker(
-                                location=[coords['lat'], coords['lon']],
-                                tooltip=f"{station_code}",
-                                popup=f"<b>{station_code}</b>",
-                                icon=marker_icon).add_to(m)
+                                [lat, lon],
+                                popup=
+                                f"<b>{normalized_code}</b><br>({lat:.4f}, {lon:.4f})",
+                                tooltip=normalized_code,
+                                icon=folium.Icon(color='red',
+                                                 icon='train',
+                                                 prefix='fa'),
+                                opacity=0.8).add_to(m)
 
-                        # Add lines connecting all selected stations in order
-                        if len(selected_station_codes) > 1:
-                            coordinates = []
-                            for code in selected_station_codes:
-                                if code in station_coords:
-                                    coordinates.append([
-                                        station_coords[code]['lat'],
-                                        station_coords[code]['lon']
-                                    ])
+                            # Add prominent text label for selected station with slight offset
+                            folium.Marker(
+                                [lat, lon + 0.008
+                                 ],  # Smaller offset for selected stations
+                                icon=folium.DivIcon(
+                                    icon_size=(
+                                        0,
+                                        0),  # Dynamic sizing based on content
+                                    icon_anchor=(0, 0),
+                                    html=
+                                    f'<div style="display: inline-block; font-size:12px; font-weight:bold; background-color:rgba(255,255,255,0.8); padding:3px; border-radius:3px; border:2px solid red; white-space: nowrap;">{normalized_code}</div>'
+                                )).add_to(m)
 
-                            if coordinates:
-                                folium.PolyLine(
-                                    coordinates,
-                                    color='red',
-                                    weight=3,
-                                    opacity=0.7,
-                                    dash_array='5').add_to(m)
+                            displayed_stations.append(normalized_code)
+                            valid_points.append([lat, lon])
 
-                        # Display the map
-                        folium_static(m, width=None, height=600)
+                    # Add railway lines between selected stations
+                    if len(valid_points) > 1:
+                        folium.PolyLine(valid_points,
+                                        weight=2,
+                                        color='gray',
+                                        opacity=0.8,
+                                        dash_array='5, 10').add_to(m)
 
-                    except Exception as e:
-                        st.error(f"Error creating map: {str(e)}")
-                        logger.exception(
-                            "Exception occurred while creating map")
+                    # Render the map
+                    folium_static(m, width=None, height=600)
 
-                    # Close the map card
-                    st.markdown("</div></div>", unsafe_allow_html=True)
+                    st.markdown('</div></div>', unsafe_allow_html=True)
+
+                    # Show success message if stations are selected
+                    if displayed_stations:
+                        st.success(
+                            f"Showing {len(displayed_stations)} selected stations on the map"
+                        )
+                    else:
+                        st.info(
+                            "Select stations in the table to display them on the map"
+                        )
+
+                # Add instructions in collapsible section
+                with st.expander("Map Instructions"):
+                    st.markdown("""
+                    <div class="card">
+                        <div class="card-header bg-light">
+                            Using the Interactive Map
+                        </div>
+                        <div class="card-body">
+                            <ul class="list-group list-group-flush">
+                                <li class="list-group-item">Select stations using the checkboxes in the table</li>
+                                <li class="list-group-item">Selected stations will appear with red train markers on the map</li>
+                                <li class="list-group-item">All other stations are shown as small gray dots</li>
+                                <li class="list-group-item">Railway lines automatically connect selected stations in sequence</li>
+                                <li class="list-group-item">Zoom and pan the map to explore different areas</li>
+                            </ul>
+                        </div>
+                    </div>
+                    """,
+                                unsafe_allow_html=True)
+
+                refresh_table_placeholder.empty(
+                )  # Clear the placeholder after table display
 
             else:
-                st.warning("No data available to display.")
+                st.error("No data available in the cached data frame")
         else:
-            st.warning("No cached data available.")
+            st.error(f"Error: No cached data available. {message}")
     else:
-        st.error(f"Failed to load data: {message}")
-
+        st.error(f"Error loading data: {message}")
 except Exception as e:
     st.error(f"An error occurred: {str(e)}")
     logger.exception("Exception in main app")
@@ -1125,16 +1250,5 @@ except Exception as e:
 # Footer
 st.markdown("---")
 st.markdown(
-    """
-    <div class="container-fluid">
-        <div class="row">
-            <div class="col-md-6 text-start">
-                <small>&copy; 2023 South Central Railway, Vijayawada Division. All Rights Reserved.</small>
-            </div>
-            <div class="col-md-6 text-end">
-                <small>Powered by <a href="https://streamlit.io" target="_blank">Streamlit</a></small>
-            </div>
-        </div>
-    </div>
-    """,
+    '<div class="card"><div class="card-body text-center text-muted">© 2023 South Central Railway - Vijayawada Division</div></div>',
     unsafe_allow_html=True)
