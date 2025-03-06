@@ -185,16 +185,16 @@ with header_col1:
         # Add a container with custom padding to lower the logo
         st.markdown("""
             <div style="padding-top: 20px; display: flex; align-items: center; height: 100%;">
-                <img src="attached_assets/scr_logo.png" width="120">
+                <img src="scr_logo.svg" width="120">
             </div>
         """,
                     unsafe_allow_html=True)
     except Exception as e:
-        st.warning(f"Error loading new logo: {str(e)}")
+        st.warning(f"Error loading SVG logo: {str(e)}")
         try:
             st.markdown("""
                 <div style="padding-top: 20px; display: flex; align-items: center; height: 100%;">
-                    <img src="scr_logo.png" width="120">
+                    <img src="attached_assets/scr_logo.svg" width="120">
                 </div>
             """,
                         unsafe_allow_html=True)
