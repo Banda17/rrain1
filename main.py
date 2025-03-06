@@ -204,10 +204,10 @@ def format_delay_value(delay: Optional[int]) -> str:
         return "N/A"
 
 # Create a layout for the header with logo
-col1, col2 = st.columns([1, 5])
+header_col1, header_col2 = st.columns([1, 5])
 
 # Display the logo in the first column
-with col1:
+with header_col1:
     try:
         # Try loading the new logo first
         st.image("attached_assets/scr_logo.png", width=80)
@@ -220,7 +220,7 @@ with col1:
             st.warning(f"Error loading any logo: {str(e2)}")
 
 # Display the title and subtitle in the second column
-with col2:
+with header_col2:
     st.markdown("""
         <div class="card border-0">
             <div class="card-body p-0">
@@ -807,7 +807,7 @@ def extract_station_codes(selected_stations, station_column=None):
 initialize_session_state()
 
 # Main page title
-st.title("ICMS Data - Vijayawada Division")
+st.title("ICMS Data- Vijayawada Division")
 
 # Add a refresh button at the top with just an icon
 col1, col2 = st.columns((10, 2))
@@ -828,7 +828,7 @@ try:
         if data_handler.last_update:
             # Convert last update to IST (UTC+5:30)
             last_update_ist = data_handler.last_update + timedelta(hours=5,
-                                                                  minutes=30)
+                                                                   minutes=30)
             st.info(
                 f"Last updated: {last_update_ist.strftime('%Y-%m-%d %H:%M:%S')} IST"
             )
@@ -1148,12 +1148,12 @@ try:
             else:
                 st.error("No data available in the cached data frame")
         else:
-            st.error("No cached data available")
+            st.error(f"Error: No cached data available. {message}")
     else:
-        st.error(f"Failed to load data: {message}")
+        st.error(f"Error loading data: {message}")
 except Exception as e:
     st.error(f"An error occurred: {str(e)}")
-    logger.error(f"Error in main app: {str(e)}")
+    logger.exception("Exception in main app")
 
 # Footer
 st.markdown("---")
