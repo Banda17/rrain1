@@ -780,7 +780,7 @@ initialize_session_state()
 st.title("ICMS Data- Vijayawada Division")
 
 # Add a refresh button at the top with just an icon
-col1, col2 =st.columns((10, 2))
+col1, col2 = st.columns((10, 2))
 with col2:
     if st.button("🔄", type="primary"):
         st.rerun()
@@ -801,11 +801,10 @@ try:
                 f"Last updated: {last_update_ist.strftime('%Y-%m-%d %H:%M:%S')} IST"
             )
 
-        # Get cached data
-        cached_data = data_handler.get_cached_data()
+        # Get cached data        cached_data = data_handler.get_cached_data()
 
         if cached_data:
-            # Convert to DataFrame
+            # Convert# Convert to DataFrame
             df = pd.DataFrame(cached_data)
 
             if not df.empty:
@@ -884,6 +883,25 @@ try:
                 # Apply styling to the dataframe
                 styled_df = df.style.apply(highlight_delay, axis=None)
 
+                # Replacing just the filter implementation to look for "(+X)" pattern:
+
+                # Filter rows containing plus sign in brackets like "(+5)"
+                def contains_plus_in_brackets(row):
+                    # Use regex to find values with plus sign inside brackets like "(+5)"
+                    row_as_str = row.astype(str).str.contains('\(\+\d+\)', regex=True)
+                    return row_as_str.any()
+
+                # Apply filter to dataframe
+                filtered_df = df[df.apply(contains_plus_in_brackets, axis=1)]
+
+                # If filtered dataframe is empty, show a message and use original dataframe
+                if filtered_df.empty:
+                    st.warning("No rows found containing values with plus sign in brackets. Showing all data.")
+                    display_df = df
+                else:
+                    st.success(f"Showing {len(filtered_df)} rows containing values with plus sign in brackets like '(+5)'")
+                    display_df = filtered_df
+
                 # Create a layout for train data and map side by side
                 train_data_col, map_col = st.columns((3, 2))
 
@@ -894,7 +912,7 @@ try:
 
                     # Use data_editor to make the table interactive with checkboxes
                     edited_df = st.data_editor(
-                        df,
+                        display_df,
                         hide_index=True,
                         column_config={
                             "Select": st.column_config.CheckboxColumn("Select", help="Select to show on map", default=False),
@@ -903,7 +921,7 @@ try:
                             "IC Entry Delay": st.column_config.TextColumn("IC Entry Delay", help="Entry Delay"),
                             "Delay": st.column_config.TextColumn("Delay", help="Delay in Minutes")
                         },
-                        disabled=[col for col in df.columns if col != 'Select'],
+                        disabled=[col for col in display_df.columns if col != 'Select'],
                         use_container_width=True,
                         height=600,
                         num_rows="dynamic"
@@ -911,7 +929,7 @@ try:
 
                     # Add a footer to the card with information about the data
                     selected_count = len(edited_df[edited_df['Select']])
-                    st.markdown(f'<div class="card-footer bg-light d-flex justify-content-between align-items-center"><span>Total Rows: {len(df)}</span><span>Selected: {selected_count}</span></div>', unsafe_allow_html=True)
+                    st.markdown(f'<div class="card-footer bg-light d-flex justify-content-between align-items-center"><span>Total Rows: {len(display_df)}</span><span>Selected: {selected_count}</span></div>', unsafe_allow_html=True)
                     st.markdown('</div></div>', unsafe_allow_html=True)
 
                 # Map section
@@ -985,11 +1003,11 @@ try:
                     # Add railway lines between selected stations
                     if len(valid_points) > 1:
                         folium.PolyLine(
-                                valid_points,
-                                weight=2,
-                                color='gray',
-                                opacity=0.8,
-                                dash_array='5, 10').add_to(m)
+                            valid_points,
+                            weight=2,
+                            color='gray',
+                            opacity=0.8,
+                            dash_array='5, 10').add_to(m)
 
                     # Render the map
                     folium_static(m, width=500, height=600)
@@ -1032,6 +1050,40 @@ try:
 except Exception as e:
     st.error(f"An error occurred: {str(e)}")
     logger.exception("Exception in main app")
+
+# Function to check if a value is positive or contains (+)
+def is_positive_or_plus(value):
+    try:
+        if value is None:
+            return False
+
+        if isinstance(value, str):
+            # Check if the string contains a plus sign
+            if '+' in value:
+                return True
+
+            # Clean the string of any non-numeric characters except minus sign and decimal point
+            # First handle the case with multiple values (like "-7 \xa0-36")
+            if '\xa0' in value or '  ' in value:
+                # Take just the first part if there are multiple numbers
+                value = value.split('\xa0')[0].split('  ')[0].strip()
+
+            # Remove parentheses and other characters
+            clean_value = value.replace('(', '').replace(')', '').strip()
+
+            # Try to convert to float
+            if clean_value:
+                try:
+                    return float(clean_value) > 0
+                except ValueError:
+                    # If conversion fails, check if it starts with a minus sign
+                    return not clean_value.startswith('-')
+        elif isinstance(value, (int, float)):
+            return value > 0
+    except Exception as e:
+        logger.error(f"Error in is_positive_or_plus: {str(e)}")
+        return False
+    return False
 
 # Footer
 st.markdown("---")
