@@ -934,8 +934,14 @@ try:
                         unsafe_allow_html=True)
 
                     # Use data_editor to make the table interactive with checkboxes
+                    # Create a DataFrame with only the columns we want to display in specific order
+                    display_columns = ["Select", "Train No.", "Train Name", "Station", "Sch_Time", "Current Time", "Status", "Delay", "IC Entry Delay"]
+                    # Filter the DataFrame to include only the columns that exist
+                    display_cols_filtered = [col for col in display_columns if col in display_df.columns]
+                    display_df_filtered = display_df[display_cols_filtered]
+
                     edited_df = st.data_editor(
-                        display_df,
+                        display_df_filtered,
                         hide_index=True,
                         column_config={
                             "Select": st.column_config.CheckboxColumn("Select", help="Select to show on map", default=False),
@@ -948,9 +954,7 @@ try:
                             "Delay": st.column_config.TextColumn("Delay", help="Delay in Minutes"),
                             "IC Entry Delay": st.column_config.TextColumn("IC Entry Delay", help="Entry Delay")
                         },
-                        # Explicitly specify columns to display in specific order
-                        columns=["Select", "Train No.", "Train Name", "Station", "Sch_Time", "Current Time", "Status", "Delay", "IC Entry Delay"],
-                        disabled=[col for col in display_df.columns if col != 'Select'],
+                        disabled=[col for col in display_df_filtered.columns if col != 'Select'],
                         use_container_width=True,
                         height=600,
                         num_rows="dynamic"
