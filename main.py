@@ -26,7 +26,7 @@ st.set_page_config(page_title="Train Tracking System",
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-# Add Bootstrap CSS
+# Add Bootstrap CSS - Update the style section to ensure grid layout works correctly
 st.markdown("""
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -63,6 +63,40 @@ st.markdown("""
         div[data-testid="column"] {
             padding: 0px !important;
             margin: 0px !important;
+        }
+        /* Style for checkboxes */
+        [data-testid="stDataFrame"] input[type="checkbox"] {
+            width: 18px !important;
+            height: 18px !important;
+            cursor: pointer !important;
+        }
+        /* Bootstrap grid container for side-by-side layout */
+        .bs-grid-container {
+            display: flex;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        .bs-grid-left {
+            flex: 6;
+            padding-right: 10px;
+            min-width: 600px;
+        }
+        .bs-grid-right {
+            flex: 6;
+            padding-left: 0;
+            min-width: 600px;
+        }
+        @media (max-width: 1200px) {
+            .bs-grid-container {
+                flex-direction: column;
+            }
+            .bs-grid-left, .bs-grid-right {
+                flex: 100%;
+                padding: 0;
+                width: 100%;
+                min-width: 100%;
+            }
         }
         .block-container {
             padding-left: 0.5rem !important;
@@ -104,40 +138,6 @@ st.markdown("""
         [data-testid="stDataFrame"] tr:hover {
             background-color: rgba(0,0,0,.075) !important;
             transition: background-color 0.3s ease !important;
-        }
-        /* Style for checkboxes */
-        [data-testid="stDataFrame"] input[type="checkbox"] {
-            width: 18px !important;
-            height: 18px !important;
-            cursor: pointer !important;
-        }
-        /* Bootstrap grid container for side-by-side layout */
-        .bs-grid-container {
-            display: flex;
-            width: 100%;
-            margin: 0;
-            padding: 0;
-        }
-        .bs-grid-left {
-            flex: 6;
-            padding-right: 10px;
-            min-width: 600px;
-        }
-        .bs-grid-right {
-            flex: 6;
-            padding-left: 0;
-            min-width: 600px;
-        }
-        @media (max-width: 1200px) {
-            .bs-grid-container {
-                flex-direction: column;
-            }
-            .bs-grid-left, .bs-grid-right {
-                flex: 100%;
-                padding: 0;
-                width: 100%;
-                min-width: 100%;
-            }
         }
     </style>
 """, unsafe_allow_html=True)
@@ -808,7 +808,7 @@ initialize_session_state()
 st.title("ICMS Data- Vijayawada Division")
 
 # Add a refresh button at the top with just an icon
-col1, col2 = st.columns((10, 2))
+col1, col2 =st.columns((10, 2))
 with col2:
     if st.button("🔄", type="primary"):
         st.rerun()
@@ -912,7 +912,7 @@ try:
                 # Apply styling to the dataframe
                 styled_df = df.style.apply(highlight_delay, axis=None)
 
-                # Start the Bootstrap grid layout
+                # Start the Bootstrap grid container
                 st.markdown('<div class="bs-grid-container">', unsafe_allow_html=True)
 
                 # Left container for the table
@@ -952,13 +952,6 @@ try:
                 # Add a card for the map content
                 st.markdown('<div class="card mb-3"><div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center"><span>Interactive GPS Map</span><span class="badge bg-light text-dark rounded-pill">Showing selected stations</span></div><div class="card-body p-0">', unsafe_allow_html=True)
 
-                # Get cached station coordinates
-                station_coords = get_station_coordinates()
-
-                # Extract station codes from selected rows
-                selected_rows = edited_df[edited_df['Select']]
-                selected_station_codes = extract_station_codes(selected_rows, station_column)
-
                 # Create the interactive map
                 m = folium.Map(
                     location=[16.5167, 80.6167],  # Centered around Vijayawada
@@ -971,46 +964,19 @@ try:
                     attr='&copy; OpenStreetMap contributors',
                     opacity=0.8).add_to(m)
 
+                # Get cached station coordinates
+                station_coords = get_station_coordinates()
+
+                # Extract station codes from selected rows
+                selected_rows = edited_df[edited_df['Select']]
+                selected_station_codes = extract_station_codes(selected_rows, station_column)
+
                 # Add markers efficiently
                 displayed_stations = []
                 valid_points = []
 
                 # Create a counter to alternate label positions
                 counter = 0
-
-                # Function to check if a value is positive or contains (+)
-                def is_positive_or_plus(value):
-                    try:
-                        if value is None:
-                            return False
-
-                        if isinstance(value, str):
-                            # Check if the string contains a plus sign
-                            if '+' in value:
-                                return True
-
-                            # Clean the string of any non-numeric characters except minus sign and decimal point
-                            # First handle the case with multiple values (like "-7 \xa0-36")
-                            if '\xa0' in value or '  ' in value:
-                                # Take just the first part if there are multiple numbers
-                                value = value.split('\xa0')[0].split('  ')[0].strip()
-
-                            # Remove parentheses and other characters
-                            clean_value = value.replace('(', '').replace(')', '').strip()
-
-                            # Try to convert to float
-                            if clean_value:
-                                try:
-                                    return float(clean_value) > 0
-                                except ValueError:
-                                    # If conversion fails, check if it starts with a minus sign
-                                    return not clean_value.startswith('-')
-                        elif isinstance(value, (int, float)):
-                            return value > 0
-                    except Exception as e:
-                        logger.error(f"Error in is_positive_or_plus: {str(e)}")
-                        return False
-                    return False
 
                 # First add all non-selected stations as dots with alternating labels
                 for code, coords in station_coords.items():
@@ -1067,11 +1033,6 @@ try:
                         lat = station_coords[normalized_code]['lat']
                         lon = station_coords[normalized_code]['lon']
 
-                        # Determine offset for selected stations - opposite to non-selected pattern
-                        x_offset = 50 if counter % 2 == 0 else -50
-                        y_offset = -30 if counter % 3 == 0 else 0
-                        counter += 1
-
                         # Add train icon marker
                         folium.Marker(
                             [lat, lon],
@@ -1079,24 +1040,6 @@ try:
                             tooltip=normalized_code,
                             icon=folium.Icon(color='red', icon='train', prefix='fa'),
                             opacity=0.8).add_to(m)
-
-                        # Add highlighted box and prominent label with zoom-stable positioning
-                        html_content = f'''
-                        <div style="position:absolute; width:0; height:0;">
-                            <!-- Larger box for selected station -->
-                            <div style="position:absolute; width:8px; height:8px; border:2px solid #800000; left:-4px; top:-4px; border-radius:2px; background-color:rgba(255,255,255,0.5);"></div>
-                            <!-- Prominent station label -->
-                            <div style="position:absolute; left:{15 if x_offset < 0 else -50}px; top:{-20 if y_offset < 0 else 0}px; background-color:rgba(255,255,255,0.9); padding:2px 4px; border:2px solid #800000; border-radius:3px; font-weight:bold; font-size:10px; color:#800000; white-space:nowrap;">{normalized_code}</div>
-                        </div>
-                        '''
-
-                        folium.DivIcon(
-                            icon_size=(0, 0),  # Using zero size to improve positioning
-                            icon_anchor=(0, 0),  # Centered anchor point
-                            html=html_content).add_to(
-                                folium.Marker(
-                                    [lat, lon],
-                                    icon=folium.DivIcon(icon_size=(0, 0))).add_to(m))
 
                         displayed_stations.append(normalized_code)
                         valid_points.append([lat, lon])
@@ -1109,10 +1052,10 @@ try:
                                     opacity=0.8,
                                     dash_array='5, 10').add_to(m)
 
-                # Render the map with width to fit the container
-                folium_static(m, width=650, height=600)
+                # Render the map
+                folium_static(m, width=600, height=600)
 
-                st.markdown("</div></div>", unsafe_allow_html=True)
+                st.markdown('</div></div>', unsafe_allow_html=True)
 
                 # Close the right container
                 st.markdown('</div>', unsafe_allow_html=True)
