@@ -990,7 +990,7 @@ try:
 
                         # Add permanent text label for station with slight offset
                         folium.Marker(
-                            [coords['lat'], coords['lon'] + 0.02],  # Offset to the right
+                            [coords['lat'], coords['lon'] + 0.005],  # Smaller offset to the right
                             icon=folium.DivIcon(
                                 icon_size=(0, 0),  # Dynamic sizing based on content
                                 icon_anchor=(0, 0),
@@ -1019,7 +1019,7 @@ try:
 
                             # Add prominent text label for selected station with slight offset
                             folium.Marker(
-                                [lat, lon + 0.03],  # Larger offset for selected stations
+                                [lat, lon + 0.008],  # Smaller offset for selected stations
                                 icon=folium.DivIcon(
                                     icon_size=(0, 0),  # Dynamic sizing based on content
                                     icon_anchor=(0, 0),
