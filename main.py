@@ -18,9 +18,9 @@ from map_viewer import MapViewer  # Import MapViewer for offline map handling
 
 # Page configuration - MUST be the first Streamlit command
 st.set_page_config(page_title="Train Tracking System",
-                   page_icon="🚂",
-                   layout="wide",
-                   initial_sidebar_state="collapsed")
+                    page_icon="🚂",
+                    layout="wide",
+                    initial_sidebar_state="collapsed")
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -100,24 +100,33 @@ def update_selected_stations():
             # Extract selected rows
             selected_rows = st.session_state['edited_df'][st.session_state['edited_df']['Select']]
 
+            # Log the selected rows for debugging
+            logger.debug(f"Selected rows count: {len(selected_rows)}")
+
             # Get station column name
             station_column = next(
                 (col for col in selected_rows.columns
                  if col in ['Station', 'station', 'STATION']), None)
 
-            # Extract station codes from selected rows
             if station_column:
+                logger.debug(f"Found station column: {station_column}")
+
+            # Extract station codes from selected rows
+            if station_column and not selected_rows.empty:
                 selected_station_codes = extract_station_codes(selected_rows, station_column)
                 # Update the session state
                 st.session_state['selected_station_codes'] = selected_station_codes
                 logger.debug(f"Updated selected stations: {selected_station_codes}")
             else:
+                logger.debug("No station column found or no rows selected")
                 st.session_state['selected_station_codes'] = []
         else:
+            logger.debug("No edited_df in session state or it's empty")
             st.session_state['selected_station_codes'] = []
     except Exception as e:
         logger.error(f"Error updating selected stations: {str(e)}")
         st.session_state['selected_station_codes'] = []
+
 
 def initialize_session_state():
     """Initialize all session state variables with proper typing"""
@@ -449,6 +458,11 @@ def extract_station_codes(selected_stations, station_column=None):
     if selected_stations.empty:
         return selected_station_codes
 
+    # Log for debugging
+    logger.debug(f"Extracting station codes from DataFrame with {len(selected_stations)} rows")
+    logger.debug(f"Station column: {station_column}")
+    logger.debug(f"Available columns: {selected_stations.columns.tolist()}")
+
     # Look for station code in 'CRD' or 'Station' column
     potential_station_columns = [
         'CRD', 'Station', 'Station Code', 'station', 'STATION'
@@ -457,10 +471,12 @@ def extract_station_codes(selected_stations, station_column=None):
     # Try each potential column
     for col_name in potential_station_columns:
         if col_name in selected_stations.columns:
+            logger.debug(f"Processing column: {col_name}")
             for _, row in selected_stations.iterrows():
                 if pd.notna(row[col_name]):
                     # Extract station code from text (may contain additional details)
                     text_value = str(row[col_name]).strip()
+                    logger.debug(f"Found station value: {text_value}")
 
                     # Handle 'CRD' column which might have format "NZD ..."
                     if col_name == 'CRD':
@@ -470,13 +486,16 @@ def extract_station_codes(selected_stations, station_column=None):
                             code = parts[0].strip()
                             if code and code not in selected_station_codes:
                                 selected_station_codes.append(code)
+                                logger.debug(f"Added station code from CRD: {code}")
                     else:
                         # For other columns, use the full value
                         if text_value and text_value not in selected_station_codes:
                             selected_station_codes.append(text_value)
+                            logger.debug(f"Added station code: {text_value}")
 
     # If still no codes found, try a more generic approach with any column
     if not selected_station_codes:
+        logger.debug("No station codes found from standard columns, trying generic approach")
         for col in selected_stations.columns:
             if any(keyword in col for keyword in
                    ['station', 'Station', 'STATION', 'Running', 'CRD']):
@@ -490,7 +509,9 @@ def extract_station_codes(selected_stations, station_column=None):
                             if 2 <= len(word) <= 5 and word.isupper():
                                 if word not in selected_station_codes:
                                     selected_station_codes.append(word)
+                                    logger.debug(f"Added station code from generic approach: {word}")
 
+    logger.debug(f"Final extracted station codes: {selected_station_codes}")
     return selected_station_codes
 
 @st.cache_data(ttl=60)
@@ -803,8 +824,7 @@ try:
                     refresh_table_placeholder = st.empty()
                     create_pulsing_refresh_animation(refresh_table_placeholder, "Refreshing Table...")
 
-                    # Card container for the table with right border
-                    st.markdown('<div class="card with-border-right" style="height:100%;"><div class="card-header bg-primary text-white p-1">Train Data</div><div class="card-body p-0">', unsafe_allow_html=True)
+                    # Card container for the table with right border                    st.markdown('<div class="card with-border-right" style="height:100%;"><div class="card-header bg-primary text-white p-1">Train Data</div><div class="card-body p-0">', unsafe_allow_html=True)
 
                     # Use data_editor to make the table interactive with checkboxes
                     edited_df = st.data_editor(
@@ -825,15 +845,19 @@ try:
                                 "Delay", help="Delay in Minutes")
                         },
                         disabled=[col for col in filtered_df.columns if col != 'Select'],
-                        use_container_width=True,                        height=650,
+                        use_container_width=True,
+                        height=650,
                         key="train_data_editor"
                     )
 
                     # Store the edited df in session state for later processing
                     st.session_state['edited_df'] = edited_df
 
-                    # Get selected stations for map
+                    # Call update_selected_stations to process checkbox selections
                     update_selected_stations()
+
+                    # Debug message to show selections
+                    st.caption(f"Selected stations: {', '.join(st.session_state.get('selected_station_codes', []))}")
 
                     st.markdown('</div></div>', unsafe_allow_html=True)
                     refresh_table_placeholder.empty()
@@ -846,8 +870,11 @@ try:
                     # Get cached station coordinates
                     station_coords = get_station_coordinates()
 
-                    # Get selected station codes from session state
+                    # Get selected station codes from session state after update_selected_stations has been called
                     selected_station_codes = st.session_state.get('selected_station_codes', [])
+
+                    # Debug log the selected stations
+                    logger.debug(f"Map rendering with selected stations: {selected_station_codes}")
 
                     # First, set a default map type value to use
                     if 'map_type' not in st.session_state:
@@ -926,6 +953,11 @@ try:
                         # Render the map
                         folium_static(m, width=None, height=600)
 
+                    # Create a callback function for the radio button
+                    def update_map_type():
+                        st.session_state['map_type'] = st.session_state.map_type_selector
+                        logger.debug(f"Map type updated to: {st.session_state['map_type']}")
+
                     # Map type selection radio buttons
                     selected_map_type = st.radio(
                         "Map Type",
@@ -933,8 +965,7 @@ try:
                         index=0 if st.session_state['map_type'] == "Offline Map with GPS Markers" else 1,
                         horizontal=True,
                         key="map_type_selector",
-                        on_change=lambda: setattr(st.session_state, 'map_type', 
-                                                st.session_state.get('map_type_selector'))
+                        on_change=update_map_type
                     )
 
                     st.markdown('</div></div>', unsafe_allow_html=True)
