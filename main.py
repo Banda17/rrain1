@@ -363,7 +363,6 @@ def load_and_process_data():
     return False, None, None, message
 
 
-# Cache station coordinates using Streamlit's cache_data decorator
 @st.cache_data(ttl=3600)  # Cache for 1 hour
 def get_station_coordinates():
     """Cache station coordinates for faster access"""
@@ -861,9 +860,10 @@ try:
                         df = df.drop(columns=[col])
                         logger.debug(f"Dropped column: {col}")
 
-                # Create a two-column layout for the table and map
+                # Update the table and map section styling to remove column layout
                 st.markdown("""
                 <style>
+                /* Custom styling for stacked layout */
                 .stColumn > div {
                     padding: 0px !important;
                 }
@@ -922,224 +922,240 @@ try:
                 """,
                             unsafe_allow_html=True)
 
-                # Create a more balanced column ratio with no gap - 60% table to 40% map
-                table_col, map_col = st.columns([3.5, 2.5], gap="none")
+                # Display data table without column layout
+                # Refresh animation placeholder right before displaying the table
+                refresh_table_placeholder = st.empty()
+                create_pulsing_refresh_animation(refresh_table_placeholder,
+                                                 "Refreshing Table...")
 
-                with table_col:
-                    # Refresh animation placeholder right before displaying the table
-                    refresh_table_placeholder = st.empty()
-                    create_pulsing_refresh_animation(refresh_table_placeholder,
-                                                     "Refreshing Table...")
-
-                    # Function to check if a value is positive or contains (+)
-                    def is_positive_or_plus(value):
-                        try:
-                            if value is None:
-                                return False
-
-                            if isinstance(value, str):
-                                # Check if the string contains a plus sign
-                                if '+' in value:
-                                    return True
-
-                                # Clean the string of any non-numeric characters except minus sign and decimal point
-                                # First handle the case with multiple values (like "-7 \xa0-36")
-                                if '\xa0' in value or '  ' in value:
-                                    # Take just the first part if there are multiple numbers
-                                    value = value.split('\xa0')[0].split('  ')[0].strip()
-
-                                # Remove parentheses and other characters
-                                clean_value = value.replace('(', '').replace(')', '').strip()
-
-                                # Try to convert to float
-                                if clean_value:
-                                    try:
-                                        return float(clean_value) > 0
-                                    except ValueError:
-                                        # If conversion fails, check if it starts with a minus sign
-                                        return not clean_value.startswith('-')
-                            elif isinstance(value, (int, float)):
-                                return value > 0
-                        except Exception as e:
-                            logger.error(f"Error in is_positive_or_plus: {str(e)}")
+                # Function to check if a value is positive or contains (+)
+                def is_positive_or_plus(value):
+                    try:
+                        if value is None:
                             return False
+
+                        if isinstance(value, str):
+                            # Check if the string contains a plus sign
+                            if '+' in value:
+                                return True
+
+                            # Clean the string of any non-numeric characters except minus sign and decimal point
+                            # First handle the case with multiple values (like "-7 \xa0-36")
+                            if '\xa0' in value or '  ' in value:
+                                # Take just the first part if there are multiple numbers
+                                value = value.split('\xa0')[0].split('  ')[0].strip()
+
+                            # Remove parentheses and other characters
+                            clean_value = value.replace('(', '').replace(')', '').strip()
+
+                            # Try to convert to float
+                            if clean_value:
+                                try:
+                                    return float(clean_value) > 0
+                                except ValueError:
+                                    # If conversion fails, check if it starts with a minus sign
+                                    return not clean_value.startswith('-')
+                        elif isinstance(value, (int, float)):
+                            return value > 0
+                    except Exception as e:
+                        logger.error(f"Error in is_positive_or_plus: {str(e)}")
                         return False
+                    return False
 
-                    # Get filtered dataframe for display
-                    filtered_df = df.copy()
+                # Get filtered dataframe for display
+                filtered_df = df.copy()
 
-                    # Define styling function with specific colors
-                    def highlight_delay(data):
-                        styles = pd.DataFrame('', index=data.index, columns=data.columns)
+                # Define styling function with specific colors
+                def highlight_delay(data):
+                    styles = pd.DataFrame('', index=data.index, columns=data.columns)
 
-                        # Apply red color only to the 'Delay' column if it exists
-                        if 'Delay' in df.columns:
-                            styles['Delay'] = df['Delay'].apply(
-                                lambda x: 'color: red; font-weight: bold' if x and is_positive_or_plus(x) else '')
+                    # Apply red color only to the 'Delay' column if it exists
+                    if 'Delay' in df.columns:
+                        styles['Delay'] = df['Delay'].apply(
+                            lambda x: 'color: red; font-weight: bold' if x and is_positive_or_plus(x) else '')
 
-                        return styles
+                    return styles
 
-                    # Add a "Select" column at the beginning of the DataFrame for checkboxes
-                    if 'Select' not in filtered_df.columns:
-                        filtered_df.insert(0, 'Select', False)
+                # Add a "Select" column at the beginning of the DataFrame for checkboxes
+                if 'Select' not in filtered_df.columns:
+                    filtered_df.insert(0, 'Select', False)
 
-                    # Get station column name
-                    station_column = next(
-                        (col for col in filtered_df.columns
-                         if col in ['Station', 'station', 'STATION']), None)
+                # Get station column name
+                station_column = next(
+                    (col for col in filtered_df.columns
+                     if col in ['Station', 'station', 'STATION']), None)
 
-                    # Apply styling to the dataframe
-                    styled_df = filtered_df.style.apply(highlight_delay,
-                                                        axis=None)
+                # Apply styling to the dataframe
+                styled_df = filtered_df.style.apply(highlight_delay,
+                                                    axis=None)
 
-                    # Create a column layout to control table width
-                    table_col1, table_col2 = st.columns([3, 1])
-                    with table_col1:
-                        # Put the dataframe in a card with Bootstrap styling
-                        st.markdown('<div class="card shadow-sm mb-3"><div class="card-header bg-primary text-white d-flex justify-content-between align-items-center"><span>Train Data</span><span class="badge bg-light text-dark rounded-pill">Select stations to display on map</span></div><div class="card-body p-0">', unsafe_allow_html=True)
+                # Put the dataframe in a card with Bootstrap styling - full width
+                st.markdown('<div class="card shadow-sm mb-3"><div class="card-header bg-primary text-white d-flex justify-content-between align-items-center"><span>Train Data</span><span class="badge bg-light text-dark rounded-pill">Select stations to display on map</span></div><div class="card-body p-0">', unsafe_allow_html=True)
 
-                        # Use data_editor to make the table interactive with checkboxes
-                        edited_df = st.data_editor(
-                            filtered_df,
-                            hide_index=True,
-                            column_config={
-                                "Select":
-                                st.column_config.CheckboxColumn(
-                                    "Select",
-                                    help="Select to show on map",
-                                    default=False),
-                                "Train No.":
-                                st.column_config.TextColumn(
-                                    "Train No.", help="Train Number"),
-                                "FROM-TO":
-                                st.column_config.TextColumn(
-                                    "FROM-TO", help="Source to Destination"),
-                                "IC Entry Delay":
-                                st.column_config.TextColumn(
-                                    "IC Entry Delay", help="Entry Delay"),
-                                "Delay":
-                                st.column_config.TextColumn(
-                                    "Delay", help="Delay in Minutes")
-                            },
-                            disabled=[
-                                col for col in filtered_df.columns
-                                if col != 'Select'
-                            ],
-                            use_container_width=True,  # Use full container width
-                            height=600,  # Set appropriate height
-                            num_rows=40  # Show 40 rows at a time
-                        )
+                # Use data_editor to make the table interactive with checkboxes
+                edited_df = st.data_editor(
+                    filtered_df,
+                    hide_index=True,
+                    column_config={
+                        "Select":
+                        st.column_config.CheckboxColumn(
+                            "Select",
+                            help="Select to show on map",
+                            default=False),
+                        "Train No.":
+                        st.column_config.TextColumn(
+                            "Train No.", help="Train Number"),
+                        "FROM-TO":
+                        st.column_config.TextColumn(
+                            "FROM-TO", help="Source to Destination"),
+                        "IC Entry Delay":
+                        st.column_config.TextColumn(
+                            "IC Entry Delay", help="Entry Delay"),
+                        "Delay":
+                        st.column_config.TextColumn(
+                            "Delay", help="Delay in Minutes")
+                    },
+                    disabled=[
+                        col for col in filtered_df.columns
+                        if col != 'Select'
+                    ],
+                    use_container_width=True,  # Use full container width
+                    height=600,  # Set appropriate height
+                    num_rows=40  # Show 40 rows at a time
+                )
 
-                        # Add a footer to the card with information about the data
-                        selected_count = len(edited_df[edited_df['Select']])
-                        st.markdown(f'<div class="card-footer bg-light d-flex justify-content-between align-items-center"><span>Total Rows: {len(filtered_df)}</span><span>Selected: {selected_count}</span></div>', unsafe_allow_html=True)
-                        st.markdown('</div></div>', unsafe_allow_html=True)
+                # Add a footer to the card with information about the data
+                selected_count = len(edited_df[edited_df['Select']])
+                st.markdown(f'<div class="card-footer bg-light d-flex justify-content-between align-items-center"><span>Total Rows: {len(filtered_df)}</span><span>Selected: {selected_count}</span></div>', unsafe_allow_html=True)
+                st.markdown('</div></div>', unsafe_allow_html=True)
 
-                    with table_col2:
-                        # Empty space to reduce table width
-                        st.empty()
+                # Get selected stations for map
+                if station_column:
+                    try:
+                        # Get all selected rows
+                        selected_rows = edited_df[edited_df['Select']]
 
-                    # Get selected stations for map
-                    if station_column:
-                        try:
-                            # Get all selected rows
-                            selected_rows = edited_df[edited_df['Select']]
+                        # Debug - show all stations in selected rows (in a small text area)
+                        if not selected_rows.empty and station_column in selected_rows.columns:
+                            all_stations = selected_rows[station_column].tolist()
+                            st.caption(f"Selected stations: {', '.join([str(s) for s in all_stations if s])}")
 
-                            # Debug - show all stations in selected rows (in a small text area)
-                            if not selected_rows.empty and station_column in selected_rows.columns:
-                                all_stations = selected_rows[station_column].tolist()
-                                st.caption(f"Selected stations: {', '.join([str(s) for s in all_stations if s])}")
+                    except Exception as e:
+                        logger.error(f"Error processing selected stations: {str(e)}")
+                        st.error(f"Error processing selected stations: {str(e)}")
 
-                        except Exception as e:
-                            logger.error(f"Error processing selected stations: {str(e)}")
-                            st.error(f"Error processing selected stations: {str(e)}")
+                refresh_table_placeholder.empty()  # Clear the placeholder after table display
 
-                    refresh_table_placeholder.empty()  # Clear the placeholder after table display
+                # Get cached station coordinates
+                station_coords = get_station_coordinates()
 
-                # Display map with reduced left margin
-                with map_col:
-                    # Remove extra padding/margin to bring map closer to table
-                    st.markdown("""
-                    <style>
-                    .stColumn > div:first-child {
-                        padding-left: 0 !important;
-                        margin-left: 0 !important;
-                    }
-                    </style>
-                    """,
-                                unsafe_allow_html=True)
+                # Extract station codes from selected rows
+                selected_rows = edited_df[edited_df['Select']]
+                selected_station_codes = extract_station_codes(selected_rows, station_column)
 
-                    # Get cached station coordinates
-                    station_coords = get_station_coordinates()
+                # Card container for the map
+                st.markdown("""
+                <div class="card mb-3">
+                    <div class="card-header bg-secondary text-white">
+                        Interactive GPS Map
+                    </div>
+                    <div class="card-body p-0">
+                """, unsafe_allow_html=True)
 
-                    # Extract station codes from selected rows
-                    selected_rows = edited_df[edited_df['Select']]
-                    selected_station_codes = extract_station_codes(selected_rows, station_column)
+                # Create the interactive map
+                m = folium.Map(
+                    location=[16.5167, 80.6167],  # Centered around Vijayawada
+                    zoom_start=7,
+                    control_scale=True)
 
-                    # Card container for the map
-                    st.markdown("""
-                    <div class="card mb-3">
-                        <div class="card-header bg-secondary text-white">
-                            Interactive GPS Map
-                        </div>
-                        <div class="card-body p-0">
-                    """, unsafe_allow_html=True)
+                # Add a basemap with reduced opacity
+                folium.TileLayer(
+                    tiles='OpenStreetMap',
+                    attr='&copy; OpenStreetMap contributors',
+                    opacity=0.8).add_to(m)
 
-                    # Create the interactive map
-                    m = folium.Map(
-                        location=[16.5167, 80.6167],  # Centered around Vijayawada
-                        zoom_start=7,
-                        control_scale=True)
+                # Add markers efficiently
+                displayed_stations = []
+                valid_points = []
 
-                    # Add a basemap with reduced opacity
-                    folium.TileLayer(
-                        tiles='OpenStreetMap',
-                        attr='&copy; OpenStreetMap contributors',
-                        opacity=0.8).add_to(m)
+                # Create a counter to alternate label positions
+                counter = 0
 
-                    # Add markers efficiently
-                    displayed_stations = []
-                    valid_points = []
+                # First add all non-selected stations as dots with alternating labels
+                for code, coords in station_coords.items():
+                    # Skip selected stations - they'll get bigger markers later
+                    if code.upper() in selected_station_codes:
+                        continue
 
-                    # Create a counter to alternate label positions
-                    counter = 0
+                    # Determine offset for alternating left/right positioning
+                    x_offset = -50 if counter % 2 == 0 else 50  # Pixels left or right
+                    y_offset = 0  # No vertical offset
 
-                    # First add all non-selected stations as dots with alternating labels
-                    for code, coords in station_coords.items():
-                        # Skip selected stations - they'll get bigger markers later
-                        if code.upper() in selected_station_codes:
-                            continue
+                    # Every 3rd station, use vertical offset instead to further reduce overlap
+                    if counter % 3 == 0:
+                        x_offset = 0
+                        y_offset = -30  # Above the point
 
-                        # Determine offset for alternating left/right positioning
-                        x_offset = -50 if counter % 2 == 0 else 50  # Pixels left or right
-                        y_offset = 0  # No vertical offset
+                    counter += 1
 
-                        # Every 3rd station, use vertical offset instead to further reduce overlap
-                        if counter % 3 == 0:
-                            x_offset = 0
-                            y_offset = -30  # Above the point
+                    # Add small circle for the station with maroon border
+                    folium.CircleMarker(
+                        [coords['lat'], coords['lon']],
+                        radius=3,
+                        color='#800000',  # Maroon red border
+                        fill=True,
+                        fill_color='gray',
+                        fill_opacity=0.6,
+                        opacity=0.8,
+                        tooltip=code).add_to(m)
 
+                    # Add box around dot with label with custom positioning
+                    # Make sizing consistent regardless of zoom by using absolute elements
+                    html_content = f'''
+                    <div style="position:absolute; width:0; height:0;">
+                        <!-- Box around station location -->
+                        <div style="position:absolute; width:6px; height:6px; border:1px solid #800000; left:-3px; top:-3px; border-radius:1px; background-color:rgba(255,255,255,0.5);"></div>
+                        <!-- Station label -->
+                        <div style="position:absolute; left:{10 if x_offset < 0 else -40}px; top:{-18 if y_offset < 0 else 0}px; background-color:rgba(255,255,255,0.8); padding:1px 3px; border:1px solid #800000; border-radius:2px; font-size:9px; white-space:nowrap;">{code}</div>
+                    </div>
+                    '''
+
+                    folium.DivIcon(
+                        icon_size=(0, 0),  # Using zero size to improve positioning
+                        icon_anchor=(0, 0),  # Centered anchor point
+                        html=html_content).add_to(
+                            folium.Marker(
+                                [coords['lat'], coords['lon']],
+                                icon=folium.DivIcon(icon_size=(0, 0))  # Invisible marker
+                            ).add_to(m))
+
+                # Then add larger markers for selected stations with prominent labels
+                for code in selected_station_codes:
+                    normalized_code = code.upper().strip()
+                    if normalized_code in station_coords:
+                        lat = station_coords[normalized_code]['lat']
+                        lon = station_coords[normalized_code]['lon']
+
+                        # Determine offset for selected stations - opposite to non-selected pattern
+                        x_offset = 50 if counter % 2 == 0 else -50
+                        y_offset = -30 if counter % 3 == 0 else 0
                         counter += 1
 
-                        # Add small circle for the station with maroon border
-                        folium.CircleMarker(
-                            [coords['lat'], coords['lon']],
-                            radius=3,
-                            color='#800000',  # Maroon red border
-                            fill=True,
-                            fill_color='gray',
-                            fill_opacity=0.6,
-                            opacity=0.8,
-                            tooltip=code).add_to(m)
+                        # Add train icon marker
+                        folium.Marker(
+                            [lat, lon],
+                            popup=f"<b>{normalized_code}</b><br>({lat:.4f}, {lon:.4f})",
+                            tooltip=normalized_code,
+                            icon=folium.Icon(color='red', icon='train', prefix='fa'),
+                            opacity=0.8).add_to(m)
 
-                        # Add box around dot with label with custom positioning
-                        # Make sizing consistent regardless of zoom by using absolute elements
+                        # Add highlighted box and prominent label with zoom-stable positioning
                         html_content = f'''
                         <div style="position:absolute; width:0; height:0;">
-                            <!-- Box around station location -->
-                            <div style="position:absolute; width:6px; height:6px; border:1px solid #800000; left:-3px; top:-3px; border-radius:1px; background-color:rgba(255,255,255,0.5);"></div>
-                            <!-- Station label -->
-                            <div style="position:absolute; left:{10 if x_offset < 0 else -40}px; top:{-18 if y_offset < 0 else 0}px; background-color:rgba(255,255,255,0.8); padding:1px 3px; border:1px solid #800000; border-radius:2px; font-size:9px; white-space:nowrap;">{code}</div>
+                            <!-- Larger box for selected station -->
+                            <div style="position:absolute; width:8px; height:8px; border:2px solid #800000; left:-4px; top:-4px; border-radius:2px; background-color:rgba(255,255,255,0.5);"></div>
+                            <!-- Prominent station label -->
+                            <div style="position:absolute; left:{15 if x_offset < 0 else -50}px; top:{-20 if y_offset < 0 else 0}px; background-color:rgba(255,255,255,0.9); padding:2px 4px; border:2px solid #800000; border-radius:3px; font-weight:bold; font-size:10px; color:#800000; white-space:nowrap;">{normalized_code}</div>
                         </div>
                         '''
 
@@ -1148,82 +1164,43 @@ try:
                             icon_anchor=(0, 0),  # Centered anchor point
                             html=html_content).add_to(
                                 folium.Marker(
-                                    [coords['lat'], coords['lon']],
-                                    icon=folium.DivIcon(icon_size=(0, 0))  # Invisible marker
-                                ).add_to(m))
+                                    [lat, lon],
+                                    icon=folium.DivIcon(icon_size=(0, 0))).add_to(m))
 
-                    # Then add larger markers for selected stations with prominent labels
-                    for code in selected_station_codes:
-                        normalized_code = code.upper().strip()
-                        if normalized_code in station_coords:
-                            lat = station_coords[normalized_code]['lat']
-                            lon = station_coords[normalized_code]['lon']
+                        displayed_stations.append(normalized_code)
+                        valid_points.append([lat, lon])
 
-                            # Determine offset for selected stations - opposite to non-selected pattern
-                            x_offset = 50 if counter % 2 == 0 else -50
-                            y_offset = -30 if counter % 3 == 0 else 0
-                            counter += 1
+                # Add railway lines between selected stations
+                if len(valid_points) > 1:
+                    folium.PolyLine(valid_points,
+                                    weight=2,
+                                    color='gray',
+                                    opacity=0.8,
+                                    dash_array='5, 10').add_to(m)
 
-                            # Add train icon marker
-                            folium.Marker(
-                                [lat, lon],
-                                popup=f"<b>{normalized_code}</b><br>({lat:.4f}, {lon:.4f})",
-                                tooltip=normalized_code,
-                                icon=folium.Icon(color='red', icon='train', prefix='fa'),
-                                opacity=0.8).add_to(m)
+                # Render the map with increased width for better visibility
+                folium_static(m, width=1200, height=650)
 
-                            # Add highlighted box and prominent label with zoom-stable positioning
-                            html_content = f'''
-                            <div style="position:absolute; width:0; height:0;">
-                                <!-- Larger box for selected station -->
-                                <div style="position:absolute; width:8px; height:8px; border:2px solid #800000; left:-4px; top:-4px; border-radius:2px; background-color:rgba(255,255,255,0.5);"></div>
-                                <!-- Prominent station label -->
-                                <div style="position:absolute; left:{15 if x_offset < 0 else -50}px; top:{-20 if y_offset < 0 else 0}px; background-color:rgba(255,255,255,0.9); padding:2px 4px; border:2px solid #800000; border-radius:3px; font-weight:bold; font-size:10px; color:#800000; white-space:nowrap;">{normalized_code}</div>
-                            </div>
-                            '''
+                st.markdown("</div></div>", unsafe_allow_html=True)
 
-                            folium.DivIcon(
-                                icon_size=(0, 0),  # Using zero size to improve positioning
-                                icon_anchor=(0, 0),  # Centered anchor point
-                                html=html_content).add_to(
-                                    folium.Marker(
-                                        [lat, lon],
-                                        icon=folium.DivIcon(icon_size=(0, 0))).add_to(m))
-
-                            displayed_stations.append(normalized_code)
-                            valid_points.append([lat, lon])
-
-                    # Add railway lines between selected stations
-                    if len(valid_points) > 1:
-                        folium.PolyLine(valid_points,
-                                            weight=2,
-                                            color='gray',
-                                            opacity=0.8,
-                                            dash_array='5, 10').add_to(m)
-
-                    # Render the map with increased width
-                    folium_static(m, width=900, height=650)
-
-                    st.markdown("</div></div>", unsafe_allow_html=True)
-
-                    # Add instructions in collapsible section
-                    with st.expander("Map Instructions"):
-                        st.markdown("""
-                        <div class="card">
-                            <div class="card-header bg-light">
-                                Using the Interactive Map
-                            </div>
-                            <div class="card-body">
-                                <ul class="list-group list-group-flush">
-                                    <li class="list-group-item">Select stations using the checkboxes in the table</li>
-                                    <li class="list-group-item">Selected stations will appear with red train markers on the map</li>
-                                    <li class="list-group-item">All other stations are shown as small gray dots</li>
-                                    <li class="list-group-item">Railway lines automatically connect selected stations in sequence</li>
-                                    <li class="list-group-item">Zoom and pan the map to explore different areas</li>
-                                </ul>
-                            </div>
+                # Add instructions in collapsible section
+                with st.expander("Map Instructions"):
+                    st.markdown("""
+                    <div class="card">
+                        <div class="card-header bg-light">
+                            Using the Interactive Map
                         </div>
-                        """, unsafe_allow_html=True)
+                        <div class="card-body">
+                            <ul class="list-group list-group-flush">
+                                <li class="list-group-item">Select stations using the checkboxes in the table</li>
+                                <li class="list-group-item">Selected stations will appear with red train markers on the map</li>
+                                <li class="list-group-item">All other stations are shown as small gray dots</li>
+                                <li class="list-group-item">Railway lines automatically connect selected stations in sequence</li>
+                                <li class="list-group-item">Zoom and pan the map to explore different areas</li>
+                            </ul>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
 
             else:
                 st.error("No data available in the cached data frame")
