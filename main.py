@@ -801,10 +801,11 @@ try:
                 f"Last updated: {last_update_ist.strftime('%Y-%m-%d %H:%M:%S')} IST"
             )
 
-        # Get cached data        cached_data = data_handler.get_cached_data()
+        # Get cached data
+        cached_data = data_handler.get_cached_data()
 
         if cached_data:
-            # Convert# Convert to DataFrame
+            # Convert to DataFrame
             df = pd.DataFrame(cached_data)
 
             if not df.empty:
