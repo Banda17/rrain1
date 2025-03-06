@@ -121,12 +121,14 @@ st.markdown("""
         .bs-grid-left {
             flex: 6;
             padding-right: 10px;
+            min-width: 600px;
         }
         .bs-grid-right {
             flex: 6;
             padding-left: 0;
+            min-width: 600px;
         }
-        @media (max-width: 992px) {
+        @media (max-width: 1200px) {
             .bs-grid-container {
                 flex-direction: column;
             }
@@ -134,6 +136,7 @@ st.markdown("""
                 flex: 100%;
                 padding: 0;
                 width: 100%;
+                min-width: 100%;
             }
         }
     </style>
@@ -800,14 +803,13 @@ def extract_station_codes(selected_stations, station_column=None):
     return selected_station_codes
 
 
-# Initialize session state
+# Initialize sessionstate
 initialize_session_state()
 
 # Main page title
 st.title("ICMS Data - Vijayawada Division")
 
-# Add a refresh button at thetop with just an icon
-col1, col2 = st.columns([10, 2])
+# Add a refresh button at the top with just an iconcol1, col2 = st.columns((10, 2))
 with col2:
     if st.button("🔄", type="primary"):
         st.rerun()
@@ -943,6 +945,36 @@ try:
 
                 # Display data in a Bootstrap grid layout (side by side)
                 st.markdown("""
+                <style>
+                /* Bootstrap grid container for side-by-side layout */
+                .bs-grid-container {
+                    display: flex;
+                    width: 100%;
+                    margin: 0;
+                    padding: 0;
+                }
+                .bs-grid-left {
+                    flex: 6;
+                    padding-right: 10px;
+                    min-width: 600px;
+                }
+                .bs-grid-right {
+                    flex: 6;
+                    padding-left: 0;
+                    min-width: 600px;
+                }
+                @media (max-width: 1200px) {
+                    .bs-grid-container {
+                        flex-direction: column;
+                    }
+                    .bs-grid-left, .bs-grid-right {
+                        flex: 100%;
+                        padding: 0;
+                        width: 100%;
+                        min-width: 100%;
+                    }
+                }
+                </style>
                 <div style="display: none">
                 <!-- Streamlit elements below will be moved to our Bootstrap grid via JavaScript -->
                 <div id="table-container"></div>
@@ -955,46 +987,46 @@ try:
                 <script>
                 // Function to move elements after page loads
                 function moveElements() {
-                    // Streamlit loads elements asynchronously, so we need to use a timeout
-                    setTimeout(function() {
-                        // Get the table and map container placeholders
-                        var tableContainer = document.getElementById('table-container');
-                        var mapContainer = document.getElementById('map-container');
+                    // Get the table and map container placeholders
+                    var tableContainer = document.getElementById('table-container');
+                    var mapContainer = document.getElementById('map-container');
 
-                        // Get the target locations in the Bootstrap grid
-                        var bootstrapTableContainer = document.getElementById('bootstrap-table-container');
-                        var bootstrapMapContainer = document.getElementById('bootstrap-map-container');
+                    // Get the target locations in the Bootstrap grid
+                    var bootstrapTableContainer = document.getElementById('bootstrap-table-container');
+                    var bootstrapMapContainer = document.getElementById('bootstrap-map-container');
 
-                        // Move elements to the Bootstrap grid
-                        if (tableContainer && bootstrapTableContainer) {
-                            // Move table elements
-                            var tableElements = tableContainer.nextElementSibling;
-                            if (tableElements) {
-                                bootstrapTableContainer.appendChild(tableElements);
-                            }
+                    // Move elements to the Bootstrap grid
+                    if (tableContainer && bootstrapTableContainer) {
+                        // Move table elements
+                        var tableElements = tableContainer.nextElementSibling;
+                        if (tableElements) {
+                            bootstrapTableContainer.appendChild(tableElements);
                         }
+                    }
 
-                        if (mapContainer && bootstrapMapContainer) {
-                            // Move map elements
-                            var mapElements = mapContainer.nextElementSibling;
-                            if (mapElements) {
-                                bootstrapMapContainer.appendChild(mapElements);
-                            }
+                    if (mapContainer && bootstrapMapContainer) {
+                        // Move map elements
+                        var mapElements = mapContainer.nextElementSibling;
+                        if (mapElements) {
+                            bootstrapMapContainer.appendChild(mapElements);
                         }
-                    }, 1000); // Adjust timeout as needed
+                    }
                 }
 
                 // Run the function after the page loads
                 document.addEventListener('DOMContentLoaded', moveElements);
                 // Also run it after a short delay to catch Streamlit's async loading
+                setTimeout(moveElements, 1000);
+                // Run it multiple times to ensure elements are moved after Streamlit updates
                 setTimeout(moveElements, 1500);
+                setTimeout(moveElements, 2000);
+                setTimeout(moveElements, 3000);
                 </script>
                 """, unsafe_allow_html=True)
 
                 # Table container - will be moved to Bootstrap grid
                 st.markdown('<div id="table-container"></div>', unsafe_allow_html=True)
 
-                # Display data table without column layout
                 # Refresh animation placeholder right before displaying the table
                 refresh_table_placeholder = st.empty()
                 create_pulsing_refresh_animation(refresh_table_placeholder,
@@ -1093,7 +1125,7 @@ try:
                     ],
                     use_container_width=True,  # Use full container width
                     height=600,  # Set appropriate height
-                    num_rows=40  # Show 40 rows at a time
+                    num_rows="dynamic"  # Dynamic row count
                 )
 
                 # Add a footer to the card with information about the data
@@ -1128,11 +1160,12 @@ try:
                 selected_rows = edited_df[edited_df['Select']]
                 selected_station_codes = extract_station_codes(selected_rows, station_column)
 
-                # Card container for the map
+                # Card container for the map - full width in its container
                 st.markdown("""
                 <div class="card mb-3">
-                    <div class="card-header bg-secondary text-white">
-                        Interactive GPS Map
+                    <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                        <span>Interactive GPS Map</span>
+                        <span class="badge bg-light text-dark rounded-pill">Showing selected stations</span>
                     </div>
                     <div class="card-body p-0">
                 """, unsafe_allow_html=True)
@@ -1253,8 +1286,8 @@ try:
                                     opacity=0.8,
                                     dash_array='5, 10').add_to(m)
 
-                # Render the map with increased width for better visibility
-                folium_static(m, width=700, height=600)
+                # Render the map with width to fit the container
+                folium_static(m, width=650, height=600)
 
                 st.markdown("</div></div>", unsafe_allow_html=True)
 
