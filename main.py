@@ -796,6 +796,9 @@ col1, col2 = st.columns((10, 2))
 with col2:
     if st.button("🔄", type="primary"):
         st.rerun()
+
+# Move this function definition to the top of the file, before it'st.rerun()
+
 try:
     data_handler = st.session_state['icms_data_handler']
 
@@ -868,6 +871,17 @@ try:
                         df = df.drop(columns=[col])
                         logger.debug(f"Dropped column: {col}")
 
+                # Move this function definition to the top of the file, before it's used
+                def is_positive_or_plus(value):
+                    """Check if a value is positive or contains '+' sign"""
+                    if pd.isna(value) or not value:
+                        return False
+
+                    value_str = str(value).strip()
+
+                    # Check for '+' sign at start or inside brackets like '(+5)'
+                    return value_str.startswith('+') or '(+' in value_str or (value_str.isdigit() and int(value_str) > 0)
+
                 # Define styling function with specific colors for train types
                 def highlight_delay(data):
                     styles = pd.DataFrame('', index=data.index, columns=data.columns)
@@ -876,17 +890,6 @@ try:
                     if 'Delay' in df.columns:
                         styles['Delay'] = df['Delay'].apply(
                             lambda x: 'color: red; font-weight: bold' if x and is_positive_or_plus(x) else '')
-
-                    # Function to check if value is a positive number with "+" sign
-                    def is_positive_or_plus(value):
-                        """Check if a value is positive or contains '+' sign"""
-                        if pd.isna(value) or not value:
-                            return False
-
-                        value_str = str(value).strip()
-
-                        # Check for '+' sign at start or inside brackets like '(+5)'
-                        return value_str.startswith('+') or '(+' in value_str or (value_str.isdigit() and int(value_str) > 0)
 
                     # Try both possible FROM-TO column names
                     from_to_columns = ['FROM-TO', 'FROM_TO']
@@ -1168,41 +1171,6 @@ try:
 except Exception as e:
     st.error(f"An error occurred: {str(e)}")
     logger.exception("Exception in main app")
-
-
-# Function to check if a value represents a positive delay
-def is_positive_or_plus(value):
-    try:
-        if value is None:
-            return False
-
-        if isinstance(value, str):
-            # Check if the string contains a plus sign
-            if '+' in value:
-                return True
-
-            # Clean the string of any non-numeric characters except minus sign and decimal point
-            # First handle the case with multiple values (like "-7 \xa0-36")
-            if '\xa0' in value or '  ' in value:
-                # Take just the first part if there are multiple numbers
-                value = value.split('\xa0')[0].split('  ')[0].strip()
-
-            # Remove parentheses and other characters
-            clean_value = value.replace('(', '').replace(')', '').strip()
-
-            # Try to convert to float
-            if clean_value:
-                try:
-                    return float(clean_value) > 0
-                except ValueError:
-                    # If conversion fails, check if it starts with a minus sign
-                    return not clean_value.startswith('-')
-        elif isinstance(value, (int, float)):
-            return value > 0
-    except Exception as e:
-        logger.error(f"Error in is_positive_or_plus: {str(e)}")
-        return False
-    return False
 
 
 # Footer
