@@ -4,104 +4,103 @@ div[data-testid="stDataFrame"] table tr td:nth-child(4) {
     display: none !important;
 }
 
-/* Train number styling based on first digit */
-table td:has(.train-1), .train-1 {
-    color: #d63384 !important; 
+/* Apply styles directly to train number cells based on the train-class attribute */
+/* Train with first digit 1 */
+div[data-testid="stDataFrame"] tr:has(td[data-train-class="train-1"]) td:nth-child(3) {
+    color: #d63384 !important;
     font-weight: bold !important;
-    font-size: 15px !important;
-    background-color: #f0f8ff !important;
-    padding: 3px 8px !important;
-    border-radius: 4px !important;
+    font-size: 16px !important;
+    text-align: center !important;
     border-left: 4px solid #d63384 !important;
-    text-shadow: 0px 0px 1px rgba(0,0,0,0.1) !important;
-}
-table td:has(.train-2), .train-2 {
-    color: #6f42c1 !important; 
-    font-weight: bold !important;
-    font-size: 15px !important;
     background-color: #f0f8ff !important;
-    padding: 3px 8px !important;
-    border-radius: 4px !important;
+}
+
+/* Train with first digit 2 */
+div[data-testid="stDataFrame"] tr:has(td[data-train-class="train-2"]) td:nth-child(3) {
+    color: #6f42c1 !important;
+    font-weight: bold !important;
+    font-size: 16px !important;
+    text-align: center !important;
     border-left: 4px solid #6f42c1 !important;
-    text-shadow: 0px 0px 1px rgba(0,0,0,0.1) !important;
-}
-table td:has(.train-3), .train-3 {
-    color: #0d6efd !important; 
-    font-weight: bold !important;
-    font-size: 15px !important;
     background-color: #f0f8ff !important;
-    padding: 3px 8px !important;
-    border-radius: 4px !important;
+}
+
+/* Train with first digit 3 */
+div[data-testid="stDataFrame"] tr:has(td[data-train-class="train-3"]) td:nth-child(3) {
+    color: #0d6efd !important;
+    font-weight: bold !important;
+    font-size: 16px !important;
+    text-align: center !important;
     border-left: 4px solid #0d6efd !important;
-    text-shadow: 0px 0px 1px rgba(0,0,0,0.1) !important;
-}
-table td:has(.train-4), .train-4 {
-    color: #20c997 !important; 
-    font-weight: bold !important;
-    font-size: 15px !important;
     background-color: #f0f8ff !important;
-    padding: 3px 8px !important;
-    border-radius: 4px !important;
+}
+
+/* Train with first digit 4 */
+div[data-testid="stDataFrame"] tr:has(td[data-train-class="train-4"]) td:nth-child(3) {
+    color: #20c997 !important;
+    font-weight: bold !important;
+    font-size: 16px !important;
+    text-align: center !important;
     border-left: 4px solid #20c997 !important;
-    text-shadow: 0px 0px 1px rgba(0,0,0,0.1) !important;
-}
-table td:has(.train-5), .train-5 {
-    color: #198754 !important; 
-    font-weight: bold !important;
-    font-size: 15px !important;
     background-color: #f0f8ff !important;
-    padding: 3px 8px !important;
-    border-radius: 4px !important;
+}
+
+/* Train with first digit 5 */
+div[data-testid="stDataFrame"] tr:has(td[data-train-class="train-5"]) td:nth-child(3) {
+    color: #198754 !important;
+    font-weight: bold !important;
+    font-size: 16px !important;
+    text-align: center !important;
     border-left: 4px solid #198754 !important;
-    text-shadow: 0px 0px 1px rgba(0,0,0,0.1) !important;
-}
-table td:has(.train-6), .train-6 {
-    color: #0dcaf0 !important; 
-    font-weight: bold !important;
-    font-size: 15px !important;
     background-color: #f0f8ff !important;
-    padding: 3px 8px !important;
-    border-radius: 4px !important;
+}
+
+/* Train with first digit 6 */
+div[data-testid="stDataFrame"] tr:has(td[data-train-class="train-6"]) td:nth-child(3) {
+    color: #0dcaf0 !important;
+    font-weight: bold !important;
+    font-size: 16px !important;
+    text-align: center !important;
     border-left: 4px solid #0dcaf0 !important;
-    text-shadow: 0px 0px 1px rgba(0,0,0,0.1) !important;
-}
-table td:has(.train-7), .train-7 {
-    color: #fd7e14 !important; 
-    font-weight: bold !important;
-    font-size: 15px !important;
     background-color: #f0f8ff !important;
-    padding: 3px 8px !important;
-    border-radius: 4px !important;
+}
+
+/* Train with first digit 7 */
+div[data-testid="stDataFrame"] tr:has(td[data-train-class="train-7"]) td:nth-child(3) {
+    color: #fd7e14 !important;
+    font-weight: bold !important;
+    font-size: 16px !important;
+    text-align: center !important;
     border-left: 4px solid #fd7e14 !important;
-    text-shadow: 0px 0px 1px rgba(0,0,0,0.1) !important;
-}
-table td:has(.train-8), .train-8 {
-    color: #dc3545 !important; 
-    font-weight: bold !important;
-    font-size: 15px !important;
     background-color: #f0f8ff !important;
-    padding: 3px 8px !important;
-    border-radius: 4px !important;
+}
+
+/* Train with first digit 8 */
+div[data-testid="stDataFrame"] tr:has(td[data-train-class="train-8"]) td:nth-child(3) {
+    color: #dc3545 !important;
+    font-weight: bold !important;
+    font-size: 16px !important;
+    text-align: center !important;
     border-left: 4px solid #dc3545 !important;
-    text-shadow: 0px 0px 1px rgba(0,0,0,0.1) !important;
-}
-table td:has(.train-9), .train-9 {
-    color: #6610f2 !important; 
-    font-weight: bold !important;
-    font-size: 15px !important;
     background-color: #f0f8ff !important;
-    padding: 3px 8px !important;
-    border-radius: 4px !important;
+}
+
+/* Train with first digit 9 */
+div[data-testid="stDataFrame"] tr:has(td[data-train-class="train-9"]) td:nth-child(3) {
+    color: #6610f2 !important;
+    font-weight: bold !important;
+    font-size: 16px !important;
+    text-align: center !important;
     border-left: 4px solid #6610f2 !important;
-    text-shadow: 0px 0px 1px rgba(0,0,0,0.1) !important;
-}
-table td:has(.train-0), .train-0 {
-    color: #333333 !important; 
-    font-weight: bold !important;
-    font-size: 15px !important;
     background-color: #f0f8ff !important;
-    padding: 3px 8px !important;
-    border-radius: 4px !important;
+}
+
+/* Train with first digit 0 */
+div[data-testid="stDataFrame"] tr:has(td[data-train-class="train-0"]) td:nth-child(3) {
+    color: #333333 !important;
+    font-weight: bold !important;
+    font-size: 16px !important;
+    text-align: center !important;
     border-left: 4px solid #333333 !important;
-    text-shadow: 0px 0px 1px rgba(0,0,0,0.1) !important;
+    background-color: #f0f8ff !important;
 }

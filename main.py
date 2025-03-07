@@ -234,8 +234,8 @@ def color_train_number(train_no):
     # Get color or default to black
     color = color_map.get(first_digit, '#000000')
     
-    # Return HTML formatted string with both inline style and class - with enhanced font size and stronger color
-    return f'<span class="train-{first_digit}" style="color: {color}; font-weight: bold; font-size: 15px; background-color: #f0f8ff; padding: 3px 8px; border-radius: 4px; border-left: 4px solid {color}; text-shadow: 0px 0px 1px rgba(0,0,0,0.1);">{train_no_str}</span>'
+    # Just return the train number - we'll use CSS for styling
+    return train_no_str
 
 # Create a layout for the header with logo
 header_col1, header_col2 = st.columns([1, 5])
@@ -280,6 +280,13 @@ st.markdown("<hr class='mt-2 mb-3'>", unsafe_allow_html=True)
 # Add custom CSS for train number styling
 with open('train_number_styles.css', 'r') as f:
     st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
+
+# Add JavaScript for dynamic styling
+try:
+    with open('train_styles.js', 'r') as js_file:
+        st.markdown(f'<script>{js_file.read()}</script>', unsafe_allow_html=True)
+except Exception as e:
+    st.error(f"Could not load JavaScript styling: {str(e)}")
 
 
 def initialize_session_state():
@@ -1053,22 +1060,39 @@ try:
                 # Add a sequential S.No. column at the beginning (before Select)
                 display_df.insert(0, '#', range(1, len(display_df) + 1))
                 
-                # Pre-format train numbers with HTML and CSS classes
+                # Create style info for train numbers
                 if 'Train No.' in display_df.columns:
-                    # Format train numbers with HTML
-                    display_df['Train No.'] = display_df['Train No.'].apply(color_train_number)
-                    
-                    # Create a CSS class column for train numbers (still needed for CSS styling)
+                    # Add a column with train number class for styling
                     def get_train_class(train_no):
                         if train_no is None or str(train_no).strip() == '':
                             return ''
                         train_no_str = str(train_no).strip()
-                        if '<span' in train_no_str:  # Already formatted with HTML
+                        if not train_no_str or len(train_no_str) == 0:
                             return ''
-                        first_digit = train_no_str[0]
-                        return f'train-{first_digit}'
-                        
+                        try:
+                            first_digit = train_no_str[0]
+                            return f'train-{first_digit}'
+                        except:
+                            return ''
+                    
+                    # Set the train class attribute that will be used for styling
                     display_df['Train Class'] = display_df['Train No.'].apply(get_train_class)
+                    
+                    # Custom styler to add data attributes to cells
+                    def apply_train_class_styler(df):
+                        # Style the Train No column based on first digit
+                        styles = []
+                        for i, row in df.iterrows():
+                            train_class = row.get('Train Class', '')
+                            if train_class:
+                                styles.append({
+                                    'selector': f'td:nth-child(3)',
+                                    'props': [('data-train-class', train_class)]
+                                })
+                        return styles
+                    
+                    # Apply the styler function to add data attributes
+                    # (Note: This may not be supported in all Streamlit versions)
 
                 # Log FROM-TO values for debugging
                 def log_from_to_values(df):
@@ -1328,6 +1352,58 @@ def is_positive_or_plus(value):
         logger.error(f"Error in is_positive_or_plus: {str(e)}")
         return False
     return False
+
+# Add a custom HTML/JavaScript solution for train number styling
+st.markdown("""
+<div id="custom-train-styling-fix"></div>
+<script>
+// Color train numbers based on their first digit
+const colorTrainNumbers = () => {
+    // Define colors for each first digit
+    const colors = {
+        '1': '#d63384', // Pink
+        '2': '#6f42c1', // Purple
+        '3': '#0d6efd', // Blue
+        '4': '#20c997', // Teal
+        '5': '#198754', // Green
+        '6': '#0dcaf0', // Cyan
+        '7': '#fd7e14', // Orange
+        '8': '#dc3545', // Red
+        '9': '#6610f2', // Indigo
+        '0': '#333333'  // Dark gray
+    };
+    
+    // Wait for the table to be fully loaded
+    setTimeout(() => {
+        // Find all cells in the Train No. column (which is the 3rd column - index 2)
+        const trainCells = document.querySelectorAll('div[data-testid="stDataFrame"] tbody tr td:nth-child(3)');
+        
+        // Apply styling to each cell
+        trainCells.forEach(cell => {
+            const trainNumber = cell.textContent.trim();
+            if (trainNumber && trainNumber.length > 0) {
+                const firstDigit = trainNumber[0];
+                if (colors[firstDigit]) {
+                    cell.style.color = colors[firstDigit];
+                    cell.style.fontWeight = 'bold';
+                    cell.style.fontSize = '16px';
+                    cell.style.backgroundColor = '#f0f8ff';
+                    cell.style.borderLeft = `4px solid ${colors[firstDigit]}`;
+                    cell.style.padding = '3px 8px';
+                    cell.style.borderRadius = '4px';
+                    cell.style.textAlign = 'center';
+                }
+            }
+        });
+    }, 1000);
+};
+
+// Run initially and set up observer for dynamic updates
+colorTrainNumbers();
+const observer = new MutationObserver(colorTrainNumbers);
+observer.observe(document.body, { childList: true, subtree: true });
+</script>
+""", unsafe_allow_html=True)
 
 # Footer
 st.markdown("---")
