@@ -51,6 +51,13 @@ st.markdown("""
             border: 1px solid #dee2e6 !important;
             padding: 8px !important;
         }
+        /* Styling train number columns */
+        [data-testid="stDataFrame"] td:nth-child(3) {
+            background-color: #e9f7fe !important;
+            font-weight: bold !important;
+            color: #0066cc !important;
+            border-left: 3px solid #0066cc !important;
+        }
         [data-testid="stDataFrame"] tr:nth-of-type(odd) {
             background-color: rgba(0,0,0,.05) !important;
         }
@@ -887,6 +894,14 @@ try:
                     if 'Delay' in df.columns:
                         styles['Delay'] = df['Delay'].apply(
                             lambda x: 'color: red; font-weight: bold' if x and is_positive_or_plus(x) else '')
+                    
+                    # Style train number column with blue background and bold text
+                    if 'Train No.' in df.columns:
+                        styles['Train No.'] = 'background-color: #e9f7fe; color: #0066cc; font-weight: bold; border-left: 3px solid #0066cc'
+                    
+                    # Alternative column name for train number
+                    if 'Train Name' in df.columns:
+                        styles['Train Name'] = 'background-color: #e9f7fe; color: #0066cc; font-weight: bold; border-left: 3px solid #0066cc'
 
                     # Hidden column name
                     from_to_col = 'FROM-TO'
