@@ -1048,6 +1048,17 @@ try:
 
                 # Add a sequential S.No. column at the beginning (before Select)
                 display_df.insert(0, '#', range(1, len(display_df) + 1))
+                
+                # Apply color formatting to train numbers
+                if 'Train No.' in display_df.columns:
+                    # Create a new column for styled train numbers
+                    display_df['Train No. (Styled)'] = display_df['Train No.'].apply(color_train_number)
+                    
+                    # Replace original train number column with the styled version
+                    train_no_idx = display_df.columns.get_loc('Train No.')
+                    display_df.insert(train_no_idx + 1, 'Train No. (Color)', display_df['Train No. (Styled)'])
+                    display_df.drop(['Train No.', 'Train No. (Styled)'], axis=1, inplace=True)
+                    display_df.rename(columns={'Train No. (Color)': 'Train No.'}, inplace=True)
 
                 # Log FROM-TO values for debugging
                 def log_from_to_values(df):
@@ -1092,8 +1103,12 @@ try:
                                 help="Select to show on map",
                                 default=False),
                             "Train No.":
-                            st.column_config.TextColumn("Train No.",
-                                                        help="Train Number"),
+                            st.column_config.Column("Train No.",
+                                                    help="Train Number", 
+                                                    display_text=True,
+                                                    disable_input=True,
+                                                    # This is important: allowing unsafe html render
+                                                    unsafe_html=True),
                             "FROM-TO":
                             st.column_config.TextColumn(
                                 "FROM-TO", help="Source to Destination"),
