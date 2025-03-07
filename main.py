@@ -353,17 +353,17 @@ def color_train_number(train_no):
 
 
 # Create a layout for the header with logo
-header_col1, header_col2 = st.columns([1, 5])
+header_col1, header_col2 = st.columns([0.7, 5])
 
 # Display the logo in the first column
 with header_col1:
     # Try with PNG logo directly from the attached_assets folder
-    st.image("attached_assets/scr_logo.png", width=120)
+    st.image("attached_assets/scr_logo.png", width=100)
 
 # Display the title and subtitle in the second column
 with header_col2:
     st.markdown("""
-        <div class="card border-0">
+        <div class="card border-0" style="margin-left: -15px;">
             <div class="card-body p-0">
                 <h1 class="card-title text-primary mb-1">South Central Railway</h1>
                 <h2 class="card-subtitle text-secondary">Vijayawada Division</h2>
