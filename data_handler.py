@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import re
 from typing import Dict, List, Tuple, Any
 from datetime import datetime
 from database import get_database_connection, TrainDetails
@@ -260,18 +261,53 @@ class DataHandler:
             records = []
 
             for _, row in self.data.iterrows():
-                time_actual = pd.to_datetime(row['Time'])
-                time_scheduled = time_actual  # Simplified for now
-                status, delay = self.get_timing_status(time_actual, time_scheduled)
-
-                records.append(TrainDetails(
-                    train_id=str(row['Train Name']),
-                    station=str(row['Station']),
-                    time_actual=time_actual,
-                    time_scheduled=time_scheduled,
-                    delay=delay,
-                    status=status
-                ))
+                try:
+                    # Handle the specific format we're seeing: "07 Mar 07:38"
+                    time_str = str(row['Time'])
+                    logger.debug(f"Processing time string: {time_str}")
+                    
+                    # Manually parse this specific format
+                    if len(time_str) > 0 and re.match(r'\d{2} [A-Za-z]{3} \d{2}:\d{2}', time_str):
+                        day = time_str[:2]
+                        month = time_str[3:6]
+                        time_part = time_str[7:]
+                        
+                        # Convert month abbreviation to month number
+                        month_num = {
+                            'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04',
+                            'May': '05', 'Jun': '06', 'Jul': '07', 'Aug': '08',
+                            'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
+                        }.get(month, '01')
+                        
+                        # Construct an ISO format date string with current year
+                        current_year = datetime.now().year
+                        iso_date_str = f"{current_year}-{month_num}-{day}T{time_part}:00"
+                        logger.debug(f"Constructed ISO date: {iso_date_str}")
+                        
+                        # Create datetime object
+                        time_actual = pd.Timestamp(iso_date_str)
+                    else:
+                        # Try standard parsing if it doesn't match our expected format
+                        try:
+                            time_actual = pd.to_datetime(time_str)
+                        except:
+                            logger.warning(f"Could not parse time: {time_str}, using current time")
+                            time_actual = pd.Timestamp.now()
+                    
+                    time_scheduled = time_actual  # Simplified for now
+                    status, delay = self.get_timing_status(time_actual, time_scheduled)
+                    
+                    records.append(TrainDetails(
+                        train_id=str(row['Train Name']),
+                        station=str(row['Station']),
+                        time_actual=time_actual,
+                        time_scheduled=time_scheduled,
+                        delay=delay,
+                        status=status
+                    ))
+                except Exception as e:
+                    logger.error(f"Error processing row: {str(e)}")
+                    # Skip this row and continue with the next
 
                 # Commit in batches
                 if len(records) >= batch_size:
