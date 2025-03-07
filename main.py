@@ -205,8 +205,93 @@ def is_positive_or_plus(value):
     except (ValueError, TypeError):
         return False
 
+def get_train_number_color(train_no):
+    """Get the color for a train number based on its first digit
+    
+    Args:
+        train_no: Train number as string or number
+        
+    Returns:
+        Dictionary with color and background-color properties
+    """
+    if train_no is None:
+        return {"color": "#333333", "bg_color": "#ffffff"}
+        
+    train_no_str = str(train_no).strip()
+    if not train_no_str or len(train_no_str) == 0:
+        return {"color": "#333333", "bg_color": "#ffffff"}
+        
+    first_digit = train_no_str[0]
+    
+    # Define color mapping for each first digit
+    color_map = {
+        '1': {"color": "#d63384", "bg_color": "#fff0f7"},  # Pink
+        '2': {"color": "#6f42c1", "bg_color": "#f5f0ff"},  # Purple
+        '3': {"color": "#0d6efd", "bg_color": "#f0f7ff"},  # Blue
+        '4': {"color": "#20c997", "bg_color": "#f0fff9"},  # Teal
+        '5': {"color": "#198754", "bg_color": "#f0fff2"},  # Green
+        '6': {"color": "#0dcaf0", "bg_color": "#f0fbff"},  # Cyan
+        '7': {"color": "#fd7e14", "bg_color": "#fff6f0"},  # Orange 
+        '8': {"color": "#dc3545", "bg_color": "#fff0f0"},  # Red
+        '9': {"color": "#6610f2", "bg_color": "#f7f0ff"},  # Indigo
+        '0': {"color": "#333333", "bg_color": "#f8f9fa"},  # Dark gray
+    }
+    
+    # Get color or default to black
+    return color_map.get(first_digit, {"color": "#333333", "bg_color": "#ffffff"})
+
+def style_train_numbers_dataframe(df, train_column='Train No.'):
+    """Apply styling to a DataFrame to color train numbers based on first digit
+    
+    Args:
+        df: DataFrame to style
+        train_column: Name of the column containing train numbers
+        
+    Returns:
+        Styled DataFrame with colored train numbers
+    """
+    # Define a styling function that applies different colors to train numbers
+    def style_train_numbers(val):
+        if not isinstance(val, str) or not val.strip():
+            return ''
+        
+        # Get the first digit (if it exists)
+        first_digit = val[0] if val and val[0].isdigit() else None
+        
+        # Color mapping for train numbers based on first digit
+        color_map = {
+            '1': '#d63384',  # Pink
+            '2': '#6f42c1',  # Purple
+            '3': '#0d6efd',  # Blue
+            '4': '#20c997',  # Teal
+            '5': '#198754',  # Green
+            '6': '#0dcaf0',  # Cyan
+            '7': '#fd7e14',  # Orange
+            '8': '#dc3545',  # Red
+            '9': '#6610f2',  # Indigo
+            '0': '#333333'   # Dark gray
+        }
+        
+        if first_digit in color_map:
+            return f'color: {color_map[first_digit]}; font-weight: bold; background-color: #f0f8ff;'
+        return ''
+    
+    # Apply different styling based on column content
+    df_styled = df.style.applymap(style_train_numbers, subset=[train_column])
+    
+    # Apply styling for delay values
+    if 'Delay' in df.columns:
+        df_styled = df_styled.applymap(lambda x: 'color: red; font-weight: bold' 
+                                     if isinstance(x, str) and ('+' in x or 'LATE' in x) 
+                                     else ('color: green; font-weight: bold' 
+                                           if isinstance(x, str) and 'EARLY' in x 
+                                           else ''), 
+                                     subset=['Delay'])
+    
+    return df_styled
+
 def color_train_number(train_no):
-    """Apply color formatting to train numbers based on first digit
+    """Format a train number with HTML color styling based on first digit
     
     Args:
         train_no: Train number as string or number
@@ -221,27 +306,11 @@ def color_train_number(train_no):
     if not train_no_str or len(train_no_str) == 0:
         return train_no
         
-    first_digit = train_no_str[0]
+    # Get color style from the helper function
+    colors = get_train_number_color(train_no_str)
     
-    # Define color mapping for each first digit
-    color_map = {
-        '1': '#d63384',  # Pink
-        '2': '#6f42c1',  # Purple
-        '3': '#0d6efd',  # Blue
-        '4': '#20c997',  # Teal
-        '5': '#198754',  # Green
-        '6': '#0dcaf0',  # Cyan
-        '7': '#fd7e14',  # Orange 
-        '8': '#dc3545',  # Red
-        '9': '#6610f2',  # Indigo
-        '0': '#333333',  # Dark gray
-    }
-    
-    # Get color or default to black
-    color = color_map.get(first_digit, '#000000')
-    
-    # Just return the train number - we'll use CSS for styling
-    return train_no_str
+    # Return HTML-formatted train number with styling
+    return f'<span style="color: {colors["color"]}; background-color: {colors["bg_color"]}; font-weight: bold; padding: 2px 5px; border-radius: 3px;">{train_no_str}</span>'
 
 # Create a layout for the header with logo
 header_col1, header_col2 = st.columns([1, 5])
@@ -1120,9 +1189,53 @@ try:
                     # Display the main data table with integrated selection checkboxes
                     st.subheader("Train Status Data")
                     
+                    # Apply cell styling function to color the train numbers
+                    styled_df = display_df.copy()
+                    
+                    # Function to color train numbers based on first digit
+                    def apply_train_colors(df):
+                        # Define a styling function that applies different colors to train numbers
+                        def style_train_numbers(val):
+                            if not isinstance(val, str) or not val.strip():
+                                return ''
+                            
+                            # Get the first digit (if it exists)
+                            first_digit = val[0] if val and val[0].isdigit() else None
+                            
+                            # Color mapping for train numbers based on first digit
+                            color_map = {
+                                '1': '#d63384',  # Pink
+                                '2': '#6f42c1',  # Purple
+                                '3': '#0d6efd',  # Blue
+                                '4': '#20c997',  # Teal
+                                '5': '#198754',  # Green
+                                '6': '#0dcaf0',  # Cyan
+                                '7': '#fd7e14',  # Orange
+                                '8': '#dc3545',  # Red
+                                '9': '#6610f2',  # Indigo
+                                '0': '#333333'   # Dark gray
+                            }
+                            
+                            if first_digit in color_map:
+                                return f'color: {color_map[first_digit]}; font-weight: bold; background-color: #f0f8ff;'
+                            return ''
+                        
+                        # Apply different styling based on column content
+                        df_styled = df.style.applymap(style_train_numbers, subset=['Train No.'])
+                        
+                        # Apply styling for delay values
+                        df_styled = df_styled.applymap(lambda x: 'color: red; font-weight: bold' 
+                                                     if isinstance(x, str) and ('+' in x or 'LATE' in x) 
+                                                     else ('color: green; font-weight: bold' 
+                                                           if isinstance(x, str) and 'EARLY' in x 
+                                                           else ''), 
+                                                     subset=['Delay'])
+                        
+                        return df_styled
+                    
                     # Use Streamlit's built-in dataframe with styling
                     edited_df = st.data_editor(
-                        display_df,
+                        apply_train_colors(styled_df),
                         hide_index=True,
                         column_config={
                             "#": st.column_config.NumberColumn("#", help="Serial Number", format="%d"),
