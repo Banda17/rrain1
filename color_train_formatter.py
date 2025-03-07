@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import base64
 from io import BytesIO
-from typing import Dict, Optional
+from typing import Dict, Optional, Callable
 
 def get_train_class_color(train_no: str) -> Dict[str, str]:
     """
@@ -162,6 +162,77 @@ def display_styled_train_table(df: pd.DataFrame,
     """
     html = format_train_df_as_html(df, train_column, height)
     st.markdown(html, unsafe_allow_html=True)
+
+def style_train_dataframe(df: pd.DataFrame, train_column: str = "Train No.") -> pd.DataFrame:
+    """
+    Apply styling to a DataFrame for use with st.data_editor.
+    
+    Args:
+        df: DataFrame to style
+        train_column: Name of the column containing train numbers
+        
+    Returns:
+        A styled DataFrame that can be used with st.data_editor
+    """
+    # Function to style train numbers based on first digit
+    def train_number_styler(val):
+        if not isinstance(val, str) or not val.strip():
+            return ''
+        
+        # Get the first digit (if it exists)
+        first_digit = val[0] if val and val[0].isdigit() else None
+        
+        # Color mapping for train numbers based on first digit
+        color_map = {
+            '1': '#d63384',  # Pink
+            '2': '#6f42c1',  # Purple
+            '3': '#0d6efd',  # Blue
+            '4': '#20c997',  # Teal
+            '5': '#198754',  # Green
+            '6': '#0dcaf0',  # Cyan
+            '7': '#fd7e14',  # Orange
+            '8': '#dc3545',  # Red
+            '9': '#6610f2',  # Indigo
+            '0': '#333333'   # Dark gray
+        }
+        
+        if first_digit in color_map:
+            return f'color: {color_map[first_digit]}; font-weight: bold;'
+        return ''
+    
+    # Function to style delay values based on content
+    def delay_styler(val):
+        if not isinstance(val, str):
+            return ''
+        
+        if '+' in val or 'LATE' in val:
+            return 'color: #dc3545; font-weight: bold;'  # Red for late
+        elif 'EARLY' in val:
+            return 'color: #198754; font-weight: bold;'  # Green for early
+        return ''
+    
+    # Apply styling using the newer pandas style.map instead of applymap
+    styled_df = df.style
+    
+    # Apply train number styling
+    if train_column in df.columns:
+        try:
+            styled_df = styled_df.map(train_number_styler, subset=[train_column])
+        except:
+            # Fall back to applymap for older pandas versions
+            styled_df = styled_df.applymap(train_number_styler, subset=[train_column])
+    
+    # Apply delay styling if the column exists
+    delay_columns = ['Delay', 'delay', 'IC Entry Delay', 'Delay Value']
+    for col in delay_columns:
+        if col in df.columns:
+            try:
+                styled_df = styled_df.map(delay_styler, subset=[col])
+            except:
+                # Fall back to applymap for older pandas versions
+                styled_df = styled_df.applymap(delay_styler, subset=[col])
+    
+    return styled_df
 
 def download_styled_table_as_html(df: pd.DataFrame, 
                                  train_column: str = "Train No.",

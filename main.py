@@ -339,12 +339,54 @@ st.markdown("<hr class='mt-2 mb-3'>", unsafe_allow_html=True)
 with open('train_number_styles.css', 'r') as f:
     st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
 
-# Add JavaScript for dynamic styling
-try:
-    with open('train_styles.js', 'r') as js_file:
-        st.markdown(f'<script>{js_file.read()}</script>', unsafe_allow_html=True)
-except Exception as e:
-    st.error(f"Could not load JavaScript styling: {str(e)}")
+# Add JavaScript for dynamic styling properly inside HTML script tags
+st.markdown("""
+<script type="text/javascript">
+// Color train numbers based on their first digit
+const colorTrainNumbers = () => {
+    // Define colors for each first digit
+    const colors = {
+        '1': '#d63384', // Pink
+        '2': '#6f42c1', // Purple
+        '3': '#0d6efd', // Blue
+        '4': '#20c997', // Teal
+        '5': '#198754', // Green
+        '6': '#0dcaf0', // Cyan
+        '7': '#fd7e14', // Orange
+        '8': '#dc3545', // Red
+        '9': '#6610f2', // Indigo
+        '0': '#333333'  // Dark gray
+    };
+    
+    // Wait for the table to be fully loaded
+    setTimeout(() => {
+        // Find all cells in the Train No. column (which is the 3rd column - index 2)
+        const trainCells = document.querySelectorAll('div[data-testid="stDataFrame"] tbody tr td:nth-child(3)');
+        
+        // Apply styling to each cell
+        trainCells.forEach(cell => {
+            const trainNumber = cell.textContent.trim();
+            if (trainNumber && trainNumber.length > 0) {
+                const firstDigit = trainNumber[0];
+                if (colors[firstDigit]) {
+                    cell.style.color = colors[firstDigit];
+                    cell.style.fontWeight = 'bold';
+                }
+            }
+        });
+    }, 1000);
+};
+
+// Run initially
+document.addEventListener('DOMContentLoaded', function() {
+    colorTrainNumbers();
+    
+    // Set up an observer for dynamic updates
+    const observer = new MutationObserver(colorTrainNumbers);
+    observer.observe(document.body, { childList: true, subtree: true });
+});
+</script>
+""", unsafe_allow_html=True)
 
 
 def initialize_session_state():
@@ -1192,50 +1234,12 @@ try:
                     # Apply cell styling function to color the train numbers
                     styled_df = display_df.copy()
                     
-                    # Function to color train numbers based on first digit
-                    def apply_train_colors(df):
-                        # Define a styling function that applies different colors to train numbers
-                        def style_train_numbers(val):
-                            if not isinstance(val, str) or not val.strip():
-                                return ''
-                            
-                            # Get the first digit (if it exists)
-                            first_digit = val[0] if val and val[0].isdigit() else None
-                            
-                            # Color mapping for train numbers based on first digit
-                            color_map = {
-                                '1': '#d63384',  # Pink
-                                '2': '#6f42c1',  # Purple
-                                '3': '#0d6efd',  # Blue
-                                '4': '#20c997',  # Teal
-                                '5': '#198754',  # Green
-                                '6': '#0dcaf0',  # Cyan
-                                '7': '#fd7e14',  # Orange
-                                '8': '#dc3545',  # Red
-                                '9': '#6610f2',  # Indigo
-                                '0': '#333333'   # Dark gray
-                            }
-                            
-                            if first_digit in color_map:
-                                return f'color: {color_map[first_digit]}; font-weight: bold; background-color: #f0f8ff;'
-                            return ''
-                        
-                        # Apply different styling based on column content
-                        df_styled = df.style.applymap(style_train_numbers, subset=['Train No.'])
-                        
-                        # Apply styling for delay values
-                        df_styled = df_styled.applymap(lambda x: 'color: red; font-weight: bold' 
-                                                     if isinstance(x, str) and ('+' in x or 'LATE' in x) 
-                                                     else ('color: green; font-weight: bold' 
-                                                           if isinstance(x, str) and 'EARLY' in x 
-                                                           else ''), 
-                                                     subset=['Delay'])
-                        
-                        return df_styled
+                    # Import the styling function from color_train_formatter
+                    from color_train_formatter import style_train_dataframe
                     
-                    # Use Streamlit's built-in dataframe with styling
+                    # Use Streamlit's built-in dataframe with styling from our formatter
                     edited_df = st.data_editor(
-                        apply_train_colors(styled_df),
+                        style_train_dataframe(styled_df, train_column='Train No.'),
                         hide_index=True,
                         column_config={
                             "#": st.column_config.NumberColumn("#", help="Serial Number", format="%d"),
@@ -1450,58 +1454,6 @@ def is_positive_or_plus(value):
     return False
 
 # Note: Custom formatter is already imported at the top of the file
-
-# Add a custom HTML/JavaScript solution for train number styling as a fallback
-st.markdown("""
-<div id="custom-train-styling-fix"></div>
-<script>
-// Color train numbers based on their first digit
-const colorTrainNumbers = () => {
-    // Define colors for each first digit
-    const colors = {
-        '1': '#d63384', // Pink
-        '2': '#6f42c1', // Purple
-        '3': '#0d6efd', // Blue
-        '4': '#20c997', // Teal
-        '5': '#198754', // Green
-        '6': '#0dcaf0', // Cyan
-        '7': '#fd7e14', // Orange
-        '8': '#dc3545', // Red
-        '9': '#6610f2', // Indigo
-        '0': '#333333'  // Dark gray
-    };
-    
-    // Wait for the table to be fully loaded
-    setTimeout(() => {
-        // Find all cells in the Train No. column (which is the 3rd column - index 2)
-        const trainCells = document.querySelectorAll('div[data-testid="stDataFrame"] tbody tr td:nth-child(3)');
-        
-        // Apply styling to each cell
-        trainCells.forEach(cell => {
-            const trainNumber = cell.textContent.trim();
-            if (trainNumber && trainNumber.length > 0) {
-                const firstDigit = trainNumber[0];
-                if (colors[firstDigit]) {
-                    cell.style.color = colors[firstDigit];
-                    cell.style.fontWeight = 'bold';
-                    cell.style.fontSize = '16px';
-                    cell.style.backgroundColor = '#f0f8ff';
-                    cell.style.borderLeft = `4px solid ${colors[firstDigit]}`;
-                    cell.style.padding = '3px 8px';
-                    cell.style.borderRadius = '4px';
-                    cell.style.textAlign = 'center';
-                }
-            }
-        });
-    }, 1000);
-};
-
-// Run initially and set up observer for dynamic updates
-colorTrainNumbers();
-const observer = new MutationObserver(colorTrainNumbers);
-observer.observe(document.body, { childList: true, subtree: true });
-</script>
-""", unsafe_allow_html=True)
 
 # Footer
 st.markdown("---")
