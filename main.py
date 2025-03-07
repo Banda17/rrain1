@@ -1426,118 +1426,96 @@ try:
                         unsafe_allow_html=True)
 
                     # Create the interactive map
-                    m = folium.Map(
-                        location=[16.5167,
-                                  80.6167],  # Centered around Vijayawada
-                        zoom_start=7,
-                        control_scale=True)
-
-                    # Add a basemap with reduced opacity
-                    folium.TileLayer(tiles='OpenStreetMap',
-                                     attr='&copy; OpenStreetMap contributors',
-                                     opacity=0.8).add_to(m)
-
-                    # Get cached station coordinates
-                    station_coords = get_station_coordinates()
-
+                    # Check if we need to rebuild the map from scratch or can use session state
+                    
                     # Extract station codes from selected rows
                     selected_rows = edited_df[edited_df['Select']]
                     # Determine which column contains station codes
                     station_column = 'Station' if 'Station' in edited_df.columns else 'CRD'
                     selected_station_codes = extract_station_codes(
                         selected_rows, station_column)
-
-                    # Add markers efficiently
-                    displayed_stations = []
-                    valid_points = []
-
-                    # First add all non-selected stations as dots with alternating labels
-                    for code, coords in station_coords.items():
-                        # Skip selected stations - they'll get bigger markers later
-                        if code in selected_station_codes:
-                            continue
-
-                        # Add small circle for the station
-                        folium.CircleMarker(
-                            [coords['lat'], coords['lon']],
-                            radius=3,
-                            color='#800000',  # Maroon red border
-                            fill=True,
-                            fill_color='gray',
-                            fill_opacity=0.6,
-                            opacity=0.8,
-                            tooltip=f"{code}").add_to(m)
-
-                        # Add permanent text label for station with slight offset
-                        folium.Marker(
-                            [coords['lat'], coords['lon'] + 0.005
-                             ],  # Smaller offset to the right
-                            icon=folium.DivIcon(
-                                icon_size=(
-                                    0, 0),  # Dynamic sizing based on content
-                                icon_anchor=(0, 0),
-                                html=
-                                f'<div style="display: inline-block; font-size:10px; background-color:rgba(255,255,255,0.7); padding:2px; border-radius:3px; border:1px solid #800000; white-space: nowrap;">{code}</div>'
-                            )).add_to(m)
-
-                    # Then add larger markers for selected stations
-                    for code in selected_station_codes:
-                        # First normalize the station code to match our coordinate dictionary
-                        # Some codes might have spaces or different casing
-                        normalized_code = code.strip().upper()
-
-                        # Check if we have coordinates for this station
-                        if normalized_code in station_coords:
-                            lat = station_coords[normalized_code]['lat']
-                            lon = station_coords[normalized_code]['lon']
-
-                            # Add train icon marker
-                            folium.Marker(
-                                [lat, lon],
-                                popup=
-                                f"<b>{normalized_code}</b><br>({lat:.4f}, {lon:.4f})",
-                                tooltip=normalized_code,
-                                icon=folium.Icon(color='red',
-                                                 icon='train',
-                                                 prefix='fa'),
-                                opacity=0.8).add_to(m)
-
-                            # Add prominent text label for selected station with slight offset
-                            folium.Marker(
-                                [lat, lon + 0.008
-                                 ],  # Smaller offset for selected stations
-                                icon=folium.DivIcon(
-                                    icon_size=(
-                                        0,
-                                        0),  # Dynamic sizing based on content
-                                    icon_anchor=(0, 0),
-                                    html=
-                                    f'<div style="display: inline-block; font-size:12px; font-weight:bold; background-color:rgba(255,255,255,0.8); padding:3px; border-radius:3px; border:2px solid red; white-space: nowrap;">{normalized_code}</div>'
-                                )).add_to(m)
-
-                            displayed_stations.append(normalized_code)
-                            valid_points.append([lat, lon])
-
-                    # Add railway lines between selected stations
-                    if len(valid_points) > 1:
-                        folium.PolyLine(valid_points,
-                                        weight=2,
-                                        color='gray',
-                                        opacity=0.8,
-                                        dash_array='5, 10').add_to(m)
-
-                    # Render the map using st_folium with key parameter to maintain state
-                    # Store the last selected codes to check if we need to rebuild the map
+                    
+                    # Store the selected codes for comparison
                     if 'last_selected_codes' not in st.session_state:
                         st.session_state['last_selected_codes'] = []
                     
                     # Convert to frozenset for comparison (order doesn't matter)
-                    current_codes = frozenset(selected_station_codes)
-                    last_codes = frozenset(st.session_state['last_selected_codes'])
+                    current_selected = frozenset(selected_station_codes)
+                    last_selected = frozenset(st.session_state['last_selected_codes'])
                     
                     # Update the stored codes
                     st.session_state['last_selected_codes'] = selected_station_codes
                     
+                    # Create a folium map with fewer features for better performance
+                    m = folium.Map(
+                        location=[16.5167, 80.6167],  # Centered around Vijayawada
+                        zoom_start=7,
+                        control_scale=True,
+                        prefer_canvas=True)  # Use canvas renderer for better performance
+                    
+                    # Use a lightweight tile layer
+                    folium.TileLayer(
+                        tiles='CartoDB positron',  # Lighter map style
+                        attr='&copy; OpenStreetMap contributors',
+                        opacity=0.7
+                    ).add_to(m)
+                    
+                    # Get cached station coordinates
+                    station_coords = get_station_coordinates()
+                    
+                    # Add markers efficiently
+                    displayed_stations = []
+                    valid_points = []
+                    
+                    # First add only important non-selected stations (limit the total number)
+                    important_stations = ['BZA', 'GNT', 'VSKP', 'RJY', 'NLR', 'KJJ', 'TUNI', 'VZM']
+                    displayed_count = 0
+                    
+                    for code in important_stations:
+                        if code in station_coords and code not in selected_station_codes:
+                            coords = station_coords[code]
+                            # Just add small circle markers for important stations
+                            folium.CircleMarker(
+                                [coords['lat'], coords['lon']],
+                                radius=3,
+                                color='#800000',
+                                fill=True,
+                                fill_color='gray',
+                                fill_opacity=0.6,
+                                tooltip=f"{code}"
+                            ).add_to(m)
+                            
+                            displayed_count += 1
+                            
+                    # Add the selected stations with train icons (these are the important ones)
+                    for code in selected_station_codes:
+                        normalized_code = code.strip().upper()
+                        
+                        if normalized_code in station_coords:
+                            lat = station_coords[normalized_code]['lat']
+                            lon = station_coords[normalized_code]['lon']
+                            
+                            # Add a train icon marker for selected stations
+                            folium.Marker(
+                                [lat, lon],
+                                popup=f"<b>{normalized_code}</b>",
+                                tooltip=normalized_code,
+                                icon=folium.Icon(color='red', icon='train', prefix='fa'),
+                            ).add_to(m)
+                            
+                            displayed_stations.append(normalized_code)
+                            valid_points.append([lat, lon])
+                    
+                    # Add railway lines between selected stations if more than one
+                    if len(valid_points) > 1:
+                        folium.PolyLine(
+                            valid_points,
+                            weight=2,
+                            color='gray',
+                            opacity=0.8,
+                            dash_array='5, 10'
+                        ).add_to(m)
+
                     # Use a feature that allows map to remember its state (zoom, pan position)
                     st_folium(m, width=None, height=600, key="persistent_map")
 
