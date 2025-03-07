@@ -116,7 +116,6 @@ st.markdown("""
     unsafe_allow_html=True)
 
 
-
 def parse_time(time_str: str) -> Optional[datetime]:
     """Parse time string in HH:MM format to datetime object"""
     try:
@@ -234,7 +233,7 @@ st.markdown("<hr class='mt-2 mb-3'>", unsafe_allow_html=True)
 
 
 def initialize_session_state():
-    """Initialize all session state variables with proper typing"""
+    """Initialize only essential session state variables"""
     state_configs = {
         'data_handler': {
             'default': DataHandler(),
@@ -243,10 +242,6 @@ def initialize_session_state():
         'visualizer': {
             'default': Visualizer(),
             'type': Visualizer
-        },
-        'train_schedule': {
-            'default': TrainSchedule(),
-            'type': TrainSchedule
         },
         'last_update': {
             'default': None,
@@ -272,17 +267,13 @@ def initialize_session_state():
             'default': False,
             'type': bool
         },
-        'map_stations': {  # New state variable for map stations
+        'map_stations': {
             'default': [],
             'type': list
         },
-        'selected_stations': {  # New state variable for selected stations
+        'selected_stations': {
             'default': [],
             'type': list
-        },
-        'map_viewer': {  # Add MapViewer to session state
-            'default': MapViewer(),
-            'type': MapViewer
         }
     }
 
@@ -290,13 +281,9 @@ def initialize_session_state():
         if key not in st.session_state:
             st.session_state[key] = config['default']
 
-    # Initialize ICMS data handler if not in session state
+    # Remove automatic ICMS data handler initialization
     if 'icms_data_handler' not in st.session_state:
-        data_handler = DataHandler()
-        # Override the spreadsheet URL for ICMS data
-        data_handler.spreadsheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRO2ZV-BOcL11_5NhlrOnn5Keph3-cVp7Tyr1t6RxsoDvxZjdOyDsmRkdvesJLbSnZwY8v3CATt1Of9/pub?gid=155911658&single=true&output=csv"
-        st.session_state['icms_data_handler'] = data_handler
-
+        st.session_state['icms_data_handler'] = None
 
 def update_selected_train_details(selected):
     """Update the selected train details in session state"""
@@ -342,14 +329,12 @@ def update_selected_train_details(selected):
         st.session_state['selected_train'] = None
         st.session_state['selected_train_details'] = {}
 
-
 def handle_timing_status_change():
     """Handle changes in timing status filter"""
     st.session_state['filter_status'] = st.session_state.get(
         'timing_status_select', 'Late')
     logger.debug(
         f"Timing status changed to: {st.session_state['filter_status']}")
-
 
 def extract_stations_from_data(df):
     """Extract unique stations from the data for the map"""
@@ -369,12 +354,11 @@ def extract_stations_from_data(df):
     st.session_state['map_stations'] = stations
     return stations
 
-
 @st.cache_data(ttl=300)
 def load_and_process_data():
     """Cache data loading and processing"""
     success, message = st.session_state[
-        'icms_data_handler'].load_data_from_drive()
+        'icms_data_handler'].load_data_from_drive() if st.session_state['icms_data_handler'] else (False, "Data handler not initialized")
     if success:
         status_table = st.session_state[
             'icms_data_handler'].get_train_status_table()
@@ -382,7 +366,6 @@ def load_and_process_data():
         if cached_data:
             return True, status_table, pd.DataFrame(cached_data), message
     return False, None, None, message
-
 
 @st.cache_data(ttl=3600)  # Cache for 1 hour
 def get_station_coordinates():
@@ -742,7 +725,6 @@ def get_station_coordinates():
         }
     }
 
-
 @st.cache_data(ttl=300)
 def extract_station_codes(selected_stations, station_column=None):
     """Extract station codes from selected DataFrame using optimized approach"""
@@ -795,14 +777,39 @@ def extract_station_codes(selected_stations, station_column=None):
 
     return selected_station_codes
 
-
-# Initialize sessionstate
+# Initialize basic session state
 initialize_session_state()
 
-# Main page title
+# Main page title and header
 st.title("ICMSData- Vijayawada Division")
 
-# Add a refresh button atthe top with just an icon
+# Add manual initialization buttons in sidebar
+st.sidebar.title("Manual Controls")
+
+if st.sidebar.button("Initialize Train Schedule Tree"):
+    try:
+        st.session_state['train_schedule'] = TrainSchedule()
+        st.sidebar.success("Train schedule tree initialized successfully!")
+    except Exception as e:
+        st.sidebar.error(f"Error initializing train schedule: {str(e)}")
+
+if st.sidebar.button("Initialize ICMS Data Handler"):
+    try:
+        data_handler = DataHandler()
+        data_handler.spreadsheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRO2ZV-BOcL11_5NhlrOnn5Keph3-cVp7Tyr1t6RxsoDvxZjdOyDsmRkdvesJLbSnZwY8v3CATt1Of9/pub?gid=155911658&single=true&output=csv"
+        st.session_state['icms_data_handler'] = data_handler
+        st.sidebar.success("ICMS data handler initialized!")
+    except Exception as e:
+        st.sidebar.error(f"Error initializing ICMS data handler: {str(e)}")
+
+if st.sidebar.button("Initialize Map Viewer"):
+    try:
+        st.session_state['map_viewer'] = MapViewer()
+        st.sidebar.success("Map viewer initialized!")
+    except Exception as e:
+        st.sidebar.error(f"Error initializing map viewer: {str(e)}")
+
+# Add a refresh button at the top with just an icon
 col1, col2 = st.columns((10, 2))
 with col2:
     if st.button("🔄", type="primary"):
@@ -810,355 +817,364 @@ with col2:
 try:
     data_handler = st.session_state['icms_data_handler']
 
-    # Load data with feedback
-    with st.spinner("Loading data..."):
-        success, message = data_handler.load_data_from_drive()
+    if data_handler is None:
+        st.warning("⚠️ ICMS Data Handler is not initialized. Please use the sidebar button to initialize it.")
+        st.sidebar.markdown("""
+        ### Getting Started
+        1. Click 'Initialize ICMS Data Handler' to load train data
+        2. Click 'Initialize Train Schedule Tree' for schedule management
+        3. Click 'Initialize Map Viewer' to enable map features
+        """)
+    else:
+        # Load data with feedback
+        with st.spinner("Loading data..."):
+            success, message = data_handler.load_data_from_drive()
 
-    if success:
-        ## Show last update time
-        if data_handler.last_update:
-            # Convert last update to IST (UTC+5:30)
-            last_update_ist = data_handler.last_update + timedelta(hours=5, minutes=30)
-            st.info(
-                f"Last updated: {last_update_ist.strftime('%Y-%m-%d %H:%M:%S')} IST"
-            )
+        if success:
+            ## Show last update time
+            if data_handler.last_update:
+                # Convert last update to IST (UTC+5:30)
+                last_update_ist = data_handler.last_update + timedelta(hours=5, minutes=30)
+                st.info(
+                    f"Last updated: {last_update_ist.strftime('%Y-%m-%d %H:%M:%S')} IST"
+                )
 
-        # Get cached data
-        cached_data = data_handler.get_cached_data()
+            # Get cached data
+            cached_data = data_handler.get_cached_data()
 
-        if cached_data:
-            # Convert to DataFrame
-            df = pd.DataFrame(cached_data)
+            if cached_data:
+                # Convert to DataFrame
+                df = pd.DataFrame(cached_data)
 
-            if not df.empty:
-                # Skip first two rows (0 and 1) and reset index
-                df = df.iloc[2:].reset_index(drop=True)
+                if not df.empty:
+                    # Skip first two rows (0 and 1) and reset index
+                    df = df.iloc[2:].reset_index(drop=True)
 
-                # Safe conversion of NaN values to None
-                def safe_convert(value):
-                    if pd.isna(value) or pd.isnull(value):
-                        return None
-                    return str(value) if value is not None else None
+                    # Safe conversion of NaN values to None
+                    def safe_convert(value):
+                        if pd.isna(value) or pd.isnull(value):
+                            return None
+                        return str(value) if value is not None else None
 
-                # Apply safe conversion to all elements
-                for column in df.columns:
-                    df[column] = df[column].map(safe_convert)
+                    # Apply safe conversion to all elements
+                    for column in df.columns:
+                        df[column] = df[column].map(safe_convert)
 
-                # Get and print all column names for debugging
-                logger.debug(f"Available columns: {df.columns.tolist()}")
+                    # Get and print all column names for debugging
+                    logger.debug(f"Available columns: {df.columns.tolist()}")
 
-                # Extract stations for map
-                stations = extract_stations_from_data(df)
+                    # Extract stations for map
+                    stations = extract_stations_from_data(df)
 
-                # Drop unwanted columns - use exact column names with proper spacing
-                columns_to_drop = [
-                    'Sr.',
-                    'Exit Time for NLT Status',
-                    'FROM-TO',
-                    'Start date',
-                    'Event',
-                    # Try different column name variations
-                    'Scheduled [ Entry - Exit ]',
-                    'Scheduled [Entry - Exit]',
-                    'Scheduled[ Entry - Exit ]',
-                    'Scheduled[Entry - Exit]',
-                    'Scheduled [ Entry-Exit ]',
-                    'Scheduled [Entry-Exit]',
-                    'scheduled[Entry-Exit]',
-                    'DivisionalActual[ Entry - Exit ]',
-                    'Divisional Actual [Entry- Exit]',
-                    'Divisional Actual[ Entry-Exit ]',
-                    'Divisional Actual[ Entry - Exit ]',
-                    'DivisionalActual[ Entry-Exit ]',
-                    'Divisional Actual [Entry-Exit]'
-                ]
+                    # Drop unwanted columns - use exact column names with proper spacing
+                    columns_to_drop = [
+                        'Sr.',
+                        'Exit Time for NLT Status',
+                        'FROM-TO',
+                        'Start date',
+                        'Event',
+                        # Try different column name variations
+                        'Scheduled [ Entry - Exit ]',
+                        'Scheduled [Entry - Exit]',
+                        'Scheduled[ Entry - Exit ]',
+                        'Scheduled[Entry - Exit]',
+                        'Scheduled [ Entry-Exit ]',
+                        'Scheduled [Entry-Exit]',
+                        'scheduled[Entry-Exit]',
+                        'DivisionalActual[ Entry - Exit ]',
+                        'Divisional Actual [Entry- Exit]',
+                        'Divisional Actual[ Entry-Exit ]',
+                        'Divisional Actual[ Entry - Exit ]',
+                        'DivisionalActual[ Entry-Exit ]',
+                        'Divisional Actual [Entry-Exit]'
+                    ]
 
-                # Drop each column individually if it exists
-                for col in columns_to_drop:
-                    if col in df.columns:
-                        df = df.drop(columns=[col])
-                        logger.debug(f"Dropped column: {col}")
+                    # Drop each column individually if it exists
+                    for col in columns_to_drop:
+                        if col in df.columns:
+                            df = df.drop(columns=[col])
+                            logger.debug(f"Dropped column: {col}")
 
-                # Define styling function with specific colors for train types
-                def highlight_delay(data):
-                    styles = pd.DataFrame('', index=data.index, columns=data.columns)
+                    # Define styling function with specific colors for train types
+                    def highlight_delay(data):
+                        styles = pd.DataFrame('', index=data.index, columns=data.columns)
 
-                    # Apply red color only to the 'Delay' column if it exists
-                    if 'Delay' in df.columns:
-                        styles['Delay'] = df['Delay'].apply(
-                            lambda x: 'color: red; font-weight: bold' if x and is_positive_or_plus(x) else '')
+                        # Apply red color only to the 'Delay' column if it exists
+                        if 'Delay' in df.columns:
+                            styles['Delay'] = df['Delay'].apply(
+                                lambda x: 'color: red; font-weight: bold' if x and is_positive_or_plus(x) else '')
 
-                    # Hidden column name
-                    from_to_col = 'FROM-TO'
+                        # Hidden column name
+                        from_to_col = 'FROM-TO'
 
-                    # Check if the hidden column exists in the DataFrame
-                    if from_to_col in df.columns:
-                        for idx, value in df[from_to_col].items():
-                            if pd.notna(value):
-                                logger.info(f"Processing row {idx} with value: {value}")
-
-                                extracted_value = str(value).split(' ')[0].upper()
-
-                                logger.debug(f"FROM-TO value: {value}, extracted value: {extracted_value}")
-
-                                font_styles = {
-                                    'DMU': 'color: blue; font-weight: bold; ',
-                                    'MEM': 'color: blue; font-weight: bold; ',
-                                    'SUF': 'color: #e83e8c; font-weight: bold; ',
-                                    'MEX': 'color: #e83e8c; font-weight: bold; ',
-                                    'VND': 'color: #e83e8c; font-weight: bold; ',
-                                    'RJ': 'color: #e83e8c; font-weight: bold; ',
-                                    'PEX': 'color: #e83e8c; font-weight: bold; ',
-                                    'TOD': 'color: #fd7e14; font-weight: bold; '
-                                }
-
-                                for col in styles.columns:
-                                    style_to_apply = font_styles.get(extracted_value, '')
-                                    if style_to_apply:
-                                        styles.loc[idx, col] += style_to_apply
-                    return styles
-
-                # Add a "Select" column at the beginning of the DataFrame for checkboxes
-                if 'Select' not in df.columns:
-                    df.insert(0, 'Select', False)
-
-                # Get station column name
-                station_column = next(
-                    (col for col in df.columns
-                     if col in ['Station', 'station', 'STATION']), None)
-
-                # Refresh animation placeholder
-                refresh_table_placeholder = st.empty()
-                create_pulsing_refresh_animation(refresh_table_placeholder,
-                                                 "Refreshing data...")
-
-                # Apply styling to the dataframe
-                styled_df = df.style.apply(highlight_delay, axis=None)
-
-                # Replacing just the filter implementation to look for "(+X)" pattern:
-
-                # Filter rows containing plus sign in brackets like "(+5)"
-                def contains_plus_in_brackets(row):
-                    # Use regex to find values with plus sign inside brackets like "(+5)"
-                    row_as_str = row.astype(str).str.contains('\(\+\d+\)',
-                                                              regex=True)
-                    return row_as_str.any()
-
-                # Apply filter to dataframe
-                filtered_df = df[df.apply(contains_plus_in_brackets, axis=1)]
-
-                # If filtered dataframe is empty, show a message and use original dataframe
-                if filtered_df.empty:
-                    st.warning(
-                        "No rows found containing values with plus sign in brackets. Showing all data."
-                    )
-                    display_df = df
-                else:
-                    st.success(
-                        f"Showing {len(filtered_df)} rows containing values with plus sign in brackets like '(+5)'"
-                    )
-                    display_df = filtered_df
-
-                # Reset index and add a sequential serial number column
-                display_df = display_df.reset_index(drop=True)
-
-                # Add a sequential S.No. column at the beginning (before Select)
-                display_df.insert(0, '#', range(1, len(display_df) + 1))
-
-                # Log FROM-TO values for debugging
-                def log_from_to_values(df):
-                    """Print FROM-TO values for each train to help with debugging"""
-                    st.write("Logging FROM-TO values to console...")
-                    from_to_columns = ['FROM-TO', 'FROM_TO']
-                    for col_name in from_to_columns:
-                        if col_name in df.columns:
-                            logger.info(f"Found column: {col_name}")
-                            for idx, value in df[col_name].items():
+                        # Check if the hidden column exists in the DataFrame
+                        if from_to_col in df.columns:
+                            for idx, value in df[from_to_col].items():
                                 if pd.notna(value):
-                                    first_three = str(value).upper()[:3]
-                                    logger.info(
-                                        f"Train {idx} - {col_name}: '{value}', First three chars: '{first_three}'"
-                                    )
+                                    logger.info(f"Processing row {idx} with value: {value}")
 
-                # Call the logging function
-                log_from_to_values(display_df)
+                                    extracted_value = str(value).split(' ')[0].upper()
 
-                # Create a layout for train data and map side by side
-                train_data_col, map_col = st.columns((2.4, 2.6))
+                                    logger.debug(f"FROM-TO value: {value}, extracted value: {extracted_value}")
 
-                # Train data section
-                with train_data_col:
-                    # Add a card for the table content
-                    st.markdown(
-                        '<div class="card shadow-sm mb-3"><div class="card-header bg-primary text-white d-flex justify-content-between align-items-center"><span>Train Data</span><span class="badge bg-light text-dark rounded-pill">Select stations to display on map</span></div><div class="card-body p-0">',
-                        unsafe_allow_html=True)
+                                    font_styles = {
+                                        'DMU': 'color: blue; font-weight: bold; ',
+                                        'MEM': 'color: blue; font-weight: bold; ',
+                                        'SUF': 'color: #e83e8c; font-weight: bold; ',
+                                        'MEX': 'color: #e83e8c; font-weight: bold; ',
+                                        'VND': 'color: #e83e8c; font-weight: bold; ',
+                                        'RJ': 'color: #e83e8c; font-weight: bold; ',
+                                        'PEX': 'color: #e83e8c; font-weight: bold; ',
+                                        'TOD': 'color: #fd7e14; font-weight: bold; '
+                                    }
 
-                    # Use data_editor to make the table interactive with checkboxes
-                    edited_df = st.data_editor(
-                        display_df,
-                        hide_index=True,
-                        column_config={
-                            "#":
-                            st.column_config.NumberColumn("#",
-                                                          help="Serial Number",
-                                                          format="%d"),
-                            "Select":
-                            st.column_config.CheckboxColumn(
-                                "Select",
-                                help="Select to show on map",
-                                default=False),
-                            "Train No.":
-                            st.column_config.TextColumn("Train No.",
-                                                        help="Train Number"),
-                            "FROM-TO":
-                            st.column_config.TextColumn(
-                                "FROM-TO", help="Source to Destination"),
-                            "IC Entry Delay":
-                            st.column_config.TextColumn("IC Entry Delay",
-                                                        help="Entry Delay"),
-                            "Delay":
-                            st.column_config.TextColumn(
-                                "Delay", help="Delay in Minutes")
-                        },
-                        disabled=[
-                            col for col in display_df.columns
-                            if col != 'Select'
-                        ],
-                        use_container_width=True,
-                        height=600,
-                        num_rows="dynamic")
+                                    for col in styles.columns:
+                                        style_to_apply = font_styles.get(extracted_value, '')
+                                        if style_to_apply:
+                                            styles.loc[idx, col] += style_to_apply
+                        return styles
 
-                    # Add a footer to the card with information about the data
-                    selected_count = len(edited_df[edited_df['Select']])
-                    st.markdown(
-                        f'<div class="card-footer bg-light d-flex justify-content-between align-items-center"><span>Total Rows: {len(display_df)}</span><span>Selected: {selected_count}</span></div>',
-                        unsafe_allow_html=True)
-                    st.markdown('</div></div>', unsafe_allow_html=True)
+                    # Add a "Select" column at the beginning of the DataFrame for checkboxes
+                    if 'Select' not in df.columns:
+                        df.insert(0, 'Select', False)
 
-                # Map section
-                with map_col:
-                    # Add a card for the map content
-                    st.markdown(
-                        '<div class="card mb-3"><div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center"><span>Interactive GPS Map</span><span class="badge bg-light text-dark rounded-pill">Showing selected stations</span></div><div class="card-body p-0">',
-                        unsafe_allow_html=True)
+                    # Get station column name
+                    station_column = next(
+                        (col for col in df.columns
+                         if col in ['Station', 'station', 'STATION']), None)
 
-                    # Create the interactive map
-                    m = folium.Map(
-                        location=[16.5167,
-                                  80.6167],  # Centered around Vijayawada
-                        zoom_start=7,
-                        control_scale=True)
+                    # Refresh animation placeholder
+                    refresh_table_placeholder = st.empty()
+                    create_pulsing_refresh_animation(refresh_table_placeholder,
+                                                     "Refreshing data...")
 
-                    # Add a basemap with reduced opacity
-                    folium.TileLayer(tiles='OpenStreetMap',
-                                     attr='&copy; OpenStreetMap contributors',
-                                     opacity=0.8).add_to(m)
+                    # Apply styling to the dataframe
+                    styled_df = df.style.apply(highlight_delay, axis=None)
 
-                    # Get cached station coordinates
-                    station_coords = get_station_coordinates()
+                    # Replacing just the filter implementation to look for "(+X)" pattern:
 
-                    # Extract station codes from selected rows
-                    selected_rows = edited_df[edited_df['Select']]
-                    selected_station_codes = extract_station_codes(
-                        selected_rows, station_column)
+                    # Filter rows containing plus sign in brackets like "(+5)"
+                    def contains_plus_in_brackets(row):
+                        # Use regex to find values with plus sign inside brackets like "(+5)"
+                        row_as_str = row.astype(str).str.contains('\(\+\d+\)',
+                                                                  regex=True)
+                        return row_as_str.any()
 
-                    # Add markers efficiently
-                    displayed_stations = []
-                    valid_points = []
+                    # Apply filter to dataframe
+                    filtered_df = df[df.apply(contains_plus_in_brackets, axis=1)]
 
-                    # First add all non-selected stations as dots with alternating labels
-                    for code, coords in station_coords.items():
-                        # Skip selected stations - they'll get bigger markers later
-                        if code in selected_station_codes:
-                            continue
+                    # If filtered dataframe is empty, show a message and use original dataframe
+                    if filtered_df.empty:
+                        st.warning(
+                            "No rows found containing values with plus sign in brackets. Showing all data."
+                        )
+                        display_df = df
+                    else:
+                        st.success(
+                            f"Showing {len(filtered_df)} rows containing values with plus sign in brackets like '(+5)'"
+                        )
+                        display_df = filtered_df
 
-                        # Add small circle for the station
-                        folium.CircleMarker(
-                            [coords['lat'], coords['lon']],
-                            radius=3,
-                            color='#800000',  # Maroon red border
-                            fill=True,
-                            fill_color='gray',
-                            fill_opacity=0.6,
-                            opacity=0.8,
-                            tooltip=f"{code}").add_to(m)
+                    # Reset index and add a sequential serial number column
+                    display_df = display_df.reset_index(drop=True)
 
-                        # Add permanent text label for station with slight offset
-                        folium.Marker(
-                            [coords['lat'], coords['lon'] + 0.005
-                             ],  # Smaller offset to the right
-                            icon=folium.DivIcon(
-                                icon_size=(
-                                    0, 0),  # Dynamic sizing based on content
-                                icon_anchor=(0, 0),
-                                html=
-                                f'<div style="display: inline-block; font-size:10px; background-color:rgba(255,255,255,0.7); padding:2px; border-radius:3px; border:1px solid #800000; white-space: nowrap;">{code}</div>'
-                            )).add_to(m)
+                    # Add a sequential S.No. column at the beginning (before Select)
+                    display_df.insert(0, '#', range(1, len(display_df) + 1))
 
-                    # Then add larger markers for selected stations
-                    for code in selected_station_codes:
-                        # First normalize the station code to match our coordinate dictionary
-                        # Some codes might have spaces or different casing
-                        normalized_code = code.strip().upper()
+                    # Log FROM-TO values for debugging
+                    def log_from_to_values(df):
+                        """Print FROM-TO values for each train to help with debugging"""
+                        st.write("Logging FROM-TO values to console...")
+                        from_to_columns = ['FROM-TO', 'FROM_TO']
+                        for col_name in from_to_columns:
+                            if col_name in df.columns:
+                                logger.info(f"Found column: {col_name}")
+                                for idx, value in df[col_name].items():
+                                    if pd.notna(value):
+                                        first_three = str(value).upper()[:3]
+                                        logger.info(
+                                            f"Train {idx} - {col_name}: '{value}', First three chars: '{first_three}'"
+                                        )
 
-                        # Check if we have coordinates for this station
-                        if normalized_code in station_coords:
-                            lat = station_coords[normalized_code]['lat']
-                            lon = station_coords[normalized_code]['lon']
+                    # Call the logging function
+                    log_from_to_values(display_df)
 
-                            # Add train icon marker
+                    # Create a layout for train data and map side by side
+                    train_data_col, map_col = st.columns((2.4, 2.6))
+
+                    # Train data section
+                    with train_data_col:
+                        # Add a card for the table content
+                        st.markdown(
+                            '<div class="card shadow-sm mb-3"><div class="card-header bg-primary text-white d-flex justify-content-between align-items-center"><span>Train Data</span><span class="badge bg-light text-dark rounded-pill">Select stations to display on map</span></div><div class="card-body p-0">',
+                            unsafe_allow_html=True)
+
+                        # Use data_editor to make the table interactive with checkboxes
+                        edited_df = st.data_editor(
+                            display_df,
+                            hide_index=True,
+                            column_config={
+                                "#":
+                                st.column_config.NumberColumn("#",
+                                                              help="Serial Number",
+                                                              format="%d"),
+                                "Select":
+                                st.column_config.CheckboxColumn(
+                                    "Select",
+                                    help="Select to show on map",
+                                    default=False),
+                                "Train No.":
+                                st.column_config.TextColumn("Train No.",
+                                                            help="Train Number"),
+                                "FROM-TO":
+                                st.column_config.TextColumn(
+                                    "FROM-TO", help="Source to Destination"),
+                                "IC Entry Delay":
+                                st.column_config.TextColumn("IC Entry Delay",
+                                                            help="Entry Delay"),
+                                "Delay":
+                                st.column_config.TextColumn(
+                                    "Delay", help="Delay in Minutes")
+                            },
+                            disabled=[
+                                col for col in display_df.columns
+                                if col != 'Select'
+                            ],
+                            use_container_width=True,
+                            height=600,
+                            num_rows="dynamic")
+
+                        # Add a footer to the card with information about the data
+                        selected_count = len(edited_df[edited_df['Select']])
+                        st.markdown(
+                            f'<div class="card-footer bg-light d-flex justify-content-between align-items-center"><span>Total Rows: {len(display_df)}</span><span>Selected: {selected_count}</span></div>',
+                            unsafe_allow_html=True)
+                        st.markdown('</div></div>', unsafe_allow_html=True)
+
+                    # Map section
+                    with map_col:
+                        # Add a card for the map content
+                        st.markdown(
+                            '<div class="card mb-3"><div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center"><span>Interactive GPS Map</span><span class="badge bg-light text-dark rounded-pill">Showing selected stations</span></div><div class="card-body p-0">',
+                            unsafe_allow_html=True)
+
+                        # Create the interactive map
+                        m = folium.Map(
+                            location=[16.5167,
+                                      80.6167],  # Centered around Vijayawada
+                            zoom_start=7,
+                            control_scale=True)
+
+                        # Add a basemap with reduced opacity
+                        folium.TileLayer(tiles='OpenStreetMap',
+                                         attr='&copy; OpenStreetMap contributors',
+                                         opacity=0.8).add_to(m)
+
+                        # Get cached station coordinates
+                        station_coords = get_station_coordinates()
+
+                        # Extract station codes from selected rows
+                        selected_rows = edited_df[edited_df['Select']]
+                        selected_station_codes = extract_station_codes(
+                            selected_rows, station_column)
+
+                        # Add markers efficiently
+                        displayed_stations = []
+                        valid_points = []
+
+                        # First add all non-selected stations as dots with alternating labels
+                        for code, coords in station_coords.items():
+                            # Skip selected stations - they'll get bigger markers later
+                            if code in selected_station_codes:
+                                continue
+
+                            # Add small circle for the station
+                            folium.CircleMarker(
+                                [coords['lat'], coords['lon']],
+                                radius=3,
+                                color='#800000',  # Maroon red border
+                                fill=True,
+                                fill_color='gray',
+                                fill_opacity=0.6,
+                                opacity=0.8,
+                                tooltip=f"{code}").add_to(m)
+
+                            # Add permanent text label for station with slight offset
                             folium.Marker(
-                                [lat, lon],
-                                popup=
-                                f"<b>{normalized_code}</b><br>({lat:.4f}, {lon:.4f})",
-                                tooltip=normalized_code,
-                                icon=folium.Icon(color='red',
-                                                 icon='train',
-                                                 prefix='fa'),
-                                opacity=0.8).add_to(m)
-
-                            # Add prominent text label for selected station with slight offset
-                            folium.Marker(
-                                [lat, lon + 0.008
-                                 ],  # Smaller offset for selected stations
+                                [coords['lat'], coords['lon'] + 0.005
+                                 ],  # Smaller offset to the right
                                 icon=folium.DivIcon(
                                     icon_size=(
-                                        0,
-                                        0),  # Dynamic sizing based on content
+                                        0, 0),  # Dynamic sizing based on content
                                     icon_anchor=(0, 0),
                                     html=
-                                    f'<div style="display: inline-block; font-size:12px; font-weight:bold; background-color:rgba(255,255,255,0.8); padding:3px; border-radius:3px; border:2px solid red; white-space: nowrap;">{normalized_code}</div>'
+                                    f'<div style="display: inline-block; font-size:10px; background-color:rgba(255,255,255,0.7); padding:2px; border-radius:3px; border:1px solid #800000; white-space: nowrap;">{code}</div>'
                                 )).add_to(m)
 
-                            displayed_stations.append(normalized_code)
-                            valid_points.append([lat, lon])
+                        # Then add larger markers for selected stations
+                        for code in selected_station_codes:
+                            # First normalize the station code to match our coordinate dictionary
+                            # Some codes might have spaces or different casing
+                            normalized_code = code.strip().upper()
 
-                    # Add railway lines between selected stations
-                    if len(valid_points) > 1:
-                        folium.PolyLine(valid_points,
-                                        weight=2,
-                                        color='gray',
-                                        opacity=0.8,
-                                        dash_array='5, 10').add_to(m)
+                            # Check if we have coordinates for this station
+                            if normalized_code in station_coords:
+                                lat = station_coords[normalized_code]['lat']
+                                lon = station_coords[normalized_code]['lon']
 
-                    # Render the map
-                    folium_static(m, width=None, height=600)
+                                # Add train icon marker
+                                folium.Marker(
+                                    [lat, lon],
+                                    popup=
+                                    f"<b>{normalized_code}</b><br>({lat:.4f}, {lon:.4f})",
+                                    tooltip=normalized_code,
+                                    icon=folium.Icon(color='red',
+                                                     icon='train',
+                                                     prefix='fa'),
+                                    opacity=0.8).add_to(m)
 
-                    st.markdown('</div></div>', unsafe_allow_html=True)
+                                # Add prominent text label for selected station with slight offset
+                                folium.Marker(
+                                    [lat, lon + 0.008
+                                     ],  # Smaller offset for selected stations
+                                    icon=folium.DivIcon(
+                                        icon_size=(
+                                            0,
+                                            0),  # Dynamic sizing based on content
+                                        icon_anchor=(0, 0),
+                                        html=
+                                        f'<div style="display: inline-block; font-size:12px; font-weight:bold; background-color:rgba(255,255,255,0.8); padding:3px; border-radius:3px; border:2px solid red; white-space: nowrap;">{normalized_code}</div>'
+                                    )).add_to(m)
 
-                    # Show success message if stations are selected
-                    if displayed_stations:
-                        st.success(
-                            f"Showing {len(displayed_stations)} selected stations on the map"
-                        )
-                    else:
-                        st.info(
-                            "Select stations in the table to display them on the map"
-                        )
+                                displayed_stations.append(normalized_code)
+                                valid_points.append([lat, lon])
 
-                # Add instructions in collapsible section
-                with st.expander("Map Instructions"):
-                    st.markdown("""
+                        # Add railway lines between selected stations
+                        if len(valid_points) > 1:
+                            folium.PolyLine(valid_points,
+                                            weight=2,
+                                            color='gray',
+                                            opacity=0.8,
+                                            dash_array='5, 10').add_to(m)
+
+                        # Render the map
+                        folium_static(m, width=None, height=600)
+
+                        st.markdown('</div></div>', unsafe_allow_html=True)
+
+                        # Show success message if stations are selected
+                        if displayed_stations:
+                            st.success(
+                                f"Showing {len(displayed_stations)} selected stations on the map"
+                            )
+                        else:
+                            st.info(
+                                "Select stations in the table to display them on the map"
+                            )
+
+                    # Add instructions in collapsible section
+                    with st.expander("Map Instructions"):
+                        st.markdown("""
                     <div class="card">
                         <div class="card-header bg-light">
                             Using the Interactive Map
@@ -1174,17 +1190,17 @@ try:
                         </div>
                     </div>
                     """,
-                                unsafe_allow_html=True)
+                                    unsafe_allow_html=True)
 
-                refresh_table_placeholder.empty(
-                )  # Clear the placeholder after table display
+                    refresh_table_placeholder.empty(
+                    )  # Clear the placeholder after table display
 
+                else:
+                    st.error("No data available in the cached data frame")
             else:
-                st.error("No data available in the cached data frame")
+                st.error(f"Error: No cached data available. {message}")
         else:
-            st.error(f"Error: No cached data available. {message}")
-    else:
-        st.error(f"Error loading data: {message}")
+            st.error(f"Error loading data: {message}")
 except Exception as e:
     st.error(f"An error occurred: {str(e)}")
     logger.exception("Exception in main app")
@@ -1223,7 +1239,6 @@ def is_positive_or_plus(value):
         logger.error(f"Error in is_positive_or_plus: {str(e)}")
         return False
     return False
-
 
 # Footer
 st.markdown("---")
