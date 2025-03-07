@@ -234,8 +234,8 @@ def color_train_number(train_no):
     # Get color or default to black
     color = color_map.get(first_digit, '#000000')
     
-    # Return HTML formatted string
-    return f'<span style="color: {color}; font-weight: bold; background-color: #e9f7fe; padding: 2px 6px; border-radius: 3px; border-left: 3px solid {color};">{train_no_str}</span>'
+    # Return HTML formatted string with both inline style and class
+    return f'<span class="train-{first_digit}" style="color: {color}; font-weight: bold; background-color: #f0f8ff; padding: 2px 6px; border-radius: 3px; border-left: 3px solid {color};">{train_no_str}</span>'
 
 # Create a layout for the header with logo
 header_col1, header_col2 = st.columns([1, 5])
@@ -1107,8 +1107,9 @@ try:
                                 help="Select to show on map",
                                 default=False),
                             "Train No.":
-                            st.column_config.TextColumn("Train No.",
-                                                       help="Train Number"),
+                            st.column_config.Column("Train No.",
+                                                   help="Train Number",
+                                                   display_format=color_train_number),
                             "FROM-TO":
                             st.column_config.TextColumn(
                                 "FROM-TO", help="Source to Destination"),
