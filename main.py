@@ -16,6 +16,12 @@ from folium.plugins import Draw
 from streamlit_folium import folium_static, st_folium
 from map_viewer import MapViewer  # Import MapViewer for offline map handling
 
+# Import the custom formatter for train number styling
+try:
+    from color_train_formatter import display_styled_train_table, download_styled_table_as_html
+except ImportError:
+    st.error("Could not import color_train_formatter module. Some styling features may not be available.")
+
 # Page configuration - MUST be the first Streamlit command
 st.set_page_config(page_title="Train Tracking System",
                    page_icon="🚂",
@@ -1122,40 +1128,63 @@ try:
                         '<div class="card shadow-sm mb-3"><div class="card-header bg-primary text-white d-flex justify-content-between align-items-center"><span>Train Data</span><span class="badge bg-light text-dark rounded-pill">Select stations to display on map</span></div><div class="card-body p-0">',
                         unsafe_allow_html=True)
 
-                    # Use data_editor to make the table interactive with checkboxes
-                    edited_df = st.data_editor(
-                        display_df,
-                        hide_index=True,
-                        column_config={
-                            "#":
-                            st.column_config.NumberColumn("#",
-                                                          help="Serial Number",
-                                                          format="%d"),
-                            "Select":
-                            st.column_config.CheckboxColumn(
-                                "Select",
-                                help="Select to show on map",
-                                default=False),
-                            "Train No.":
-                            st.column_config.TextColumn("Train No.",
-                                                       help="Train Number"),
-                            "FROM-TO":
-                            st.column_config.TextColumn(
-                                "FROM-TO", help="Source to Destination"),
-                            "IC Entry Delay":
-                            st.column_config.TextColumn("IC Entry Delay",
-                                                        help="Entry Delay"),
-                            "Delay":
-                            st.column_config.TextColumn(
-                                "Delay", help="Delay in Minutes")
-                        },
-                        disabled=[
-                            col for col in display_df.columns
-                            if col != 'Select'
-                        ],
-                        use_container_width=True,
-                        height=600,
-                        num_rows="dynamic")
+                    # OPTION 1: Standard Streamlit data_editor with selection capability
+                    # Display a checkbox interface for selecting stations
+                    selection_df = pd.DataFrame({
+                        'Select': [False] * len(display_df),
+                    })
+                    selection_df.index = display_df.index
+                    
+                    selection_col, _ = st.columns([1, 5])
+                    with selection_col:
+                        st.write("Select stations to display:")
+                        edited_selection = st.data_editor(
+                            selection_df,
+                            hide_index=True,
+                            column_config={
+                                "Select": st.column_config.CheckboxColumn(
+                                    "Show on map",
+                                    help="Select to show on map",
+                                    default=False
+                                )
+                            },
+                            use_container_width=True,
+                            height=150,
+                            num_rows="dynamic"
+                        )
+                    
+                    # Merge selection with display dataframe
+                    display_df['Select'] = edited_selection['Select'].values
+                    edited_df = display_df.copy()
+                    
+                    # OPTION 2: Use our custom formatter for better styling
+                    try:
+                        # Use the custom formatter for better train number styling
+                        display_styled_train_table(display_df, train_column="Train No.", height=600)
+                        
+                        # Add a download button for the table
+                        st.markdown("<div style='text-align: right; margin-top: -15px;'>", unsafe_allow_html=True)
+                        download_styled_table_as_html(display_df, train_column="Train No.", filename="train_data.html")
+                        st.markdown("</div>", unsafe_allow_html=True)
+                    except Exception as e:
+                        # Fallback to regular data_editor if custom formatter fails
+                        st.warning(f"Using standard display due to formatting error: {str(e)}")
+                        edited_df = st.data_editor(
+                            display_df,
+                            hide_index=True,
+                            column_config={
+                                "#": st.column_config.NumberColumn("#", help="Serial Number", format="%d"),
+                                "Select": st.column_config.CheckboxColumn("Select", help="Select to show on map", default=False),
+                                "Train No.": st.column_config.TextColumn("Train No.", help="Train Number"),
+                                "FROM-TO": st.column_config.TextColumn("FROM-TO", help="Source to Destination"),
+                                "IC Entry Delay": st.column_config.TextColumn("IC Entry Delay", help="Entry Delay"),
+                                "Delay": st.column_config.TextColumn("Delay", help="Delay in Minutes")
+                            },
+                            disabled=[col for col in display_df.columns if col != 'Select'],
+                            use_container_width=True,
+                            height=600,
+                            num_rows="dynamic"
+                        )
 
                     # Add a footer to the card with information about the data
                     selected_count = len(edited_df[edited_df['Select']])
@@ -1353,7 +1382,9 @@ def is_positive_or_plus(value):
         return False
     return False
 
-# Add a custom HTML/JavaScript solution for train number styling
+# Note: Custom formatter is already imported at the top of the file
+
+# Add a custom HTML/JavaScript solution for train number styling as a fallback
 st.markdown("""
 <div id="custom-train-styling-fix"></div>
 <script>
