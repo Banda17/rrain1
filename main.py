@@ -1467,27 +1467,34 @@ try:
                     displayed_stations = []
                     valid_points = []
                     
-                    # First add only important non-selected stations (limit the total number)
-                    important_stations = ['BZA', 'GNT', 'VSKP', 'RJY', 'NLR', 'KJJ', 'TUNI', 'VZM']
-                    displayed_count = 0
-                    
-                    for code in important_stations:
-                        if code in station_coords and code not in selected_station_codes:
-                            coords = station_coords[code]
-                            # Just add small circle markers for important stations
-                            folium.CircleMarker(
-                                [coords['lat'], coords['lon']],
-                                radius=3,
-                                color='#800000',
-                                fill=True,
-                                fill_color='gray',
-                                fill_opacity=0.6,
-                                tooltip=f"{code}"
-                            ).add_to(m)
+                    # Add ALL stations with clear labels
+                    for code, coords in station_coords.items():
+                        # Skip selected stations - they'll get bigger markers later
+                        if code in selected_station_codes:
+                            continue
                             
-                            displayed_count += 1
+                        # Add small circle markers for all stations
+                        folium.CircleMarker(
+                            [coords['lat'], coords['lon']],
+                            radius=3,
+                            color='#800000',
+                            fill=True,
+                            fill_color='gray',
+                            fill_opacity=0.6,
+                            tooltip=f"{code}"
+                        ).add_to(m)
+                        
+                        # Add permanent text label for station
+                        folium.Marker(
+                            [coords['lat'], coords['lon'] + 0.005],
+                            icon=folium.DivIcon(
+                                icon_size=(0, 0),
+                                icon_anchor=(0, 0),
+                                html=f'<div style="font-size:10px; background-color:rgba(255,255,255,0.7); padding:1px; border-radius:2px; border:1px solid #800000;">{code}</div>'
+                            )
+                        ).add_to(m)
                             
-                    # Add the selected stations with train icons (these are the important ones)
+                    # Add the selected stations with train icons and prominent labels
                     for code in selected_station_codes:
                         normalized_code = code.strip().upper()
                         
@@ -1495,12 +1502,22 @@ try:
                             lat = station_coords[normalized_code]['lat']
                             lon = station_coords[normalized_code]['lon']
                             
-                            # Add a train icon marker for selected stations
+                            # Add a large train icon marker for selected stations
                             folium.Marker(
                                 [lat, lon],
                                 popup=f"<b>{normalized_code}</b>",
                                 tooltip=normalized_code,
                                 icon=folium.Icon(color='red', icon='train', prefix='fa'),
+                            ).add_to(m)
+                            
+                            # Add a prominent label with bolder styling
+                            folium.Marker(
+                                [lat, lon + 0.01],
+                                icon=folium.DivIcon(
+                                    icon_size=(0, 0),
+                                    icon_anchor=(0, 0),
+                                    html=f'<div style="font-size:14px; font-weight:bold; background-color:rgba(255,255,255,0.9); padding:3px; border-radius:3px; border:2px solid red;">{normalized_code}</div>'
+                                )
                             ).add_to(m)
                             
                             displayed_stations.append(normalized_code)
