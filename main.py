@@ -480,6 +480,10 @@ def initialize_session_state():
         'map_viewer': {  # Add MapViewer to session state
             'default': MapViewer(),
             'type': MapViewer
+        },
+        'last_selected_codes': {  # Store last selected station codes for map persistence
+            'default': [],
+            'type': list
         }
     }
 
@@ -1045,7 +1049,7 @@ def extract_station_codes(selected_stations, station_column=None):
 initialize_session_state()
 
 # Main page title
-st.title("Vijayawada Division")
+st.title("TRAIN TRACKING")
 
 # Add a refresh button atthe top with just an icon
 col1, col2 = st.columns((10, 2))
@@ -1326,7 +1330,7 @@ try:
                 # Log FROM-TO values for debugging
                 def log_from_to_values(df):
                     """Print FROM-TO values for each train to help with debugging"""
-                    st.write("Logging FROM-TO values to console...")
+                   
                     from_to_columns = ['FROM-TO', 'FROM_TO']
                     for col_name in from_to_columns:
                         if col_name in df.columns:
@@ -1522,8 +1526,20 @@ try:
                                         opacity=0.8,
                                         dash_array='5, 10').add_to(m)
 
-                    # Render the map using st_folium instead of deprecated folium_static
-                    st_folium(m, width=None, height=600)
+                    # Render the map using st_folium with key parameter to maintain state
+                    # Store the last selected codes to check if we need to rebuild the map
+                    if 'last_selected_codes' not in st.session_state:
+                        st.session_state['last_selected_codes'] = []
+                    
+                    # Convert to frozenset for comparison (order doesn't matter)
+                    current_codes = frozenset(selected_station_codes)
+                    last_codes = frozenset(st.session_state['last_selected_codes'])
+                    
+                    # Update the stored codes
+                    st.session_state['last_selected_codes'] = selected_station_codes
+                    
+                    # Use a feature that allows map to remember its state (zoom, pan position)
+                    st_folium(m, width=None, height=600, key="persistent_map")
 
                     st.markdown('</div></div>', unsafe_allow_html=True)
 
