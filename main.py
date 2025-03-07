@@ -1115,7 +1115,12 @@ try:
                     
                     # First: Create a selection interface
                     st.subheader("Select Stations")
-                    display_df.insert(0, 'Select', False)  # Add selection column
+                    # Check if Select column already exists
+                    if 'Select' not in display_df.columns:
+                        display_df.insert(0, 'Select', False)  # Add selection column
+                    else:
+                        # Reset all selections to False (unchecked)
+                        display_df['Select'] = False
                     
                     # Create a smaller selection table using data_editor
                     selection_cols = ['Select', 'Station'] if 'Station' in display_df.columns else ['Select', display_df.columns[1]]
