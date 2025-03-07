@@ -895,13 +895,41 @@ try:
                         styles['Delay'] = df['Delay'].apply(
                             lambda x: 'color: red; font-weight: bold' if x and is_positive_or_plus(x) else '')
                     
-                    # Style train number column with blue background and bold text
-                    if 'Train No.' in df.columns:
-                        styles['Train No.'] = 'background-color: #e9f7fe; color: #0066cc; font-weight: bold; border-left: 3px solid #0066cc'
-                    
-                    # Alternative column name for train number
-                    if 'Train Name' in df.columns:
-                        styles['Train Name'] = 'background-color: #e9f7fe; color: #0066cc; font-weight: bold; border-left: 3px solid #0066cc'
+                    # Style train number column based on the first digit of train number
+                    train_number_cols = ['Train No.', 'Train Name']
+                    for train_col in train_number_cols:
+                        if train_col in df.columns:
+                            # Set base styling for all train numbers
+                            styles[train_col] = 'background-color: #e9f7fe; font-weight: bold; border-left: 3px solid #0066cc'
+                            
+                            # Apply specific color based on first digit of train number
+                            for idx, train_no in df[train_col].items():
+                                if pd.notna(train_no):
+                                    train_no_str = str(train_no).strip()
+                                    if train_no_str and len(train_no_str) > 0:
+                                        first_digit = train_no_str[0]
+                                        
+                                        # Apply colors based on first digit
+                                        if first_digit == '1':
+                                            styles.loc[idx, train_col] = 'background-color: #e9f7fe; color: #d63384; font-weight: bold; border-left: 3px solid #d63384'
+                                        elif first_digit == '2':
+                                            styles.loc[idx, train_col] = 'background-color: #e9f7fe; color: #6f42c1; font-weight: bold; border-left: 3px solid #6f42c1'
+                                        elif first_digit == '3':
+                                            styles.loc[idx, train_col] = 'background-color: #e9f7fe; color: #0d6efd; font-weight: bold; border-left: 3px solid #0d6efd'
+                                        elif first_digit == '4':
+                                            styles.loc[idx, train_col] = 'background-color: #e9f7fe; color: #20c997; font-weight: bold; border-left: 3px solid #20c997'
+                                        elif first_digit == '5':
+                                            styles.loc[idx, train_col] = 'background-color: #e9f7fe; color: #198754; font-weight: bold; border-left: 3px solid #198754'
+                                        elif first_digit == '6':
+                                            styles.loc[idx, train_col] = 'background-color: #e9f7fe; color: #0dcaf0; font-weight: bold; border-left: 3px solid #0dcaf0'
+                                        elif first_digit == '7':
+                                            styles.loc[idx, train_col] = 'background-color: #e9f7fe; color: #fd7e14; font-weight: bold; border-left: 3px solid #fd7e14'
+                                        elif first_digit == '8':
+                                            styles.loc[idx, train_col] = 'background-color: #e9f7fe; color: #dc3545; font-weight: bold; border-left: 3px solid #dc3545'
+                                        elif first_digit == '9':
+                                            styles.loc[idx, train_col] = 'background-color: #e9f7fe; color: #6610f2; font-weight: bold; border-left: 3px solid #6610f2'
+                                        else:
+                                            styles.loc[idx, train_col] = 'background-color: #e9f7fe; color: #333333; font-weight: bold; border-left: 3px solid #333333'
 
                     # Hidden column name
                     from_to_col = 'FROM-TO'
@@ -932,27 +960,7 @@ try:
                                     if style_to_apply:
                                         styles.loc[idx, col] += style_to_apply
 
-                    # Add train number based styling
-                    if 'Train No.' in df.columns:
-                        for idx, train_no in df['Train No.'].items():
-                            if pd.notna(train_no):
-                                train_no_str = str(train_no).strip()
-                                if train_no_str:
-                                    first_digit = train_no_str[0]
-                                    logger.debug(f"Train number: {train_no_str}, first digit: {first_digit}")
-
-                                    # Apply color based on first digit
-                                    color_style = ''
-                                    if first_digit == '6':
-                                        color_style = 'color: blue; font-weight: bold;'
-                                    elif first_digit in ['1', '2']:
-                                        color_style = 'color: #e83e8c; font-weight: bold;'
-                                    elif first_digit == '0':
-                                        color_style = 'color: #fd7e14; font-weight: bold;'
-
-                                    if color_style:
-                                        for col in styles.columns:
-                                            styles.loc[idx, col] += color_style
+                    # Train number styling is now handled in the earlier section
 
                     return styles
 
