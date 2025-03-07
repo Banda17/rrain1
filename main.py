@@ -248,25 +248,8 @@ header_col1, header_col2 = st.columns([1, 5])
 
 # Display the logo in the first column
 with header_col1:
-    try:
-        # Add a container with custom padding to lower the logo
-        st.markdown("""
-            <div style="padding-top: 20px; display: flex; align-items: center; height: 100%;">
-                <img src="scr_logo.svg" width="120">
-            </div>
-        """,
-                    unsafe_allow_html=True)
-    except Exception as e:
-        st.warning(f"Error loading SVG logo: {str(e)}")
-        try:
-            st.markdown("""
-                <div style="padding-top: 20px; display: flex; align-items: center; height: 100%;">
-                    <img src="attached_assets/scr_logo.svg" width="120">
-                </div>
-            """,
-                        unsafe_allow_html=True)
-        except Exception as e2:
-            st.warning(f"Error loading any logo: {str(e2)}")
+    # Try with PNG logo directly from the attached_assets folder
+    st.image("attached_assets/scr_logo.png", width=120)
 
 # Display the title and subtitle in the second column
 with header_col2:
@@ -1128,38 +1111,39 @@ try:
                         '<div class="card shadow-sm mb-3"><div class="card-header bg-primary text-white d-flex justify-content-between align-items-center"><span>Train Data</span><span class="badge bg-light text-dark rounded-pill">Select stations to display on map</span></div><div class="card-body p-0">',
                         unsafe_allow_html=True)
 
-                    # OPTION 1: Standard Streamlit data_editor with selection capability
-                    # Display a checkbox interface for selecting stations
-                    selection_df = pd.DataFrame({
-                        'Select': [False] * len(display_df),
-                    })
-                    selection_df.index = display_df.index
+                    # Use combination approach: Standard data_editor for selection + styled display
                     
-                    selection_col, _ = st.columns([1, 5])
-                    with selection_col:
-                        st.write("Select stations to display:")
-                        edited_selection = st.data_editor(
-                            selection_df,
-                            hide_index=True,
-                            column_config={
-                                "Select": st.column_config.CheckboxColumn(
-                                    "Show on map",
-                                    help="Select to show on map",
-                                    default=False
-                                )
-                            },
-                            use_container_width=True,
-                            height=150,
-                            num_rows="dynamic"
-                        )
+                    # First: Create a selection interface
+                    st.subheader("Select Stations")
+                    display_df.insert(0, 'Select', False)  # Add selection column
                     
-                    # Merge selection with display dataframe
+                    # Create a smaller selection table using data_editor
+                    selection_cols = ['Select', 'Station'] if 'Station' in display_df.columns else ['Select', display_df.columns[1]]
+                    selection_df = display_df[selection_cols].copy()
+                    
+                    edited_selection = st.data_editor(
+                        selection_df,
+                        hide_index=True,
+                        column_config={
+                            "Select": st.column_config.CheckboxColumn(
+                                "Show on Map",
+                                help="Select to show on map",
+                                default=False
+                            )
+                        },
+                        use_container_width=True,
+                        height=200,
+                        num_rows="dynamic"
+                    )
+                    
+                    # Update the main display dataframe with selections
                     display_df['Select'] = edited_selection['Select'].values
                     edited_df = display_df.copy()
                     
-                    # OPTION 2: Use our custom formatter for better styling
+                    # Second: Show styled train table
+                    st.subheader("Train Status Data")
                     try:
-                        # Use the custom formatter for better train number styling
+                        # Use our custom formatter for better train number styling
                         display_styled_train_table(display_df, train_column="Train No.", height=600)
                         
                         # Add a download button for the table
