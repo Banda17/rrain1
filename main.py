@@ -233,7 +233,7 @@ st.markdown("<hr class='mt-2 mb-3'>", unsafe_allow_html=True)
 
 
 def initialize_session_state():
-    """Initialize only essential session state variables"""
+    """Initialize session state variables with automatic ICMS data handler"""
     state_configs = {
         'data_handler': {
             'default': DataHandler(),
@@ -281,9 +281,12 @@ def initialize_session_state():
         if key not in st.session_state:
             st.session_state[key] = config['default']
 
-    # Remove automatic ICMS data handler initialization
+    # Initialize ICMS data handler automatically
     if 'icms_data_handler' not in st.session_state:
-        st.session_state['icms_data_handler'] = None
+        data_handler = DataHandler()
+        data_handler.spreadsheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRO2ZV-BOcL11_5NhlrOnn5Keph3-cVp7Tyr1t6RxsoDvxZjdOyDsmRkdvesJLbSnZwY8v3CATt1Of9/pub?gid=155911658&single=true&output=csv"
+        st.session_state['icms_data_handler'] = data_handler
+
 
 def update_selected_train_details(selected):
     """Update the selected train details in session state"""
@@ -329,12 +332,14 @@ def update_selected_train_details(selected):
         st.session_state['selected_train'] = None
         st.session_state['selected_train_details'] = {}
 
+
 def handle_timing_status_change():
     """Handle changes in timing status filter"""
     st.session_state['filter_status'] = st.session_state.get(
         'timing_status_select', 'Late')
     logger.debug(
         f"Timing status changed to: {st.session_state['filter_status']}")
+
 
 def extract_stations_from_data(df):
     """Extract unique stations from the data for the map"""
@@ -354,6 +359,7 @@ def extract_stations_from_data(df):
     st.session_state['map_stations'] = stations
     return stations
 
+
 @st.cache_data(ttl=300)
 def load_and_process_data():
     """Cache data loading and processing"""
@@ -366,6 +372,7 @@ def load_and_process_data():
         if cached_data:
             return True, status_table, pd.DataFrame(cached_data), message
     return False, None, None, message
+
 
 @st.cache_data(ttl=3600)  # Cache for 1 hour
 def get_station_coordinates():
@@ -725,6 +732,7 @@ def get_station_coordinates():
         }
     }
 
+
 @st.cache_data(ttl=300)
 def extract_station_codes(selected_stations, station_column=None):
     """Extract station codes from selected DataFrame using optimized approach"""
@@ -777,6 +785,7 @@ def extract_station_codes(selected_stations, station_column=None):
 
     return selected_station_codes
 
+
 # Initialize basic session state
 initialize_session_state()
 
@@ -793,16 +802,7 @@ if st.sidebar.button("Initialize Train Schedule Tree"):
     except Exception as e:
         st.sidebar.error(f"Error initializing train schedule: {str(e)}")
 
-if st.sidebar.button("Initialize ICMS Data Handler"):
-    try:
-        data_handler = DataHandler()
-        data_handler.spreadsheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRO2ZV-BOcL11_5NhlrOnn5Keph3-cVp7Tyr1t6RxsoDvxZjdOyDsmRkdvesJLbSnZwY8v3CATt1Of9/pub?gid=155911658&single=true&output=csv"
-        st.session_state['icms_data_handler'] = data_handler
-        st.sidebar.success("ICMS data handler initialized!")
-    except Exception as e:
-        st.sidebar.error(f"Error initializing ICMS data handler: {str(e)}")
-
-if st.sidebar.button("Initialize Map Viewer"):
+if stst.sidebar.button("Initialize Map Viewer"):
     try:
         st.session_state['map_viewer'] = MapViewer()
         st.sidebar.success("Map viewer initialized!")
