@@ -71,10 +71,54 @@ class DataHandler:
 
         start_time = time.time()
         try:
-            # Ensure we have the required columns in the first row
-            if not all(col in df.iloc[0].values for col in ['Train Name', 'Station', 'Time', 'Status']):
-                logger.error("Required columns not found in data")
-                return pd.DataFrame(columns=['Train Name', 'Station', 'Time', 'Status'])
+            # Check data structure
+            # First try to see if required columns are in first row values (for raw CSV format)
+            required_cols = ['Train Name', 'Station', 'Time', 'Status']
+            
+            # Try multiple approaches to find required columns
+            if len(df) > 0:
+                # Approach 1: Check if columns are already correct
+                if all(col in df.columns for col in required_cols):
+                    logger.info("Required columns found in dataframe headers")
+                    pass  # Columns are already correct
+                
+                # Approach 2: Check if columns are in first row values
+                elif len(df) > 0 and all(col in df.iloc[0].values for col in required_cols):
+                    logger.info("Required columns found in first row")
+                    df.columns = df.iloc[0]
+                    df = df.iloc[1:].reset_index(drop=True)
+                
+                # Approach 3: Try to map similar column names
+                else:
+                    logger.warning("Attempting to map similar column names")
+                    column_mapping = {
+                        'Train Name': ['train_name', 'train', 'train_no', 'train_id', 'train number', 'train_number'],
+                        'Station': ['station_name', 'station_code', 'stn', 'stn_code', 'stn_name'],
+                        'Time': ['time', 'arrival_time', 'departure_time', 'arr_time', 'dep_time', 'schedule_time', 'actual_time'],
+                        'Status': ['status', 'train_status', 'current_status', 'state']
+                    }
+                    
+                    new_columns = df.columns.tolist()
+                    renamed = False
+                    
+                    for req_col, alternatives in column_mapping.items():
+                        if req_col not in new_columns:
+                            for alt in alternatives:
+                                if alt in [col.lower() for col in new_columns]:
+                                    idx = [col.lower() for col in new_columns].index(alt)
+                                    new_columns[idx] = req_col
+                                    renamed = True
+                                    break
+                    
+                    if renamed:
+                        df.columns = new_columns
+                        logger.info("Mapped similar column names successfully")
+                    else:
+                        logger.error("Required columns not found in data")
+                        return pd.DataFrame(columns=required_cols)
+            else:
+                logger.error("Empty dataframe or required columns not found")
+                return pd.DataFrame(columns=required_cols)
 
             # Set the first row as headers and reset index
             df.columns = df.iloc[0]

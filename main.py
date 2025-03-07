@@ -13,7 +13,7 @@ import re
 from animation_utils import create_pulsing_refresh_animation, show_countdown_progress, show_refresh_timestamp
 import folium
 from folium.plugins import Draw
-from streamlit_folium import folium_static
+from streamlit_folium import folium_static, st_folium
 from map_viewer import MapViewer  # Import MapViewer for offline map handling
 
 # Page configuration - MUST be the first Streamlit command
@@ -1164,8 +1164,8 @@ try:
                                         opacity=0.8,
                                         dash_array='5, 10').add_to(m)
 
-                    # Render the map
-                    folium_static(m, width=None, height=600)
+                    # Render the map using st_folium instead of deprecated folium_static
+                    st_folium(m, width=None, height=600)
 
                     st.markdown('</div></div>', unsafe_allow_html=True)
 
