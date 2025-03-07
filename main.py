@@ -1122,18 +1122,29 @@ try:
                         # Reset all selections to False (unchecked)
                         display_df['Select'] = False
                     
-                    # Create a smaller selection table using data_editor
-                    selection_cols = ['Select', 'Station'] if 'Station' in display_df.columns else ['Select', display_df.columns[1]]
-                    selection_df = display_df[selection_cols].copy()
+                    # Create a smaller selection table using data_editor with a unique column
+                    # First, check which column to use for station information
+                    station_col = 'Station' if 'Station' in display_df.columns else display_df.columns[1]
+                    
+                    # Create a fresh DataFrame with unique column names
+                    selection_df = pd.DataFrame({
+                        'Select_Station': display_df['Select'].copy(),
+                        'Station_Name': display_df[station_col].copy()
+                    })
                     
                     edited_selection = st.data_editor(
                         selection_df,
                         hide_index=True,
                         column_config={
-                            "Select": st.column_config.CheckboxColumn(
+                            "Select_Station": st.column_config.CheckboxColumn(
                                 "Show on Map",
                                 help="Select to show on map",
                                 default=False
+                            ),
+                            "Station_Name": st.column_config.TextColumn(
+                                "Station",
+                                help="Station name or code",
+                                disabled=True
                             )
                         },
                         use_container_width=True,
@@ -1142,7 +1153,7 @@ try:
                     )
                     
                     # Update the main display dataframe with selections
-                    display_df['Select'] = edited_selection['Select'].values
+                    display_df['Select'] = edited_selection['Select_Station'].values
                     edited_df = display_df.copy()
                     
                     # Second: Show styled train table
