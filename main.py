@@ -20,7 +20,9 @@ from map_viewer import MapViewer  # Import MapViewer for offline map handling
 try:
     import color_train_formatter
 except ImportError:
-    st.error("Could not import color_train_formatter module. Some styling features may not be available.")
+    st.error(
+        "Could not import color_train_formatter module. Some styling features may not be available."
+    )
 
 # Page configuration - MUST be the first Streamlit command
 st.set_page_config(page_title="Train Tracking System",
@@ -126,8 +128,7 @@ st.markdown("""
         }
     </style>
 """,
-    unsafe_allow_html=True)
-
+            unsafe_allow_html=True)
 
 
 def parse_time(time_str: str) -> Optional[datetime]:
@@ -190,6 +191,7 @@ def format_delay_value(delay: Optional[int]) -> str:
         logger.error(f"Error formatting delay value: {str(e)}")
         return "N/A"
 
+
 # Add the missing helper function above the format_delay_value function
 def is_positive_or_plus(value):
     """Check if a value is positive or contains a plus sign."""
@@ -205,6 +207,7 @@ def is_positive_or_plus(value):
     except (ValueError, TypeError):
         return False
 
+
 def get_train_number_color(train_no):
     """Get the color for a train number based on its first digit
     
@@ -216,29 +219,63 @@ def get_train_number_color(train_no):
     """
     if train_no is None:
         return {"color": "#333333", "bg_color": "#ffffff"}
-        
+
     train_no_str = str(train_no).strip()
     if not train_no_str or len(train_no_str) == 0:
         return {"color": "#333333", "bg_color": "#ffffff"}
-        
+
     first_digit = train_no_str[0]
-    
+
     # Define color mapping for each first digit
     color_map = {
-        '1': {"color": "#d63384", "bg_color": "#fff0f7"},  # Pink
-        '2': {"color": "#6f42c1", "bg_color": "#f5f0ff"},  # Purple
-        '3': {"color": "#0d6efd", "bg_color": "#f0f7ff"},  # Blue
-        '4': {"color": "#20c997", "bg_color": "#f0fff9"},  # Teal
-        '5': {"color": "#198754", "bg_color": "#f0fff2"},  # Green
-        '6': {"color": "#0dcaf0", "bg_color": "#f0fbff"},  # Cyan
-        '7': {"color": "#fd7e14", "bg_color": "#fff6f0"},  # Orange 
-        '8': {"color": "#dc3545", "bg_color": "#fff0f0"},  # Red
-        '9': {"color": "#6610f2", "bg_color": "#f7f0ff"},  # Indigo
-        '0': {"color": "#333333", "bg_color": "#f8f9fa"},  # Dark gray
+        '1': {
+            "color": "#d63384",
+            "bg_color": "#fff0f7"
+        },  # Pink
+        '2': {
+            "color": "#6f42c1",
+            "bg_color": "#f5f0ff"
+        },  # Purple
+        '3': {
+            "color": "#0d6efd",
+            "bg_color": "#f0f7ff"
+        },  # Blue
+        '4': {
+            "color": "#20c997",
+            "bg_color": "#f0fff9"
+        },  # Teal
+        '5': {
+            "color": "#198754",
+            "bg_color": "#f0fff2"
+        },  # Green
+        '6': {
+            "color": "#0dcaf0",
+            "bg_color": "#f0fbff"
+        },  # Cyan
+        '7': {
+            "color": "#fd7e14",
+            "bg_color": "#fff6f0"
+        },  # Orange 
+        '8': {
+            "color": "#dc3545",
+            "bg_color": "#fff0f0"
+        },  # Red
+        '9': {
+            "color": "#6610f2",
+            "bg_color": "#f7f0ff"
+        },  # Indigo
+        '0': {
+            "color": "#333333",
+            "bg_color": "#f8f9fa"
+        },  # Dark gray
     }
-    
+
     # Get color or default to black
-    return color_map.get(first_digit, {"color": "#333333", "bg_color": "#ffffff"})
+    return color_map.get(first_digit, {
+        "color": "#333333",
+        "bg_color": "#ffffff"
+    })
+
 
 def style_train_numbers_dataframe(df, train_column='Train No.'):
     """Apply styling to a DataFrame to color train numbers based on first digit
@@ -250,14 +287,15 @@ def style_train_numbers_dataframe(df, train_column='Train No.'):
     Returns:
         Styled DataFrame with colored train numbers
     """
+
     # Define a styling function that applies different colors to train numbers
     def style_train_numbers(val):
         if not isinstance(val, str) or not val.strip():
             return ''
-        
+
         # Get the first digit (if it exists)
         first_digit = val[0] if val and val[0].isdigit() else None
-        
+
         # Color mapping for train numbers based on first digit
         color_map = {
             '1': '#d63384',  # Pink
@@ -269,26 +307,27 @@ def style_train_numbers_dataframe(df, train_column='Train No.'):
             '7': '#fd7e14',  # Orange
             '8': '#dc3545',  # Red
             '9': '#6610f2',  # Indigo
-            '0': '#333333'   # Dark gray
+            '0': '#333333'  # Dark gray
         }
-        
+
         if first_digit in color_map:
             return f'color: {color_map[first_digit]}; font-weight: bold; background-color: #f0f8ff;'
         return ''
-    
+
     # Apply different styling based on column content
     df_styled = df.style.applymap(style_train_numbers, subset=[train_column])
-    
+
     # Apply styling for delay values
     if 'Delay' in df.columns:
-        df_styled = df_styled.applymap(lambda x: 'color: red; font-weight: bold' 
-                                     if isinstance(x, str) and ('+' in x or 'LATE' in x) 
-                                     else ('color: green; font-weight: bold' 
-                                           if isinstance(x, str) and 'EARLY' in x 
-                                           else ''), 
-                                     subset=['Delay'])
-    
+        df_styled = df_styled.applymap(
+            lambda x: 'color: red; font-weight: bold'
+            if isinstance(x, str) and ('+' in x or 'LATE' in x) else
+            ('color: green; font-weight: bold'
+             if isinstance(x, str) and 'EARLY' in x else ''),
+            subset=['Delay'])
+
     return df_styled
+
 
 def color_train_number(train_no):
     """Format a train number with HTML color styling based on first digit
@@ -301,16 +340,17 @@ def color_train_number(train_no):
     """
     if train_no is None:
         return train_no
-        
+
     train_no_str = str(train_no).strip()
     if not train_no_str or len(train_no_str) == 0:
         return train_no
-        
+
     # Get color style from the helper function
     colors = get_train_number_color(train_no_str)
-    
+
     # Return HTML-formatted train number with styling
     return f'<span style="color: {colors["color"]}; background-color: {colors["bg_color"]}; font-weight: bold; padding: 2px 5px; border-radius: 3px;">{train_no_str}</span>'
+
 
 # Create a layout for the header with logo
 header_col1, header_col2 = st.columns([1, 5])
@@ -386,7 +426,8 @@ document.addEventListener('DOMContentLoaded', function() {
     observer.observe(document.body, { childList: true, subtree: true });
 });
 </script>
-""", unsafe_allow_html=True)
+""",
+            unsafe_allow_html=True)
 
 
 def initialize_session_state():
@@ -555,7 +596,19 @@ def get_station_coordinates():
         'VSKP': {
             'lat': 17.6868,
             'lon': 83.2185
-        },  # Visakhapatnam
+        },
+        'KI': {
+            'lat': 16.6451902,
+            'lon': 80.4689248
+        },
+        'RYP': {
+            'lat': 16.5786346,
+            'lon': 80.5589261
+        },
+        'VBC': {
+            'lat': 16.5296738,
+            'lon': 80.6219001
+        },
         'TUNI': {
             'lat': 17.3572,
             'lon': 82.5483
@@ -639,6 +692,10 @@ def get_station_coordinates():
         'KVZ': {
             'lat': 14.9242136,
             'lon': 79.9788932
+        },
+        'CJM': {
+            'lat': 15.688961,
+            'lon': 80.2336244
         },
         'TTU': {
             'lat': 15.0428954,
@@ -895,6 +952,38 @@ def get_station_coordinates():
         'DVD': {
             'lat': 17.7030476,
             'lon': 83.1485371
+        },
+        'NS': {
+            'lat': 16.7713563,
+            'lon': 78.7213753
+        },
+        'MTM': {
+            'lat': 16.5642053,
+            'lon': 80.4050177
+        },
+        'RMV': {
+            'lat': 16.5262612,
+            'lon': 80.6781754
+        },
+        'GDV': {
+            'lat': 16.4343363,
+            'lon': 80.9708003
+        },
+        'PAVP': {
+            'lat': 16.5627033,
+            'lon': 80.8368158
+        },
+        'GWM': {
+            'lat': 16.5563023,
+            'lon': 80.7933824
+        },
+        'GALA': {
+            'lat': 16.5381503,
+            'lon': 80.6707216
+        },
+        'MBD': {
+            'lat': 16.5504386,
+            'lon': 80.7132015
         }
     }
 
@@ -956,7 +1045,7 @@ def extract_station_codes(selected_stations, station_column=None):
 initialize_session_state()
 
 # Main page title
-st.title("ICMSData- Vijayawada Division")
+st.title("Vijayawada Division")
 
 # Add a refresh button atthe top with just an icon
 col1, col2 = st.columns((10, 2))
@@ -974,7 +1063,8 @@ try:
         ## Show last update time
         if data_handler.last_update:
             # Convert last update to IST (UTC+5:30)
-            last_update_ist = data_handler.last_update + timedelta(hours=5, minutes=30)
+            last_update_ist = data_handler.last_update + timedelta(hours=5,
+                                                                   minutes=30)
             st.info(
                 f"Last updated: {last_update_ist.strftime('%Y-%m-%d %H:%M:%S')} IST"
             )
@@ -1013,6 +1103,7 @@ try:
                     'FROM-TO',
                     'Start date',
                     'Event',
+                    'Train Class ',
                     # Try different column name variations
                     'Scheduled [ Entry - Exit ]',
                     'Scheduled [Entry - Exit]',
@@ -1037,48 +1128,72 @@ try:
 
                 # Define styling function with specific colors for train types
                 def highlight_delay(data):
-                    styles = pd.DataFrame('', index=data.index, columns=data.columns)
+                    styles = pd.DataFrame('',
+                                          index=data.index,
+                                          columns=data.columns)
 
                     # Apply red color only to the 'Delay' column if it exists
                     if 'Delay' in df.columns:
                         styles['Delay'] = df['Delay'].apply(
-                            lambda x: 'color: red; font-weight: bold' if x and is_positive_or_plus(x) else '')
-                    
+                            lambda x: 'color: red; font-weight: bold'
+                            if x and is_positive_or_plus(x) else '')
+
                     # Style train number column based on the first digit of train number
                     train_number_cols = ['Train No.', 'Train Name']
                     for train_col in train_number_cols:
                         if train_col in df.columns:
                             # Set base styling for all train numbers
-                            styles[train_col] = 'background-color: #e9f7fe; font-weight: bold; border-left: 3px solid #0066cc'
-                            
+                            styles[
+                                train_col] = 'background-color: #e9f7fe; font-weight: bold; border-left: 3px solid #0066cc'
+
                             # Apply specific color based on first digit of train number
                             for idx, train_no in df[train_col].items():
                                 if pd.notna(train_no):
                                     train_no_str = str(train_no).strip()
                                     if train_no_str and len(train_no_str) > 0:
                                         first_digit = train_no_str[0]
-                                        
+
                                         # Apply colors based on first digit
                                         if first_digit == '1':
-                                            styles.loc[idx, train_col] = 'background-color: #e9f7fe; color: #d63384; font-weight: bold; border-left: 3px solid #d63384'
+                                            styles.loc[
+                                                idx,
+                                                train_col] = 'background-color: #e9f7fe; color: #d63384; font-weight: bold; border-left: 3px solid #d63384'
                                         elif first_digit == '2':
-                                            styles.loc[idx, train_col] = 'background-color: #e9f7fe; color: #6f42c1; font-weight: bold; border-left: 3px solid #6f42c1'
+                                            styles.loc[
+                                                idx,
+                                                train_col] = 'background-color: #e9f7fe; color: #6f42c1; font-weight: bold; border-left: 3px solid #6f42c1'
                                         elif first_digit == '3':
-                                            styles.loc[idx, train_col] = 'background-color: #e9f7fe; color: #0d6efd; font-weight: bold; border-left: 3px solid #0d6efd'
+                                            styles.loc[
+                                                idx,
+                                                train_col] = 'background-color: #e9f7fe; color: #0d6efd; font-weight: bold; border-left: 3px solid #0d6efd'
                                         elif first_digit == '4':
-                                            styles.loc[idx, train_col] = 'background-color: #e9f7fe; color: #20c997; font-weight: bold; border-left: 3px solid #20c997'
+                                            styles.loc[
+                                                idx,
+                                                train_col] = 'background-color: #e9f7fe; color: #20c997; font-weight: bold; border-left: 3px solid #20c997'
                                         elif first_digit == '5':
-                                            styles.loc[idx, train_col] = 'background-color: #e9f7fe; color: #198754; font-weight: bold; border-left: 3px solid #198754'
+                                            styles.loc[
+                                                idx,
+                                                train_col] = 'background-color: #e9f7fe; color: #198754; font-weight: bold; border-left: 3px solid #198754'
                                         elif first_digit == '6':
-                                            styles.loc[idx, train_col] = 'background-color: #e9f7fe; color: #0dcaf0; font-weight: bold; border-left: 3px solid #0dcaf0'
+                                            styles.loc[
+                                                idx,
+                                                train_col] = 'background-color: #e9f7fe; color: #0dcaf0; font-weight: bold; border-left: 3px solid #0dcaf0'
                                         elif first_digit == '7':
-                                            styles.loc[idx, train_col] = 'background-color: #e9f7fe; color: #fd7e14; font-weight: bold; border-left: 3px solid #fd7e14'
+                                            styles.loc[
+                                                idx,
+                                                train_col] = 'background-color: #e9f7fe; color: #fd7e14; font-weight: bold; border-left: 3px solid #fd7e14'
                                         elif first_digit == '8':
-                                            styles.loc[idx, train_col] = 'background-color: #e9f7fe; color: #dc3545; font-weight: bold; border-left: 3px solid #dc3545'
+                                            styles.loc[
+                                                idx,
+                                                train_col] = 'background-color: #e9f7fe; color: #dc3545; font-weight: bold; border-left: 3px solid #dc3545'
                                         elif first_digit == '9':
-                                            styles.loc[idx, train_col] = 'background-color: #e9f7fe; color: #6610f2; font-weight: bold; border-left: 3px solid #6610f2'
+                                            styles.loc[
+                                                idx,
+                                                train_col] = 'background-color: #e9f7fe; color: #6610f2; font-weight: bold; border-left: 3px solid #6610f2'
                                         else:
-                                            styles.loc[idx, train_col] = 'background-color: #e9f7fe; color: #333333; font-weight: bold; border-left: 3px solid #333333'
+                                            styles.loc[
+                                                idx,
+                                                train_col] = 'background-color: #e9f7fe; color: #333333; font-weight: bold; border-left: 3px solid #333333'
 
                     # Hidden column name
                     from_to_col = 'FROM-TO'
@@ -1087,25 +1202,37 @@ try:
                     if from_to_col in df.columns:
                         for idx, value in df[from_to_col].items():
                             if pd.notna(value):
-                                logger.info(f"Processing row {idx} with value: {value}")
+                                logger.info(
+                                    f"Processing row {idx} with value: {value}"
+                                )
 
-                                extracted_value = str(value).split(' ')[0].upper()
-                                logger.debug(f"FROM-TO value: {value}, extracted value: {extracted_value}")
+                                extracted_value = str(value).split(
+                                    ' ')[0].upper()
+                                logger.debug(
+                                    f"FROM-TO value: {value}, extracted value: {extracted_value}"
+                                )
 
                                 font_styles = {
                                     'DMU': 'color: blue; font-weight: bold; ',
                                     'MEM': 'color: blue; font-weight: bold; ',
-                                    'SUF': 'color: #e83e8c; font-weight: bold; ',
-                                    'MEX': 'color: #e83e8c; font-weight: bold; ',
-                                    'VND': 'color: #e83e8c; font-weight: bold; ',
-                                    'RJ': 'color: #e83e8c; font-weight: bold; ',
-                                    'PEX': 'color: #e83e8c; font-weight: bold; ',
-                                    'TOD': 'color: #fd7e14; font-weight: bold; '
+                                    'SUF':
+                                    'color: #e83e8c; font-weight: bold; ',
+                                    'MEX':
+                                    'color: #e83e8c; font-weight: bold; ',
+                                    'VND':
+                                    'color: #e83e8c; font-weight: bold; ',
+                                    'RJ':
+                                    'color: #e83e8c; font-weight: bold; ',
+                                    'PEX':
+                                    'color: #e83e8c; font-weight: bold; ',
+                                    'TOD':
+                                    'color: #fd7e14; font-weight: bold; '
                                 }
 
                                 # Apply train type styling
                                 for col in styles.columns:
-                                    style_to_apply = font_styles.get(extracted_value, '')
+                                    style_to_apply = font_styles.get(
+                                        extracted_value, '')
                                     if style_to_apply:
                                         styles.loc[idx, col] += style_to_apply
 
@@ -1149,9 +1276,7 @@ try:
                     )
                     display_df = df
                 else:
-                    st.success(
-                        f"Showing {len(filtered_df)} rows containing values with plus sign in brackets like '(+5)'"
-                    )
+                    st.success(f"Showing {len(filtered_df)} rows'")
                     display_df = filtered_df
 
                 # Reset index and add a sequential serial number column
@@ -1159,7 +1284,7 @@ try:
 
                 # Add a sequential S.No. column at the beginning (before Select)
                 display_df.insert(0, '#', range(1, len(display_df) + 1))
-                
+
                 # Create style info for train numbers
                 if 'Train No.' in display_df.columns:
                     # Add a column with train number class for styling
@@ -1174,10 +1299,12 @@ try:
                             return f'train-{first_digit}'
                         except:
                             return ''
-                    
+
                     # Set the train class attribute that will be used for styling
-                    display_df['Train Class'] = display_df['Train No.'].apply(get_train_class)
-                    
+                    # This column will be used temporarily and removed before displaying the table
+                    display_df['Train Class'] = display_df['Train No.'].apply(
+                        get_train_class)
+
                     # Custom styler to add data attributes to cells
                     def apply_train_class_styler(df):
                         # Style the Train No column based on first digit
@@ -1186,11 +1313,13 @@ try:
                             train_class = row.get('Train Class', '')
                             if train_class:
                                 styles.append({
-                                    'selector': f'td:nth-child(3)',
-                                    'props': [('data-train-class', train_class)]
+                                    'selector':
+                                    f'td:nth-child(3)',
+                                    'props':
+                                    [('data-train-class', train_class)]
                                 })
                         return styles
-                    
+
                     # Apply the styler function to add data attributes
                     # (Note: This may not be supported in all Streamlit versions)
 
@@ -1223,37 +1352,60 @@ try:
                         unsafe_allow_html=True)
 
                     # Use combination approach: Standard data_editor for selection + styled display
-                    
+
                     # Check if Select column already exists
                     if 'Select' not in display_df.columns:
-                        display_df.insert(0, 'Select', False)  # Add selection column
+                        display_df.insert(0, 'Select',
+                                          False)  # Add selection column
 
                     # Display the main data table with integrated selection checkboxes
                     st.subheader("Train Status Data")
-                    
+
                     # Apply cell styling function to color the train numbers
                     styled_df = display_df.copy()
                     
+                    # Remove the "Train Class" column if it exists before displaying
+                    if 'Train Class' in styled_df.columns:
+                        styled_df = styled_df.drop(columns=['Train Class'])
+
                     # Import the styling function from color_train_formatter
                     from color_train_formatter import style_train_dataframe
-                    
+
                     # Use Streamlit's built-in dataframe with styling from our formatter
                     edited_df = st.data_editor(
-                        style_train_dataframe(styled_df, train_column='Train No.'),
+                        style_train_dataframe(styled_df,
+                                              train_column='Train No.'),
                         hide_index=True,
                         column_config={
-                            "#": st.column_config.NumberColumn("#", help="Serial Number", format="%d"),
-                            "Select": st.column_config.CheckboxColumn("Select", help="Select to show on map", default=False),
-                            "Train No.": st.column_config.TextColumn("Train No.", help="Train Number"),
-                            "FROM-TO": st.column_config.TextColumn("FROM-TO", help="Source to Destination"),
-                            "IC Entry Delay": st.column_config.TextColumn("IC Entry Delay", help="Entry Delay"),
-                            "Delay": st.column_config.TextColumn("Delay", help="Delay in Minutes")
+                            "#":
+                            st.column_config.NumberColumn("#",
+                                                          help="Serial Number",
+                                                          format="%d"),
+                            "Select":
+                            st.column_config.CheckboxColumn(
+                                "Select",
+                                help="Select to show on map",
+                                default=False),
+                            "Train No.":
+                            st.column_config.TextColumn("Train No.",
+                                                        help="Train Number"),
+                            "FROM-TO":
+                            st.column_config.TextColumn(
+                                "FROM-TO", help="Source to Destination"),
+                            "IC Entry Delay":
+                            st.column_config.TextColumn("IC Entry Delay",
+                                                        help="Entry Delay"),
+                            "Delay":
+                            st.column_config.TextColumn(
+                                "Delay", help="Delay in Minutes")
                         },
-                        disabled=[col for col in display_df.columns if col != 'Select'],
+                        disabled=[
+                            col for col in display_df.columns
+                            if col != 'Select'
+                        ],
                         use_container_width=True,
                         height=600,
-                        num_rows="dynamic"
-                    )
+                        num_rows="dynamic")
 
                     # Add a footer to the card with information about the data
                     selected_count = len(edited_df[edited_df['Select']])
@@ -1452,6 +1604,7 @@ def is_positive_or_plus(value):
         logger.error(f"Error in is_positive_or_plus: {str(e)}")
         return False
     return False
+
 
 # Note: Custom formatter is already imported at the top of the file
 
