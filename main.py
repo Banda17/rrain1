@@ -277,6 +277,10 @@ with header_col2:
 # Add a horizontal line to separate the header from content
 st.markdown("<hr class='mt-2 mb-3'>", unsafe_allow_html=True)
 
+# Add custom CSS for train number styling
+with open('train_number_styles.css', 'r') as f:
+    st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
+
 
 def initialize_session_state():
     """Initialize all session state variables with proper typing"""
@@ -1049,16 +1053,16 @@ try:
                 # Add a sequential S.No. column at the beginning (before Select)
                 display_df.insert(0, '#', range(1, len(display_df) + 1))
                 
-                # Apply color formatting to train numbers
+                # Add a CSS class based on the first digit of train numbers
                 if 'Train No.' in display_df.columns:
-                    # Create a new column for styled train numbers
-                    display_df['Train No. (Styled)'] = display_df['Train No.'].apply(color_train_number)
-                    
-                    # Replace original train number column with the styled version
-                    train_no_idx = display_df.columns.get_loc('Train No.')
-                    display_df.insert(train_no_idx + 1, 'Train No. (Color)', display_df['Train No. (Styled)'])
-                    display_df.drop(['Train No.', 'Train No. (Styled)'], axis=1, inplace=True)
-                    display_df.rename(columns={'Train No. (Color)': 'Train No.'}, inplace=True)
+                    # Create a CSS class column for train numbers
+                    def get_train_class(train_no):
+                        if train_no is None or str(train_no).strip() == '':
+                            return ''
+                        first_digit = str(train_no).strip()[0]
+                        return f'train-{first_digit}'
+                        
+                    display_df['Train Class'] = display_df['Train No.'].apply(get_train_class)
 
                 # Log FROM-TO values for debugging
                 def log_from_to_values(df):
@@ -1104,9 +1108,7 @@ try:
                                 default=False),
                             "Train No.":
                             st.column_config.TextColumn("Train No.",
-                                                       help="Train Number", 
-                                                       # This is important: allowing unsafe html render
-                                                       unsafe_html=True),
+                                                       help="Train Number"),
                             "FROM-TO":
                             st.column_config.TextColumn(
                                 "FROM-TO", help="Source to Destination"),

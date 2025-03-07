@@ -1,0 +1,67 @@
+/* Hide the "Train Class" column that we just use for styling */
+div[data-testid="stDataFrame"] table tr th:nth-child(4),
+div[data-testid="stDataFrame"] table tr td:nth-child(4) {
+    display: none !important;
+}
+
+/* Train number styling based on first digit */
+table td:has(.train-1), .train-1 {
+    color: #d63384 !important; 
+    font-weight: bold !important;
+    background-color: #f8f0f4 !important;
+    border-left: 3px solid #d63384 !important;
+}
+table td:has(.train-2), .train-2 {
+    color: #6f42c1 !important; 
+    font-weight: bold !important;
+    background-color: #f3f0f7 !important;
+    border-left: 3px solid #6f42c1 !important;
+}
+table td:has(.train-3), .train-3 {
+    color: #0d6efd !important; 
+    font-weight: bold !important;
+    background-color: #f0f4fc !important;
+    border-left: 3px solid #0d6efd !important;
+}
+table td:has(.train-4), .train-4 {
+    color: #20c997 !important; 
+    font-weight: bold !important;
+    background-color: #f0f9f6 !important;
+    border-left: 3px solid #20c997 !important;
+}
+table td:has(.train-5), .train-5 {
+    color: #198754 !important; 
+    font-weight: bold !important;
+    background-color: #f0f6f3 !important;
+    border-left: 3px solid #198754 !important;
+}
+table td:has(.train-6), .train-6 {
+    color: #0dcaf0 !important; 
+    font-weight: bold !important;
+    background-color: #f0f9fc !important;
+    border-left: 3px solid #0dcaf0 !important;
+}
+table td:has(.train-7), .train-7 {
+    color: #fd7e14 !important; 
+    font-weight: bold !important;
+    background-color: #fef4ea !important;
+    border-left: 3px solid #fd7e14 !important;
+}
+table td:has(.train-8), .train-8 {
+    color: #dc3545 !important; 
+    font-weight: bold !important;
+    background-color: #fcf0f2 !important;
+    border-left: 3px solid #dc3545 !important;
+}
+table td:has(.train-9), .train-9 {
+    color: #6610f2 !important; 
+    font-weight: bold !important;
+    background-color: #f3f0fc !important;
+    border-left: 3px solid #6610f2 !important;
+}
+table td:has(.train-0), .train-0 {
+    color: #333333 !important; 
+    font-weight: bold !important;
+    background-color: #f3f3f3 !important;
+    border-left: 3px solid #333333 !important;
+}
