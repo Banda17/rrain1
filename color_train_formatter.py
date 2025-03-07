@@ -37,7 +37,8 @@ def get_train_class_color(train_no: str) -> Dict[str, str]:
 
 def format_train_df_as_html(df: pd.DataFrame, 
                           train_column: str = "Train No.", 
-                          height: Optional[int] = 600) -> str:
+                          height: Optional[int] = 600,
+                          with_checkboxes: bool = False) -> str:
     """
     Convert a DataFrame to styled HTML with colored train numbers.
     
@@ -45,6 +46,7 @@ def format_train_df_as_html(df: pd.DataFrame,
         df: DataFrame to format
         train_column: Name of the column containing train numbers
         height: Height of the table in pixels (or None for auto)
+        with_checkboxes: Whether to add interactive checkboxes in the first column
         
     Returns:
         HTML string of the styled table
@@ -52,17 +54,24 @@ def format_train_df_as_html(df: pd.DataFrame,
     if df.empty:
         return "<div>No data available</div>"
     
+    # Generate a unique ID for this table
+    table_id = f"train-table-{pd.util.hash_pandas_object(df).sum() % 1000000}"
+    
     # Start building HTML table
     html = f"""
     <div style="max-height: {height}px; overflow-y: auto; margin-bottom: 20px;">
-    <table class="styled-table" style="width: 100%; border-collapse: collapse;">
+    <table id="{table_id}" class="styled-table" style="width: 100%; border-collapse: collapse;">
         <thead>
             <tr>
     """
     
     # Add headers
     for col in df.columns:
-        html += f'<th style="position: sticky; top: 0; background-color: #1e3c72; color: white; padding: 8px; text-align: left; border-bottom: 2px solid #ddd;">{col}</th>'
+        # Skip the Select column if we're using checkboxes - we'll add our own
+        if with_checkboxes and col == 'Select':
+            html += f'<th style="position: sticky; top: 0; background-color: #1e3c72; color: white; padding: 8px; text-align: center; border-bottom: 2px solid #ddd; width: 60px;">Select</th>'
+        else:
+            html += f'<th style="position: sticky; top: 0; background-color: #1e3c72; color: white; padding: 8px; text-align: left; border-bottom: 2px solid #ddd;">{col}</th>'
     
     html += """
             </tr>
@@ -71,14 +80,26 @@ def format_train_df_as_html(df: pd.DataFrame,
     """
     
     # Add rows with styled train numbers
-    for _, row in df.iterrows():
-        html += '<tr style="border-bottom: 1px solid #ddd; background-color: #ffffff;">'
+    for i, (_, row) in enumerate(df.iterrows()):
+        row_id = f"row-{i}"
+        html += f'<tr id="{row_id}" style="border-bottom: 1px solid #ddd; background-color: #ffffff;">'
         
         for col in df.columns:
             cell_value = row.get(col, "")
             
+            # For the Select column, add a checkbox if requested
+            if with_checkboxes and col == 'Select':
+                is_checked = bool(cell_value) if pd.notna(cell_value) else False
+                checked_attr = 'checked="checked"' if is_checked else ''
+                html += f'''
+                <td style="padding: 8px; text-align: center;">
+                    <input type="checkbox" id="chk-{row_id}" class="select-station" {checked_attr}
+                           style="width: 18px; height: 18px; cursor: pointer;" 
+                           onchange="this.closest('tr').classList.toggle('selected-row', this.checked)" />
+                </td>
+                '''
             # Apply special styling for train numbers
-            if col == train_column and str(cell_value).strip():
+            elif col == train_column and str(cell_value).strip():
                 train_no = str(cell_value).strip()
                 colors = get_train_class_color(train_no)
                 
@@ -106,6 +127,23 @@ def format_train_df_as_html(df: pd.DataFrame,
     </table>
     </div>
     """
+    
+    # Add JavaScript for interactive features if checkboxes are enabled
+    if with_checkboxes:
+        html += f"""
+        <script>
+        // Add listeners to checkboxes
+        document.querySelectorAll('#{table_id} .select-station').forEach(checkbox => {{
+            checkbox.addEventListener('change', function() {{
+                // Handle checkbox change
+                const selectedCount = document.querySelectorAll('#{table_id} .select-station:checked').length;
+                document.getElementById('selected-count').textContent = selectedCount;
+                
+                // You can add more JavaScript here to update other parts of the page
+            }});
+        }});
+        </script>
+        """
     
     return html
 

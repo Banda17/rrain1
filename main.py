@@ -18,7 +18,7 @@ from map_viewer import MapViewer  # Import MapViewer for offline map handling
 
 # Import the custom formatter for train number styling
 try:
-    from color_train_formatter import display_styled_train_table, download_styled_table_as_html
+    import color_train_formatter
 except ImportError:
     st.error("Could not import color_train_formatter module. Some styling features may not be available.")
 
@@ -1156,35 +1156,34 @@ try:
                     display_df['Select'] = edited_selection['Select_Station'].values
                     edited_df = display_df.copy()
                     
-                    # Second: Show styled train table
+                    # Second: Show direct HTML table with styled train numbers and integrated checkboxes
                     st.subheader("Train Status Data")
+                    
+                    # Use the custom formatter for better train number styling
                     try:
-                        # Use our custom formatter for better train number styling
-                        display_styled_train_table(display_df, train_column="Train No.", height=600)
+                        # Format the DataFrame as HTML with styled train numbers and checkboxes
+                        html_table = color_train_formatter.format_train_df_as_html(
+                            display_df, 
+                            train_column="Train No.", 
+                            height=600,
+                            with_checkboxes=True
+                        )
+                        
+                        # Display the HTML table directly
+                        st.markdown(html_table, unsafe_allow_html=True)
                         
                         # Add a download button for the table
                         st.markdown("<div style='text-align: right; margin-top: -15px;'>", unsafe_allow_html=True)
-                        download_styled_table_as_html(display_df, train_column="Train No.", filename="train_data.html")
+                        color_train_formatter.download_styled_table_as_html(
+                            display_df, 
+                            train_column="Train No.", 
+                            filename="train_data.html"
+                        )
                         st.markdown("</div>", unsafe_allow_html=True)
                     except Exception as e:
-                        # Fallback to regular data_editor if custom formatter fails
-                        st.warning(f"Using standard display due to formatting error: {str(e)}")
-                        edited_df = st.data_editor(
-                            display_df,
-                            hide_index=True,
-                            column_config={
-                                "#": st.column_config.NumberColumn("#", help="Serial Number", format="%d"),
-                                "Select": st.column_config.CheckboxColumn("Select", help="Select to show on map", default=False),
-                                "Train No.": st.column_config.TextColumn("Train No.", help="Train Number"),
-                                "FROM-TO": st.column_config.TextColumn("FROM-TO", help="Source to Destination"),
-                                "IC Entry Delay": st.column_config.TextColumn("IC Entry Delay", help="Entry Delay"),
-                                "Delay": st.column_config.TextColumn("Delay", help="Delay in Minutes")
-                            },
-                            disabled=[col for col in display_df.columns if col != 'Select'],
-                            use_container_width=True,
-                            height=600,
-                            num_rows="dynamic"
-                        )
+                        # Fallback to standard HTML if formatter fails
+                        st.warning(f"Using standard HTML display due to error: {str(e)}")
+                        st.dataframe(display_df, use_container_width=True, height=600)
 
                     # Add a footer to the card with information about the data
                     selected_count = len(edited_df[edited_df['Select']])
