@@ -1107,9 +1107,9 @@ try:
                                 help="Select to show on map",
                                 default=False),
                             "Train No.":
-                            st.column_config.Column("Train No.",
-                                                   help="Train Number",
-                                                   display_format=color_train_number),
+                            st.column_config.TextColumn("Train No.",
+                                                      help="Train Number",
+                                                      format=color_train_number),
                             "FROM-TO":
                             st.column_config.TextColumn(
                                 "FROM-TO", help="Source to Destination"),
