@@ -1103,12 +1103,10 @@ try:
                                 help="Select to show on map",
                                 default=False),
                             "Train No.":
-                            st.column_config.Column("Train No.",
-                                                    help="Train Number", 
-                                                    display_text=True,
-                                                    disable_input=True,
-                                                    # This is important: allowing unsafe html render
-                                                    unsafe_html=True),
+                            st.column_config.TextColumn("Train No.",
+                                                       help="Train Number", 
+                                                       # This is important: allowing unsafe html render
+                                                       unsafe_html=True),
                             "FROM-TO":
                             st.column_config.TextColumn(
                                 "FROM-TO", help="Source to Destination"),
