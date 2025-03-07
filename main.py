@@ -234,8 +234,8 @@ def color_train_number(train_no):
     # Get color or default to black
     color = color_map.get(first_digit, '#000000')
     
-    # Return HTML formatted string with both inline style and class
-    return f'<span class="train-{first_digit}" style="color: {color}; font-weight: bold; background-color: #f0f8ff; padding: 2px 6px; border-radius: 3px; border-left: 3px solid {color};">{train_no_str}</span>'
+    # Return HTML formatted string with both inline style and class - with enhanced font size and stronger color
+    return f'<span class="train-{first_digit}" style="color: {color}; font-weight: bold; font-size: 15px; background-color: #f0f8ff; padding: 3px 8px; border-radius: 4px; border-left: 4px solid {color}; text-shadow: 0px 0px 1px rgba(0,0,0,0.1);">{train_no_str}</span>'
 
 # Create a layout for the header with logo
 header_col1, header_col2 = st.columns([1, 5])
