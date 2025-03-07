@@ -1113,50 +1113,11 @@ try:
 
                     # Use combination approach: Standard data_editor for selection + styled display
                     
-                    # First: Create a selection interface
-                    st.subheader("Select Stations")
                     # Check if Select column already exists
                     if 'Select' not in display_df.columns:
                         display_df.insert(0, 'Select', False)  # Add selection column
-                    else:
-                        # Reset all selections to False (unchecked)
-                        display_df['Select'] = False
-                    
-                    # Create a smaller selection table using data_editor with a unique column
-                    # First, check which column to use for station information
-                    station_col = 'Station' if 'Station' in display_df.columns else display_df.columns[1]
-                    
-                    # Create a fresh DataFrame with unique column names
-                    selection_df = pd.DataFrame({
-                        'Select_Station': display_df['Select'].copy(),
-                        'Station_Name': display_df[station_col].copy()
-                    })
-                    
-                    edited_selection = st.data_editor(
-                        selection_df,
-                        hide_index=True,
-                        column_config={
-                            "Select_Station": st.column_config.CheckboxColumn(
-                                "Show on Map",
-                                help="Select to show on map",
-                                default=False
-                            ),
-                            "Station_Name": st.column_config.TextColumn(
-                                "Station",
-                                help="Station name or code",
-                                disabled=True
-                            )
-                        },
-                        use_container_width=True,
-                        height=200,
-                        num_rows="dynamic"
-                    )
-                    
-                    # Update the main display dataframe with selections
-                    display_df['Select'] = edited_selection['Select_Station'].values
-                    edited_df = display_df.copy()
-                    
-                    # Second: Show table with built-in Streamlit functionality
+
+                    # Display the main data table with integrated selection checkboxes
                     st.subheader("Train Status Data")
                     
                     # Use Streamlit's built-in dataframe with styling
@@ -1208,6 +1169,8 @@ try:
 
                     # Extract station codes from selected rows
                     selected_rows = edited_df[edited_df['Select']]
+                    # Determine which column contains station codes
+                    station_column = 'Station' if 'Station' in edited_df.columns else 'CRD'
                     selected_station_codes = extract_station_codes(
                         selected_rows, station_column)
 
