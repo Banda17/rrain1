@@ -199,6 +199,44 @@ def is_positive_or_plus(value):
     except (ValueError, TypeError):
         return False
 
+def color_train_number(train_no):
+    """Apply color formatting to train numbers based on first digit
+    
+    Args:
+        train_no: Train number as string or number
+        
+    Returns:
+        HTML formatted string with appropriate color
+    """
+    if train_no is None:
+        return train_no
+        
+    train_no_str = str(train_no).strip()
+    if not train_no_str or len(train_no_str) == 0:
+        return train_no
+        
+    first_digit = train_no_str[0]
+    
+    # Define color mapping for each first digit
+    color_map = {
+        '1': '#d63384',  # Pink
+        '2': '#6f42c1',  # Purple
+        '3': '#0d6efd',  # Blue
+        '4': '#20c997',  # Teal
+        '5': '#198754',  # Green
+        '6': '#0dcaf0',  # Cyan
+        '7': '#fd7e14',  # Orange 
+        '8': '#dc3545',  # Red
+        '9': '#6610f2',  # Indigo
+        '0': '#333333',  # Dark gray
+    }
+    
+    # Get color or default to black
+    color = color_map.get(first_digit, '#000000')
+    
+    # Return HTML formatted string
+    return f'<span style="color: {color}; font-weight: bold; background-color: #e9f7fe; padding: 2px 6px; border-radius: 3px; border-left: 3px solid {color};">{train_no_str}</span>'
+
 # Create a layout for the header with logo
 header_col1, header_col2 = st.columns([1, 5])
 
