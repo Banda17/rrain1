@@ -1128,81 +1128,63 @@ try:
                         '<div class="card shadow-sm mb-3"><div class="card-header bg-primary text-white d-flex justify-content-between align-items-center"><span>Train Data</span><span class="badge bg-light text-dark rounded-pill">Select stations to display on map</span></div><div class="card-body p-0">',
                         unsafe_allow_html=True)
 
-                    # Initialize 'Select' column in the display_df
-                    if 'Select' not in display_df.columns:
-                        display_df['Select'] = False
+                    # OPTION 1: Standard Streamlit data_editor with selection capability
+                    # Display a checkbox interface for selecting stations
+                    selection_df = pd.DataFrame({
+                        'Select': [False] * len(display_df),
+                    })
+                    selection_df.index = display_df.index
                     
-                    # Create a copy for the edited dataframe
-                    edited_df = display_df.copy()
-                    
-                    # Set up a two-column layout for selection controls and table
-                    control_col, table_col = st.columns([1, 4])
-                    
-                    with control_col:
-                        st.markdown("### Station Selection")
-                        st.info("Select stations to display on the map")
-                        
-                        # Create a small DataFrame with just station information
-                        stations_df = display_df[[station_column]].drop_duplicates()
-                        stations_df['Select'] = False
-                        
-                        # Make the station selection editor
-                        edited_stations = st.data_editor(
-                            stations_df,
+                    selection_col, _ = st.columns([1, 5])
+                    with selection_col:
+                        st.write("Select stations to display:")
+                        edited_selection = st.data_editor(
+                            selection_df,
                             hide_index=True,
                             column_config={
-                                station_column: st.column_config.TextColumn("Station", help="Station Code"),
-                                "Select": st.column_config.CheckboxColumn("Show on Map", help="Check to show on map")
+                                "Select": st.column_config.CheckboxColumn(
+                                    "Show on map",
+                                    help="Select to show on map",
+                                    default=False
+                                )
                             },
-                            disabled=[station_column],
                             use_container_width=True,
-                            height=400,
-                            key="station_selector"
+                            height=150,
+                            num_rows="dynamic"
                         )
+                    
+                    # Merge selection with display dataframe
+                    display_df['Select'] = edited_selection['Select'].values
+                    edited_df = display_df.copy()
+                    
+                    # OPTION 2: Use our custom formatter for better styling
+                    try:
+                        # Use the custom formatter for better train number styling
+                        display_styled_train_table(display_df, train_column="Train No.", height=600)
                         
-                        # Add a "Select All" button
-                        if st.button("Select All Stations"):
-                            edited_stations['Select'] = True
-                        
-                        # Add a "Clear Selection" button
-                        if st.button("Clear Selection"):
-                            edited_stations['Select'] = False
-                    
-                    # Create a mapping of selected stations
-                    selected_stations = edited_stations[edited_stations['Select']][station_column].tolist()
-                    
-                    # Mark the original dataframe with selected stations
-                    display_df['Select'] = display_df[station_column].isin(selected_stations)
-                    
-                    with table_col:
-                        # OPTION 2: Use our custom formatter for better styling
-                        try:
-                            # Use the custom formatter for better train number styling
-                            display_styled_train_table(display_df, train_column="Train No.", height=600)
-                            
-                            # Add a download button for the table
-                            st.markdown("<div style='text-align: right; margin-top: -15px;'>", unsafe_allow_html=True)
-                            download_styled_table_as_html(display_df, train_column="Train No.", filename="train_data.html")
-                            st.markdown("</div>", unsafe_allow_html=True)
-                        except Exception as e:
-                            # Fallback to regular data_editor if custom formatter fails
-                            st.warning(f"Using standard display due to formatting error: {str(e)}")
-                            edited_df = st.data_editor(
-                                display_df,
-                                hide_index=True,
-                                column_config={
-                                    "#": st.column_config.NumberColumn("#", help="Serial Number", format="%d"),
-                                    "Select": st.column_config.CheckboxColumn("Select", help="Select to show on map", default=False),
-                                    "Train No.": st.column_config.TextColumn("Train No.", help="Train Number"),
-                                    "FROM-TO": st.column_config.TextColumn("FROM-TO", help="Source to Destination"),
-                                    "IC Entry Delay": st.column_config.TextColumn("IC Entry Delay", help="Entry Delay"),
-                                    "Delay": st.column_config.TextColumn("Delay", help="Delay in Minutes")
-                                },
-                                disabled=[col for col in display_df.columns if col != 'Select'],
-                                use_container_width=True,
-                                height=600,
-                                num_rows="dynamic"
-                            )
+                        # Add a download button for the table
+                        st.markdown("<div style='text-align: right; margin-top: -15px;'>", unsafe_allow_html=True)
+                        download_styled_table_as_html(display_df, train_column="Train No.", filename="train_data.html")
+                        st.markdown("</div>", unsafe_allow_html=True)
+                    except Exception as e:
+                        # Fallback to regular data_editor if custom formatter fails
+                        st.warning(f"Using standard display due to formatting error: {str(e)}")
+                        edited_df = st.data_editor(
+                            display_df,
+                            hide_index=True,
+                            column_config={
+                                "#": st.column_config.NumberColumn("#", help="Serial Number", format="%d"),
+                                "Select": st.column_config.CheckboxColumn("Select", help="Select to show on map", default=False),
+                                "Train No.": st.column_config.TextColumn("Train No.", help="Train Number"),
+                                "FROM-TO": st.column_config.TextColumn("FROM-TO", help="Source to Destination"),
+                                "IC Entry Delay": st.column_config.TextColumn("IC Entry Delay", help="Entry Delay"),
+                                "Delay": st.column_config.TextColumn("Delay", help="Delay in Minutes")
+                            },
+                            disabled=[col for col in display_df.columns if col != 'Select'],
+                            use_container_width=True,
+                            height=600,
+                            num_rows="dynamic"
+                        )
 
                     # Add a footer to the card with information about the data
                     selected_count = len(edited_df[edited_df['Select']])
@@ -1341,13 +1323,11 @@ try:
                         </div>
                         <div class="card-body">
                             <ul class="list-group list-group-flush">
-                                <li class="list-group-item">Select stations using the checkboxes in the <b>Station Selection</b> panel</li>
-                                <li class="list-group-item">Use "Select All" to quickly select all stations, or "Clear Selection" to deselect all</li>
+                                <li class="list-group-item">Select stations using the checkboxes in the table</li>
                                 <li class="list-group-item">Selected stations will appear with red train markers on the map</li>
                                 <li class="list-group-item">All other stations are shown as small gray dots</li>
                                 <li class="list-group-item">Railway lines automatically connect selected stations in sequence</li>
                                 <li class="list-group-item">Zoom and pan the map to explore different areas</li>
-                                <li class="list-group-item">Table rows are highlighted if their station is selected</li>
                             </ul>
                         </div>
                     </div>
