@@ -898,7 +898,6 @@ try:
                                 logger.info(f"Processing row {idx} with value: {value}")
 
                                 extracted_value = str(value).split(' ')[0].upper()
-
                                 logger.debug(f"FROM-TO value: {value}, extracted value: {extracted_value}")
 
                                 font_styles = {
@@ -912,10 +911,34 @@ try:
                                     'TOD': 'color: #fd7e14; font-weight: bold; '
                                 }
 
+                                # Apply train type styling
                                 for col in styles.columns:
                                     style_to_apply = font_styles.get(extracted_value, '')
                                     if style_to_apply:
                                         styles.loc[idx, col] += style_to_apply
+
+                    # Add train number based styling
+                    if 'Train No.' in df.columns:
+                        for idx, train_no in df['Train No.'].items():
+                            if pd.notna(train_no):
+                                train_no_str = str(train_no).strip()
+                                if train_no_str:
+                                    first_digit = train_no_str[0]
+                                    logger.debug(f"Train number: {train_no_str}, first digit: {first_digit}")
+
+                                    # Apply color based on first digit
+                                    color_style = ''
+                                    if first_digit == '6':
+                                        color_style = 'color: blue; font-weight: bold;'
+                                    elif first_digit in ['1', '2']:
+                                        color_style = 'color: #e83e8c; font-weight: bold;'
+                                    elif first_digit == '0':
+                                        color_style = 'color: #fd7e14; font-weight: bold;'
+
+                                    if color_style:
+                                        for col in styles.columns:
+                                            styles.loc[idx, col] += color_style
+
                     return styles
 
                 # Add a "Select" column at the beginning of the DataFrame for checkboxes
@@ -1223,7 +1246,6 @@ def is_positive_or_plus(value):
         logger.error(f"Error in is_positive_or_plus: {str(e)}")
         return False
     return False
-
 
 # Footer
 st.markdown("---")
