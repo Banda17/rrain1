@@ -47,7 +47,7 @@ class DataHandler:
         self.update_interval = 300  # 5 minutes in seconds
         self.db_session = get_database_connection()
         self.spreadsheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRO2ZV-BOcL11_5NhlrOnn5Keph3-cVp7Tyr1t6RxsoDvxZjdOyDsmRkdvesJLbSnZwY8v3CATt1Of9/pub?gid=377625640&single=true&output=csv"
-        self.performance_metrics = {'load_time': 0, 'process_time': 0}
+        self.performance_metrics = {'load_time': 0.0, 'process_time': 0.0}
 
     def _fetch_csv_data(self) -> pd.DataFrame:
         """Fetch CSV data with performance tracking"""
@@ -71,58 +71,39 @@ class DataHandler:
 
         start_time = time.time()
         try:
-            # Check data structure
-            # First try to see if required columns are in first row values (for raw CSV format)
-            required_cols = ['Train Name', 'Station', 'Time', 'Status']
-            
-            # Try multiple approaches to find required columns
+            # Handle this specific Google Sheets format
+            # Based on our investigation, we know the first row contains the column names
             if len(df) > 0:
-                # Approach 1: Check if columns are already correct
-                if all(col in df.columns for col in required_cols):
-                    logger.info("Required columns found in dataframe headers")
-                    pass  # Columns are already correct
+                logger.info(f"Raw DataFrame columns: {df.columns.tolist()}")
+                logger.info(f"First row: {df.iloc[0].tolist()}")
                 
-                # Approach 2: Check if columns are in first row values
-                elif len(df) > 0 and all(col in df.iloc[0].values for col in required_cols):
-                    logger.info("Required columns found in first row")
+                # First make sure the first row has column names
+                if 'Train Name' in df.iloc[0].values and 'Station' in df.iloc[0].values and 'Time' in df.iloc[0].values and 'Status' in df.iloc[0].values:
+                    # Set proper column names using the first row
                     df.columns = df.iloc[0]
+                    # Remove the header row
                     df = df.iloc[1:].reset_index(drop=True)
-                
-                # Approach 3: Try to map similar column names
+                    logger.info("Successfully set column names from first row")
+                    
+                    # Clean up column names (remove leading/trailing whitespace)
+                    df.columns = [col.strip() if isinstance(col, str) else col for col in df.columns]
                 else:
-                    logger.warning("Attempting to map similar column names")
-                    column_mapping = {
-                        'Train Name': ['train_name', 'train', 'train_no', 'train_id', 'train number', 'train_number'],
-                        'Station': ['station_name', 'station_code', 'stn', 'stn_code', 'stn_name'],
-                        'Time': ['time', 'arrival_time', 'departure_time', 'arr_time', 'dep_time', 'schedule_time', 'actual_time'],
-                        'Status': ['status', 'train_status', 'current_status', 'state']
+                    # For the specific spreadsheet format we observed
+                    logger.info("Attempting specific format mapping for this spreadsheet")
+                    column_renames = {
+                        'Unnamed: 4': 'Train Name',
+                        'Unnamed: 6': 'Station',
+                        'Unnamed: 8': 'Time',
+                        'Unnamed: 7': 'Status'
                     }
-                    
-                    new_columns = df.columns.tolist()
-                    renamed = False
-                    
-                    for req_col, alternatives in column_mapping.items():
-                        if req_col not in new_columns:
-                            for alt in alternatives:
-                                if alt in [col.lower() for col in new_columns]:
-                                    idx = [col.lower() for col in new_columns].index(alt)
-                                    new_columns[idx] = req_col
-                                    renamed = True
-                                    break
-                    
-                    if renamed:
-                        df.columns = new_columns
-                        logger.info("Mapped similar column names successfully")
-                    else:
-                        logger.error("Required columns not found in data")
-                        return pd.DataFrame(columns=required_cols)
+                    df = df.rename(columns=column_renames)
+                    # Skip the header row that has "Train Name", "Station", etc.
+                    if len(df) > 0 and 'Train Name' in df.iloc[0].values:
+                        df = df.iloc[1:].reset_index(drop=True)
+                    logger.info(f"Applied specific column mapping: {column_renames}")
             else:
-                logger.error("Empty dataframe or required columns not found")
-                return pd.DataFrame(columns=required_cols)
-
-            # Set the first row as headers and reset index
-            df.columns = df.iloc[0]
-            df = df.iloc[1:].reset_index(drop=True)
+                logger.error("Empty dataframe")
+                return pd.DataFrame(columns=['Train Name', 'Station', 'Time', 'Status'])
 
             # Process only required columns with optimized operations
             required_cols = ['Train Name', 'Station', 'Time', 'Status']
@@ -301,6 +282,6 @@ class DataHandler:
         logger.debug(f"Returning cached data with {len(self.data_cache)} records")
         return self.data_cache
 
-    def get_performance_metrics(self) -> Dict[str, float]:
+    def get_performance_metrics(self) -> Dict[str, Any]:
         """Get current performance metrics"""
         return self.performance_metrics
