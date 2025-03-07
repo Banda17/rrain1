@@ -116,6 +116,7 @@ st.markdown("""
     unsafe_allow_html=True)
 
 
+
 def parse_time(time_str: str) -> Optional[datetime]:
     """Parse time string in HH:MM format to datetime object"""
     try:
@@ -282,11 +283,6 @@ def initialize_session_state():
         'map_viewer': {  # Add MapViewer to session state
             'default': MapViewer(),
             'type': MapViewer
-        },
-        'db_initialized':
-        {  # New state variable to track database initialization
-            'default': False,
-            'type': bool
         }
     }
 
@@ -804,7 +800,7 @@ def extract_station_codes(selected_stations, station_column=None):
 initialize_session_state()
 
 # Main page title
-st.title("ICMS Data- Vijayawada Division")
+st.title("ICMSData- Vijayawada Division")
 
 # Add a refresh button atthe top with just an icon
 col1, col2 = st.columns((10, 2))
