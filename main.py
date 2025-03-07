@@ -1053,13 +1053,19 @@ try:
                 # Add a sequential S.No. column at the beginning (before Select)
                 display_df.insert(0, '#', range(1, len(display_df) + 1))
                 
-                # Add a CSS class based on the first digit of train numbers
+                # Pre-format train numbers with HTML and CSS classes
                 if 'Train No.' in display_df.columns:
-                    # Create a CSS class column for train numbers
+                    # Format train numbers with HTML
+                    display_df['Train No.'] = display_df['Train No.'].apply(color_train_number)
+                    
+                    # Create a CSS class column for train numbers (still needed for CSS styling)
                     def get_train_class(train_no):
                         if train_no is None or str(train_no).strip() == '':
                             return ''
-                        first_digit = str(train_no).strip()[0]
+                        train_no_str = str(train_no).strip()
+                        if '<span' in train_no_str:  # Already formatted with HTML
+                            return ''
+                        first_digit = train_no_str[0]
                         return f'train-{first_digit}'
                         
                     display_df['Train Class'] = display_df['Train No.'].apply(get_train_class)
@@ -1108,8 +1114,7 @@ try:
                                 default=False),
                             "Train No.":
                             st.column_config.TextColumn("Train No.",
-                                                      help="Train Number",
-                                                      format=color_train_number),
+                                                       help="Train Number"),
                             "FROM-TO":
                             st.column_config.TextColumn(
                                 "FROM-TO", help="Source to Destination"),
