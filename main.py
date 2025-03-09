@@ -352,27 +352,27 @@ def color_train_number(train_no):
     return f'<span style="color: {colors["color"]}; background-color: {colors["bg_color"]}; font-weight: bold; padding: 2px 5px; border-radius: 3px;">{train_no_str}</span>'
 
 
-# Create a layout for the header with logo
-header_col1, header_col2 = st.columns([0.7, 5])
+# Create a layout for the header with centered logo
+_, center_col, _ = st.columns([1, 3, 1])
 
-# Display the logo in the first column
-with header_col1:
-    # Try with PNG logo directly from the attached_assets folder
-    st.image("attached_assets/scr_logo.png", width=100)
-    st.markdown("""
-        <div class="card border-0" style="margin-left: -15px;">
-            <div class="card-body p-0">
-                <h1 class="card-title text-primary mb-1">South Central Railway</h1>
-                <h2 class="card-subtitle text-secondary">Vijayawada Division</h2>
+# Display the centered logo and text in the middle column
+with center_col:
+    # Use HTML to center the logo and text
+    st.markdown(
+        """
+        <div style="text-align: center; margin-bottom: 10px;">
+            <img src="attached_assets/scr_logo.png" width="100" style="margin: 0 auto; display: block;">
+            <div style="margin-top: 10px;">
+                <h1 style="color: #0d6efd; margin-bottom: 5px; font-size: 2.2rem;">South Central Railway</h1>
+                <h2 style="color: #6c757d; font-size: 1.5rem;">Vijayawada Division</h2>
             </div>
         </div>
-    """,
-                unsafe_allow_html=True)
-# Display the title and subtitle in the second column
-with header_col2:
-    # Add a horizontal line to separate the header from content
-    st.markdown("<hr class='mt-2 mb-3'>", unsafe_allow_html=True)
+        """,
+        unsafe_allow_html=True
+    )
 
+# Add a horizontal line to separate the header from content
+st.markdown("<hr style='margin-top: 0; margin-bottom: 15px;'>", unsafe_allow_html=True)
 # Add custom CSS for train number styling
 with open('train_number_styles.css', 'r') as f:
     st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
@@ -1485,7 +1485,9 @@ try:
                                             tooltip=f"{code}").add_to(m)
 
                         # Add permanent text label for station with dynamic width
-                        label_width = max(len(code) * 7, 20)  # Adjust width based on station code length
+                        label_width = max(
+                            len(code) * 7,
+                            20)  # Adjust width based on station code length
                         folium.Marker(
                             [coords['lat'], coords['lon'] + 0.005],
                             icon=folium.DivIcon(
@@ -1514,7 +1516,9 @@ try:
                             ).add_to(m)
 
                             # Add a prominent label with bolder styling and dynamic width
-                            label_width = max(len(normalized_code) * 10, 30)  # Larger width for selected stations
+                            label_width = max(
+                                len(normalized_code) * 10,
+                                30)  # Larger width for selected stations
                             folium.Marker(
                                 [lat, lon + 0.01],
                                 icon=folium.DivIcon(
