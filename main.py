@@ -352,13 +352,12 @@ def color_train_number(train_no):
     return f'<span style="color: {colors["color"]}; background-color: {colors["bg_color"]}; font-weight: bold; padding: 2px 5px; border-radius: 3px;">{train_no_str}</span>'
 
 
-# Create a layout for the header with vertically aligned logo and text
-# Use a single container with flex layout for true vertical alignment
+# Create a layout for the header with vertically aligned logo and text using HTML
 st.markdown(
     """
     <div style="display: flex; align-items: center; padding: 10px 0;">
-        <div style="flex: 1; display: flex; justify-content: flex-end; padding-right: 20px;">
-            <img src="attached_assets/scr_logo.png" width="90" style="vertical-align: middle;">
+        <div style="flex: 1; text-align: right; padding-right: 20px;">
+            <img src="scr_logo.svg" width="90" />
         </div>
         <div style="flex: 3;">
             <h1 style="color: #0d6efd; margin: 0; padding: 0; font-size: 2.2rem;">South Central Railway</h1>
