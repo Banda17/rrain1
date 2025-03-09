@@ -353,24 +353,22 @@ def color_train_number(train_no):
 
 
 # Create a layout for the header with vertically aligned logo and text
-# Use 3 columns with logo in left, text in middle, and empty right column
-left_col, text_col, right_col = st.columns([1, 3, 1])
-
-# Display logo in the left column
-with left_col:
-    st.image("attached_assets/scr_logo.png", width=90)
-
-# Display title text in the middle column, vertically centered
-with text_col:
-    st.markdown(
-        """
-        <div style="padding-top: 5px;">
-            <h1 style="color: #0d6efd; margin-bottom: 5px; font-size: 2.2rem;">South Central Railway</h1>
-            <h2 style="color: #6c757d; font-size: 1.5rem;">Vijayawada Division</h2>
+# Use a single container with flex layout for true vertical alignment
+st.markdown(
+    """
+    <div style="display: flex; align-items: center; padding: 10px 0;">
+        <div style="flex: 1; display: flex; justify-content: flex-end; padding-right: 20px;">
+            <img src="attached_assets/scr_logo.png" width="90" style="vertical-align: middle;">
         </div>
-        """,
-        unsafe_allow_html=True
-    )
+        <div style="flex: 3;">
+            <h1 style="color: #0d6efd; margin: 0; padding: 0; font-size: 2.2rem;">South Central Railway</h1>
+            <h2 style="color: #6c757d; margin: 0; padding: 0; font-size: 1.5rem;">Vijayawada Division</h2>
+        </div>
+        <div style="flex: 1;"></div>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
 # Add a horizontal line to separate the header from content
 st.markdown("<hr style='margin-top: 0; margin-bottom: 15px;'>", unsafe_allow_html=True)
