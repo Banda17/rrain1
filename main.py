@@ -352,20 +352,21 @@ def color_train_number(train_no):
     return f'<span style="color: {colors["color"]}; background-color: {colors["bg_color"]}; font-weight: bold; padding: 2px 5px; border-radius: 3px;">{train_no_str}</span>'
 
 
-# Create a layout for the header with centered logo
-_, center_col, _ = st.columns([1, 3, 1])
+# Create a layout for the header with vertically aligned logo and text
+# Use 3 columns with logo in left, text in middle, and empty right column
+left_col, text_col, right_col = st.columns([1, 3, 1])
 
-# Display the centered logo and text in the middle column
-with center_col:
-    # Use HTML to center the logo and text
+# Display logo in the left column
+with left_col:
+    st.image("attached_assets/scr_logo.png", width=90)
+
+# Display title text in the middle column, vertically centered
+with text_col:
     st.markdown(
         """
-        <div style="text-align: center; margin-bottom: 10px;">
-            <img src="attached_assets/scr_logo.png" width="100" style="margin: 0 auto; display: block;">
-            <div style="margin-top: 10px;">
-                <h1 style="color: #0d6efd; margin-bottom: 5px; font-size: 2.2rem;">South Central Railway</h1>
-                <h2 style="color: #6c757d; font-size: 1.5rem;">Vijayawada Division</h2>
-            </div>
+        <div style="padding-top: 5px;">
+            <h1 style="color: #0d6efd; margin-bottom: 5px; font-size: 2.2rem;">South Central Railway</h1>
+            <h2 style="color: #6c757d; font-size: 1.5rem;">Vijayawada Division</h2>
         </div>
         """,
         unsafe_allow_html=True
