@@ -371,6 +371,91 @@ st.markdown(
 
 # Add a horizontal line to separate the header from content
 st.markdown("<hr style='margin-top: 0; margin-bottom: 15px;'>", unsafe_allow_html=True)
+
+# Add train type filters to the sidebar
+with st.sidebar:
+    st.header("Filter Options")
+    
+    # Train Type Filter Section
+    st.subheader("Train Type Filters")
+    
+    # Initialize train_type_filters if it doesn't exist in session state
+    # This is done here because the initialize_session_state function might not have been called yet
+    if 'train_type_filters' not in st.session_state:
+        st.session_state.train_type_filters = {
+            'SUF': True,   # Superfast
+            'MEX': True,   # Express
+            'DMU': True,   # DMU
+            'MEMU': True,  # MEMU
+            'PEX': True,   # Passenger Express
+            'TOD': True,   # Tejas/Vande
+            'VND': True,   # Vande Bharat
+            'RJ': True     # Rajdhani
+        }
+    
+    # Create columns for a more compact layout with multiple checkboxes per row
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        if st.checkbox("Superfast (SUF)", value=st.session_state.train_type_filters.get('SUF', True), key="filter_SUF"):
+            st.session_state.train_type_filters['SUF'] = True
+        else:
+            st.session_state.train_type_filters['SUF'] = False
+            
+        if st.checkbox("Express (MEX)", value=st.session_state.train_type_filters.get('MEX', True), key="filter_MEX"):
+            st.session_state.train_type_filters['MEX'] = True
+        else:
+            st.session_state.train_type_filters['MEX'] = False
+            
+        if st.checkbox("DMU", value=st.session_state.train_type_filters.get('DMU', True), key="filter_DMU"):
+            st.session_state.train_type_filters['DMU'] = True
+        else:
+            st.session_state.train_type_filters['DMU'] = False
+            
+        if st.checkbox("Pass Exp (PEX)", value=st.session_state.train_type_filters.get('PEX', True), key="filter_PEX"):
+            st.session_state.train_type_filters['PEX'] = True
+        else:
+            st.session_state.train_type_filters['PEX'] = False
+    
+    with col2:
+        if st.checkbox("MEMU", value=st.session_state.train_type_filters.get('MEMU', True), key="filter_MEMU"):
+            st.session_state.train_type_filters['MEMU'] = True
+        else:
+            st.session_state.train_type_filters['MEMU'] = False
+            
+        if st.checkbox("Tejas/Vande (TOD)", value=st.session_state.train_type_filters.get('TOD', True), key="filter_TOD"):
+            st.session_state.train_type_filters['TOD'] = True
+        else:
+            st.session_state.train_type_filters['TOD'] = False
+            
+        if st.checkbox("Vande Bharat (VND)", value=st.session_state.train_type_filters.get('VND', True), key="filter_VND"):
+            st.session_state.train_type_filters['VND'] = True
+        else:
+            st.session_state.train_type_filters['VND'] = False
+            
+        if st.checkbox("Rajdhani (RJ)", value=st.session_state.train_type_filters.get('RJ', True), key="filter_RJ"):
+            st.session_state.train_type_filters['RJ'] = True
+        else:
+            st.session_state.train_type_filters['RJ'] = False
+            
+    # Option to select all or none
+    col3, col4 = st.columns(2)
+    with col3:
+        if st.button("Select All Types", key="select_all"):
+            for train_type in ['SUF', 'MEX', 'DMU', 'MEMU', 'PEX', 'TOD', 'VND', 'RJ']:
+                st.session_state.train_type_filters[train_type] = True
+                st.session_state[f"filter_{train_type}"] = True
+            st.experimental_rerun()
+    
+    with col4:
+        if st.button("Clear All Types", key="clear_all"):
+            for train_type in ['SUF', 'MEX', 'DMU', 'MEMU', 'PEX', 'TOD', 'VND', 'RJ']:
+                st.session_state.train_type_filters[train_type] = False
+                st.session_state[f"filter_{train_type}"] = False
+            st.experimental_rerun()
+    
+    st.markdown("---")
+
 # Add custom CSS for train number styling
 with open('train_number_styles.css', 'r') as f:
     st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
@@ -437,6 +522,7 @@ def initialize_session_state():
             'default': Visualizer(),
             'type': Visualizer
         },
+
         'train_schedule': {
             'default': TrainSchedule(),
             'type': TrainSchedule
@@ -1270,26 +1356,77 @@ try:
                 # Apply styling to the dataframe
                 styled_df = df.style.apply(highlight_delay, axis=None)
 
-                # Replacing just the filter implementation to look for "(+X)" pattern:
-
-                # Filter rows containing plus sign in brackets like "(+5)"
+                # Process the FROM-TO column to extract train types before filtering
+                train_types_column = 'FROM-TO'
+                has_train_types = train_types_column in df.columns
+                
+                # Create a copy of the DataFrame to avoid SettingWithCopyWarning
+                df_with_types = df.copy()
+                
+                if has_train_types:
+                    # Function to extract train type
+                    def extract_train_type_for_filter(value):
+                        if pd.notna(value) and isinstance(value, str):
+                            # Get the first part before any brackets or spaces
+                            return value.split('[')[0].split(' ')[0].strip()
+                        return ''
+                    
+                    # Add a column with just the train type for filtering
+                    df_with_types['__train_type'] = df_with_types[train_types_column].apply(extract_train_type_for_filter)
+                
+                # Filter 1: Filter rows containing plus sign in brackets like "(+5)"
                 def contains_plus_in_brackets(row):
                     # Use regex to find values with plus sign inside brackets like "(+5)"
-                    row_as_str = row.astype(str).str.contains('\(\+\d+\)',
-                                                              regex=True)
+                    row_as_str = row.astype(str).str.contains('\(\+\d+\)', regex=True)
                     return row_as_str.any()
 
-                # Apply filter to dataframe
-                filtered_df = df[df.apply(contains_plus_in_brackets, axis=1)]
+                # Apply the plus sign filter
+                filtered_by_plus = df_with_types[df_with_types.apply(contains_plus_in_brackets, axis=1)]
+
+                # Filter 2: Apply train type filter if we have train types
+                active_filters = []
+                if has_train_types:
+                    # Handle special cases for MEMU which might be "MEM" and VND which might be "VNDB"
+                    def train_type_filter(row):
+                        if pd.isna(row['__train_type']):
+                            return True  # Keep rows with missing train type
+                        
+                        train_type = row['__train_type']
+                        
+                        # Handle MEM as MEMU
+                        if train_type.startswith('MEM'):
+                            return st.session_state.train_type_filters.get('MEMU', True)
+                        
+                        # Handle VND including VNDB
+                        if train_type.startswith('VND'):
+                            return st.session_state.train_type_filters.get('VND', True)
+                            
+                        # Direct match for other types
+                        return st.session_state.train_type_filters.get(train_type, True)
+                    
+                    # Apply train type filter to the plus-filtered data
+                    filtered_df = filtered_by_plus[filtered_by_plus.apply(train_type_filter, axis=1)]
+                    
+                    # Get list of active filters for display
+                    active_filters = [k for k, v in st.session_state.train_type_filters.items() if v]
+                else:
+                    filtered_df = filtered_by_plus
 
                 # If filtered dataframe is empty, show a message and use original dataframe
                 if filtered_df.empty:
-                    st.warning(
-                        "No rows found containing values with plus sign in brackets. Showing all data."
-                    )
+                    st.warning("No matching trains found with current filters. Showing all data.")
                     display_df = df
                 else:
-                    st.success(f"Showing {len(filtered_df)} rows'")
+                    # Show filter information
+                    if active_filters:
+                        st.success(f"Showing {len(filtered_df)} trains with filter types: {', '.join(active_filters)}")
+                    else:
+                        st.success(f"Showing {len(filtered_df)} trains with no type filters")
+                    
+                    # Remove the temporary column before displaying
+                    if '__train_type' in filtered_df.columns:
+                        filtered_df = filtered_df.drop(columns=['__train_type'])
+                    
                     display_df = filtered_df
 
                 # Process the FROM-TO column to extract only the first part (MEX, SUF, etc.)
