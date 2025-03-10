@@ -353,11 +353,10 @@ def color_train_number(train_no):
 
 
 # Create a more compact header with tighter spacing - use a single row with custom HTML
-st.markdown(
-    """
+st.markdown("""
     <div style="display: flex; align-items: center; padding: 5px 0;">
         <div style="flex: 0 0 100px; text-align: right; padding-right: 10px;">
-            <img src="./scr_logo.png" width="80" alt="SCR Logo" />
+            <img src="attached_assets/scr_logo.png" width="80" alt="SCR Logo" />
         </div>
         <div style="flex: 1; padding-left: 0;">
             <h1 style="color: #0d6efd; margin: 0; padding: 0; font-size: 2.2rem;">South Central Railway</h1>
@@ -366,25 +365,25 @@ st.markdown(
         <div style="flex: 0 0 100px;"></div>
     </div>
     """,
-    unsafe_allow_html=True
-)
+            unsafe_allow_html=True)
 
 # Add a horizontal line to separate the header from content
-st.markdown("<hr style='margin-top: 0; margin-bottom: 15px;'>", unsafe_allow_html=True)
+st.markdown("<hr style='margin-top: 0; margin-bottom: 15px;'>",
+            unsafe_allow_html=True)
 
 # Initialize train filter variables for later use
 
 # Initialize train_type_filters if it doesn't exist in session state
 if 'train_type_filters' not in st.session_state:
     st.session_state.train_type_filters = {
-        'SUF': True,   # Superfast
-        'MEX': True,   # Express
-        'DMU': True,   # DMU
+        'SUF': True,  # Superfast
+        'MEX': True,  # Express
+        'DMU': True,  # DMU
         'MEMU': True,  # MEMU
-        'PEX': True,   # Passenger Express
-        'TOD': True,   # Tejas/Vande
-        'VND': True,   # Vande Bharat
-        'RJ': True     # Rajdhani
+        'PEX': True,  # Passenger Express
+        'TOD': True,  # Tejas/Vande
+        'VND': True,  # Vande Bharat
+        'RJ': True  # Rajdhani
     }
 
 # All train types with descriptions
@@ -465,7 +464,6 @@ def initialize_session_state():
             'default': Visualizer(),
             'type': Visualizer
         },
-
         'train_schedule': {
             'default': TrainSchedule(),
             'type': TrainSchedule
@@ -508,14 +506,14 @@ def initialize_session_state():
         },
         'train_type_filters': {  # New state variable for train type filtering
             'default': {
-                'SUF': True,   # Superfast
-                'MEX': True,   # Express
-                'TOD': True,   # Tejas, Vande Bharat
+                'SUF': True,  # Superfast
+                'MEX': True,  # Express
+                'TOD': True,  # Tejas, Vande Bharat
                 'MEMU': True,  # MEMU
-                'DMU': True,   # DMU
-                'VND': True,   # Vande Bharat
-                'PEX': True,   # Passenger Express
-                'RJ': True     # Rajdhani
+                'DMU': True,  # DMU
+                'VND': True,  # Vande Bharat
+                'PEX': True,  # Passenger Express
+                'RJ': True  # Rajdhani
             },
             'type': Dict
         },
@@ -595,37 +593,45 @@ def handle_timing_status_change():
 def extract_stations_from_data(df):
     """Extract unique stations from the data for the map with optimized caching"""
     # Use session state if available to avoid reprocessing
-    if 'map_stations' in st.session_state and st.session_state.get('stations_last_updated', None) is not None:
-        time_diff = (datetime.now() - st.session_state['stations_last_updated']).total_seconds()
+    if 'map_stations' in st.session_state and st.session_state.get(
+            'stations_last_updated', None) is not None:
+        time_diff = (
+            datetime.now() -
+            st.session_state['stations_last_updated']).total_seconds()
         if time_diff < 300:  # Less than 5 minutes old
             return st.session_state['map_stations']
-    
+
     stations = []
     if df is not None and not df.empty:
         # Try different column names that might contain station information
         station_columns = [
-            'Station', 'station', 'STATION', 'Station Name', 'station_name', 'CRD'
+            'Station', 'station', 'STATION', 'Station Name', 'station_name',
+            'CRD'
         ]
-        
+
         # Vectorized approach for better performance
         for col in station_columns:
             if col in df.columns:
                 # Use pandas's built-in methods for better performance
-                unique_values = df[col].dropna().astype(str).str.strip().unique()
-                
+                unique_values = df[col].dropna().astype(
+                    str).str.strip().unique()
+
                 # Filter to keep only valid station codes (2-5 uppercase letters)
                 if col == 'CRD':
                     # Handle special format in CRD column where first word is station code
                     stations = []
                     for val in unique_values:
                         parts = val.split()
-                        if parts and len(parts[0]) >= 2 and len(parts[0]) <= 5 and parts[0].isupper():
+                        if parts and len(parts[0]) >= 2 and len(
+                                parts[0]) <= 5 and parts[0].isupper():
                             stations.append(parts[0])
                 else:
                     # For other columns, use direct values if they look like station codes
-                    stations = [val for val in unique_values 
-                              if len(val) >= 2 and len(val) <= 5 and val.isupper()]
-                
+                    stations = [
+                        val for val in unique_values
+                        if len(val) >= 2 and len(val) <= 5 and val.isupper()
+                    ]
+
                 if stations:
                     break
 
@@ -641,20 +647,23 @@ def load_and_process_data():
     try:
         # Check if we have data in the session state that's recent enough
         if 'data_last_loaded' in st.session_state and 'cached_processed_data' in st.session_state:
-            time_diff = (datetime.now() - st.session_state['data_last_loaded']).total_seconds()
+            time_diff = (datetime.now() -
+                         st.session_state['data_last_loaded']).total_seconds()
             # If data is less than 5 minutes old, use it
             if time_diff < 300:
-                return (True, 
-                        st.session_state.get('cached_status_table'), 
-                        st.session_state.get('cached_processed_data'), 
+                return (True, st.session_state.get('cached_status_table'),
+                        st.session_state.get('cached_processed_data'),
                         "Using cached data")
-                
+
         # Otherwise load fresh data
-        success, message = st.session_state['icms_data_handler'].load_data_from_drive()
+        success, message = st.session_state[
+            'icms_data_handler'].load_data_from_drive()
         if success:
-            status_table = st.session_state['icms_data_handler'].get_train_status_table()
-            cached_data = st.session_state['icms_data_handler'].get_cached_data()
-            
+            status_table = st.session_state[
+                'icms_data_handler'].get_train_status_table()
+            cached_data = st.session_state[
+                'icms_data_handler'].get_cached_data()
+
             if cached_data:
                 # Store in session state for faster access
                 processed_data = pd.DataFrame(cached_data)
@@ -662,7 +671,7 @@ def load_and_process_data():
                 st.session_state['cached_processed_data'] = processed_data
                 st.session_state['data_last_loaded'] = datetime.now()
                 return True, status_table, processed_data, message
-                
+
         return False, None, None, message
     except Exception as e:
         logger.error(f"Error loading data: {str(e)}")
@@ -1081,21 +1090,22 @@ def extract_station_codes(selected_stations, station_column=None):
     """Extract station codes from selected DataFrame using vectorized operations for better performance"""
     if selected_stations.empty:
         return []
-        
+
     # Use a set for faster lookups/deduplication
     selected_station_codes = set()
-    
+
     # Look for station code in common columns, with prioritized order
     potential_station_columns = [
         'CRD', 'Station', 'Station Code', 'station', 'STATION'
     ]
-    
+
     # 1. Try each potential column with vectorized operations where possible
     for col_name in potential_station_columns:
         if col_name in selected_stations.columns:
             # Get all non-null values for the column
-            valid_values = selected_stations[selected_stations[col_name].notna()][col_name]
-            
+            valid_values = selected_stations[
+                selected_stations[col_name].notna()][col_name]
+
             if col_name == 'CRD':
                 # Handle CRD column special format - get first word from each value
                 for val in valid_values:
@@ -1111,22 +1121,25 @@ def extract_station_codes(selected_stations, station_column=None):
                     text = str(val).strip()
                     if text and 2 <= len(text) <= 5 and text.isupper():
                         selected_station_codes.add(text)
-            
+
             # If we found codes, no need to check other columns
             if selected_station_codes:
                 break
-                
+
     # 2. If still no codes found, do a more generic search across all columns
     if not selected_station_codes:
         # Look for columns that might contain station info
-        station_related_cols = [col for col in selected_stations.columns 
-                              if any(keyword in col for keyword in
-                                     ['station', 'Station', 'STATION', 'Running', 'CRD'])]
-        
+        station_related_cols = [
+            col for col in selected_stations.columns
+            if any(keyword in col for keyword in
+                   ['station', 'Station', 'STATION', 'Running', 'CRD'])
+        ]
+
         for col in station_related_cols:
             # Extract valid values to process
-            valid_values = selected_stations[selected_stations[col].notna()][col]
-            
+            valid_values = selected_stations[
+                selected_stations[col].notna()][col]
+
             # Process each value
             for val in valid_values:
                 text = str(val)
@@ -1136,7 +1149,7 @@ def extract_station_codes(selected_stations, station_column=None):
                     word = word.strip()
                     if 2 <= len(word) <= 5 and word.isupper():
                         selected_station_codes.add(word)
-    
+
     # Convert set back to list for return
     return list(selected_station_codes)
 
@@ -1355,68 +1368,79 @@ try:
 
                 # Apply styling to the dataframe
                 styled_df = df.style.apply(highlight_delay, axis=None)
-                
+
                 # Add train type filters to the main content area
                 st.subheader("Train Type Filters")
-                
+
                 # Create a multiselect dropdown with train types in a clearly visible filter section
                 st.markdown("""
                 <div style='background-color: #f0f2f6; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #ddd;'>
                     <h3 style='margin-top: 0; color: #0066cc; font-size: 18px;'>🔍 Train Type Filters</h3>
                     <p style='margin-bottom: 10px; font-size: 14px;'>Select train types to show in the table below:</p>
                 </div>
-                """, unsafe_allow_html=True)
-                
+                """,
+                            unsafe_allow_html=True)
+
                 # Create the formatted options with more descriptive labels
-                options = [f"{code} - {desc}" for code, desc in train_types.items()]
-                
+                options = [
+                    f"{code} - {desc}" for code, desc in train_types.items()
+                ]
+
                 # Get current active filters
                 if 'active_train_filters' not in st.session_state:
                     st.session_state.active_train_filters = options.copy()
-                
+
                 # Use multiselect for dropdown with checkboxes
                 # Initialize the multiselect without using session state for default
                 selected_options = st.multiselect(
                     "Select Train Categories:",
                     options=options,
                     default=options.copy(),  # Default to all options selected
-                    help="Choose which train categories to display. Selecting none will show all trains."
+                    help=
+                    "Choose which train categories to display. Selecting none will show all trains."
                 )
-                
+
                 # Extract train codes from the selected options
-                selected_train_types = [opt.split(' - ')[0] for opt in selected_options]
-                
+                selected_train_types = [
+                    opt.split(' - ')[0] for opt in selected_options
+                ]
+
                 # Update train_type_filters based on selection
                 for train_type in train_types.keys():
-                    st.session_state.train_type_filters[train_type] = (train_type in selected_train_types)
-                
+                    st.session_state.train_type_filters[train_type] = (
+                        train_type in selected_train_types)
+
                 # Save the current selection
                 st.session_state.active_train_filters = selected_options
-                
+
                 # Define callback for clearing filters
                 def clear_all_callback():
                     st.session_state.active_train_filters = []
                     for train_type in train_types.keys():
                         st.session_state.train_type_filters[train_type] = False
-                
+
                 # Add a clear button in a column to keep layout clean
                 col1, col2 = st.columns([4, 1])
                 with col2:
-                    st.button("Clear All", key="clear_all", on_click=clear_all_callback)
-                
+                    st.button("Clear All",
+                              key="clear_all",
+                              on_click=clear_all_callback)
+
                 # Show how many filters are active with better formatting
-                st.caption(f"Showing {len(selected_options)} out of {len(options)} train categories")
-                
+                st.caption(
+                    f"Showing {len(selected_options)} out of {len(options)} train categories"
+                )
+
                 # Add a separator
                 st.markdown("<hr>", unsafe_allow_html=True)
 
                 # Process the FROM-TO column to extract train types before filtering
                 train_types_column = 'FROM-TO'
                 has_train_types = train_types_column in df.columns
-                
+
                 # Create a copy of the DataFrame to avoid SettingWithCopyWarning
                 df_with_types = df.copy()
-                
+
                 if has_train_types:
                     # Function to extract train type
                     def extract_train_type_for_filter(value):
@@ -1424,10 +1448,12 @@ try:
                             # Get the first part before any brackets or spaces
                             return value.split('[')[0].split(' ')[0].strip()
                         return ''
-                    
+
                     # Add a column with just the train type for filtering
-                    df_with_types['__train_type'] = df_with_types[train_types_column].apply(extract_train_type_for_filter)
-                
+                    df_with_types['__train_type'] = df_with_types[
+                        train_types_column].apply(
+                            extract_train_type_for_filter)
+
                 # Define a cached function to process filters to improve performance
                 @st.cache_data(ttl=5, show_spinner="Applying filters...")
                 def filter_dataframe(df, train_type_filters, has_train_types):
@@ -1437,23 +1463,27 @@ try:
                     """
                     # Make a copy to avoid warnings
                     df_filtered = df.copy()
-                    
+
                     # Filter 1: Filter rows containing plus sign in brackets like "(+5)"
                     def contains_plus_in_brackets(row):
                         # Use regex to find values with plus sign inside brackets like "(+5)"
-                        row_as_str = row.astype(str).str.contains('\(\+\d+\)', regex=True)
+                        row_as_str = row.astype(str).str.contains('\(\+\d+\)',
+                                                                  regex=True)
                         return row_as_str.any()
 
                     # Apply the plus sign filter - vectorized for better performance when possible
-                    filtered_by_plus = df_filtered[df_filtered.apply(contains_plus_in_brackets, axis=1)]
-                    
+                    filtered_by_plus = df_filtered[df_filtered.apply(
+                        contains_plus_in_brackets, axis=1)]
+
                     # Filter 2: Apply train type filter if we have train types
                     active_filters = []
-                    
+
                     if has_train_types:
                         # Extract active filters for display
-                        active_filters = [k for k, v in train_type_filters.items() if v]
-                        
+                        active_filters = [
+                            k for k, v in train_type_filters.items() if v
+                        ]
+
                         # Fast path: if all filters are active, we don't need to filter
                         if len(active_filters) == len(train_type_filters):
                             final_df = filtered_by_plus
@@ -1462,71 +1492,78 @@ try:
                             def is_train_type_selected(train_type):
                                 if pd.isna(train_type):
                                     return True
-                                
+
                                 # Handle MEM as MEMU
                                 if train_type.startswith('MEM'):
                                     return train_type_filters.get('MEMU', True)
-                                
+
                                 # Handle VND including VNDB
                                 if train_type.startswith('VND'):
                                     return train_type_filters.get('VND', True)
-                                
+
                                 # Direct match for other types
                                 return train_type_filters.get(train_type, True)
-                            
+
                             # Apply train type filter using vectorized operations where possible
-                            mask = filtered_by_plus['__train_type'].apply(is_train_type_selected)
+                            mask = filtered_by_plus['__train_type'].apply(
+                                is_train_type_selected)
                             final_df = filtered_by_plus[mask]
                     else:
                         final_df = filtered_by_plus
-                    
+
                     # Remove the temporary column before returning
                     if '__train_type' in final_df.columns:
                         final_df = final_df.drop(columns=['__train_type'])
-                    
+
                     return final_df, active_filters
-                
+
                 # Apply the cached filter function
                 filtered_df, active_filters = filter_dataframe(
-                    df_with_types, 
-                    st.session_state.train_type_filters, 
-                    has_train_types
-                )
+                    df_with_types, st.session_state.train_type_filters,
+                    has_train_types)
 
                 # If filtered dataframe is empty, show a message and use original dataframe
                 if filtered_df.empty:
-                    st.warning("No matching trains found with current filters. Showing all data.")
+                    st.warning(
+                        "No matching trains found with current filters. Showing all data."
+                    )
                     display_df = df
                 else:
                     # Show filter information
                     if active_filters:
-                        st.success(f"Showing {len(filtered_df)} trains with filter types: {', '.join(active_filters)}")
+                        st.success(
+                            f"Showing {len(filtered_df)} trains with filter types: {', '.join(active_filters)}"
+                        )
                     else:
-                        st.success(f"Showing {len(filtered_df)} trains with no type filters")
-                    
+                        st.success(
+                            f"Showing {len(filtered_df)} trains with no type filters"
+                        )
+
                     display_df = filtered_df
 
                 # Process the FROM-TO column to extract only the first part (MEX, SUF, etc.)
                 if 'FROM-TO' in display_df.columns:
                     # Make a clean copy to avoid SettingWithCopyWarning
                     display_df = display_df.copy()
-                    
+
                     # Create a function to extract just the train type
                     def extract_train_type(value):
                         if pd.notna(value) and isinstance(value, str):
                             # Get the first part before any brackets or spaces
                             return value.split('[')[0].split(' ')[0].strip()
                         return value
-                    
+
                     # Apply the function to the entire column at once (more efficient)
-                    display_df['FROM-TO'] = display_df['FROM-TO'].apply(extract_train_type)
-                    
+                    display_df['FROM-TO'] = display_df['FROM-TO'].apply(
+                        extract_train_type)
+
                     # Log for debugging
                     logger.info(f"Found column: FROM-TO")
                     for idx, value in enumerate(display_df['FROM-TO']):
                         if pd.notna(value):
-                            logger.info(f"Train {idx} - FROM-TO: '{value}', First three chars: '{str(value)[:3]}'")
-                    
+                            logger.info(
+                                f"Train {idx} - FROM-TO: '{value}', First three chars: '{str(value)[:3]}'"
+                            )
 
                 # Reset index and add a sequential serial number column
                 display_df = display_df.reset_index(drop=True)
@@ -1606,7 +1643,7 @@ try:
                     if 'Select' not in display_df.columns:
                         display_df.insert(0, 'Select',
                                           False)  # Add selection column
-                    
+
                     # Fill any NaN values in the Select column with False to prevent filtering errors
                     display_df['Select'] = display_df['Select'].fillna(False)
 
@@ -1660,7 +1697,8 @@ try:
                     # Add a footer to the card with information about the data
                     # Fill NaN values in the Select column to prevent filtering errors
                     edited_df['Select'] = edited_df['Select'].fillna(False)
-                    selected_count = len(edited_df[edited_df['Select'] == True])
+                    selected_count = len(
+                        edited_df[edited_df['Select'] == True])
                     st.markdown(
                         f'<div class="card-footer bg-light d-flex justify-content-between align-items-center"><span>Total Rows: {len(display_df)}</span><span>Selected: {selected_count}</span></div>',
                         unsafe_allow_html=True)
@@ -1699,40 +1737,44 @@ try:
 
                     # Create a cached map function for better performance
                     @st.cache_data(ttl=60, show_spinner=False)
-                    def create_optimized_map(selected_codes_frozenset, center_lat=16.5167, center_lon=80.6167):
+                    def create_optimized_map(selected_codes_frozenset,
+                                             center_lat=16.5167,
+                                             center_lon=80.6167):
                         """Create an optimized map with selected stations highlighted"""
                         # Convert frozenset back to list
-                        selected_station_codes_list = list(selected_codes_frozenset)
-                        
+                        selected_station_codes_list = list(
+                            selected_codes_frozenset)
+
                         # Create a folium map with fewer features for better performance
                         m = folium.Map(
-                            location=[center_lat, center_lon],  # Centered around Vijayawada
+                            location=[center_lat, center_lon
+                                      ],  # Centered around Vijayawada
                             zoom_start=7,
                             control_scale=True,
                             prefer_canvas=True  # Use canvas renderer for speed
                         )
-                        
+
                         # Use a lightweight tile layer
                         folium.TileLayer(
                             tiles='CartoDB positron',  # Lighter map style
                             attr='&copy; OpenStreetMap contributors',
                             opacity=0.7).add_to(m)
-                        
+
                         # Get cached station coordinates
                         station_coords = get_station_coordinates()
-                        
+
                         # Process stations more efficiently
                         regular_stations = []
                         selected_stations = []
                         valid_points = []
-                        
+
                         # First classification pass - separate regular and selected stations
                         for code, coords in station_coords.items():
                             if code in selected_station_codes_list:
                                 selected_stations.append((code, coords))
                             else:
                                 regular_stations.append((code, coords))
-                        
+
                         # Add regular stations with optimized rendering
                         for code, coords in regular_stations:
                             # Add small circle markers for all stations
@@ -1743,58 +1785,65 @@ try:
                                                 fill_color='gray',
                                                 fill_opacity=0.6,
                                                 tooltip=f"{code}").add_to(m)
-                            
+
                             # Add permanent text label for station with dynamic width
-                            label_width = max(len(code) * 7, 20)  # Adjust width based on station code length
+                            label_width = max(
+                                len(code) * 7, 20
+                            )  # Adjust width based on station code length
                             folium.Marker(
                                 [coords['lat'], coords['lon'] + 0.005],
                                 icon=folium.DivIcon(
                                     icon_size=(0, 0),
                                     icon_anchor=(0, 0),
-                                    html=f'<div style="display:inline-block; min-width:{label_width}px; font-size:10px; background-color:rgba(255,255,255,0.7); padding:1px 3px; border-radius:2px; border:1px solid #800000; text-align:center;">{code}</div>'
+                                    html=
+                                    f'<div style="display:inline-block; min-width:{label_width}px; font-size:10px; background-color:rgba(255,255,255,0.7); padding:1px 3px; border-radius:2px; border:1px solid #800000; text-align:center;">{code}</div>'
                                 )).add_to(m)
-                        
+
                         # Add selected stations with train icons
                         for code, coords in selected_stations:
                             normalized_code = code.strip().upper()
                             lat = coords['lat']
                             lon = coords['lon']
-                            
+
                             # Add a large train icon marker for selected stations
                             folium.Marker(
                                 [lat, lon],
                                 popup=f"<b>{normalized_code}</b>",
                                 tooltip=normalized_code,
                                 icon=folium.Icon(color='red',
-                                                icon='train',
-                                                prefix='fa'),
+                                                 icon='train',
+                                                 prefix='fa'),
                             ).add_to(m)
-                            
+
                             # Add a prominent label with bolder styling and dynamic width
-                            label_width = max(len(normalized_code) * 10, 30)  # Larger width for selected stations
+                            label_width = max(
+                                len(normalized_code) * 10,
+                                30)  # Larger width for selected stations
                             folium.Marker(
                                 [lat, lon + 0.01],
                                 icon=folium.DivIcon(
                                     icon_size=(0, 0),
                                     icon_anchor=(0, 0),
-                                    html=f'<div style="display:inline-block; min-width:{label_width}px; font-size:14px; font-weight:bold; background-color:rgba(255,255,255,0.9); padding:3px 5px; border-radius:3px; border:2px solid red; text-align:center;">{normalized_code}</div>'
+                                    html=
+                                    f'<div style="display:inline-block; min-width:{label_width}px; font-size:14px; font-weight:bold; background-color:rgba(255,255,255,0.9); padding:3px 5px; border-radius:3px; border:2px solid red; text-align:center;">{normalized_code}</div>'
                                 )).add_to(m)
-                            
+
                             valid_points.append([lat, lon])
-                        
+
                         # Add railway lines between selected stations if more than one
                         if len(valid_points) > 1:
                             folium.PolyLine(valid_points,
-                                        weight=2,
-                                        color='gray',
-                                        opacity=0.8,
-                                        dash_array='5, 10').add_to(m)
-                        
+                                            weight=2,
+                                            color='gray',
+                                            opacity=0.8,
+                                            dash_array='5, 10').add_to(m)
+
                         return m, valid_points
-                        
+
                     # Call the cached map function
                     with st.spinner("Rendering map..."):
-                        m, valid_points = create_optimized_map(current_selected)
+                        m, valid_points = create_optimized_map(
+                            current_selected)
 
                     # Use a feature that allows map to remember its state (zoom, pan position)
                     st_folium(m, width=None, height=600, key="persistent_map")
