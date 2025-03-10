@@ -404,10 +404,14 @@ with st.sidebar:
         'RJ': 'Rajdhani'
     }
     
-    # Create a multiselect dropdown with train types
-    st.markdown("<div style='background-color: #f0f2f6; padding: 10px; border-radius: 5px;'>", unsafe_allow_html=True)
+    # Create a multiselect dropdown with train types in a clearly visible filter section
+    st.markdown("""
+    <div style='background-color: #f0f2f6; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #ddd;'>
+        <h3 style='margin-top: 0; color: #0066cc; font-size: 18px;'>🔍 Train Type Filters</h3>
+        <p style='margin-bottom: 10px; font-size: 14px;'>Select train types to show in the table below:</p>
+    """, unsafe_allow_html=True)
     
-    # Create the formatted options
+    # Create the formatted options with more descriptive labels
     options = [f"{code} - {desc}" for code, desc in train_types.items()]
     
     # Get current active filters
@@ -416,10 +420,11 @@ with st.sidebar:
     
     # Use multiselect for dropdown with checkboxes
     selected_options = st.multiselect(
-        "Filter by Train Types:",
+        "Select Train Categories:",
         options=options,
         default=st.session_state.active_train_filters,
-        key="train_type_multiselect"
+        key="train_type_multiselect",
+        help="Choose which train categories to display. Selecting none will show all trains."
     )
     
     # Extract train codes from the selected options
@@ -432,8 +437,10 @@ with st.sidebar:
     # Save the current selection
     st.session_state.active_train_filters = selected_options
     
-    # Show how many filters are active
-    st.caption(f"Showing {len(selected_options)} out of {len(options)} train types")
+    # Show how many filters are active with better formatting
+    st.caption(f"Showing {len(selected_options)} out of {len(options)} train categories")
+    
+    st.markdown("</div>", unsafe_allow_html=True)
     
     # Option to select all or none with callbacks instead of full page reloads
     col1, col2 = st.columns(2)
