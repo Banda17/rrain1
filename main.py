@@ -1281,16 +1281,25 @@ try:
 
                 # Process the FROM-TO column to extract only the first part (MEX, SUF, etc.)
                 if 'FROM-TO' in display_df.columns:
-                    # Extract only the first part of the FROM-TO column (e.g., "MEX", "SUF", "TOD")
-                    logger.info(f"Found column: FROM-TO")
-                    for idx, value in enumerate(display_df['FROM-TO']):
+                    # Make a clean copy to avoid SettingWithCopyWarning
+                    display_df = display_df.copy()
+                    
+                    # Create a function to extract just the train type
+                    def extract_train_type(value):
                         if pd.notna(value) and isinstance(value, str):
                             # Get the first part before any brackets or spaces
-                            first_part = value.split('[')[0].split(' ')[0].strip()
-                            # Log for debugging
-                            logger.info(f"Train {idx} - FROM-TO: '{value}', First three chars: '{first_part}'")
-                            # Replace the value with just the first part
-                            display_df.at[idx, 'FROM-TO'] = first_part
+                            return value.split('[')[0].split(' ')[0].strip()
+                        return value
+                    
+                    # Apply the function to the entire column at once (more efficient)
+                    display_df['FROM-TO'] = display_df['FROM-TO'].apply(extract_train_type)
+                    
+                    # Log for debugging
+                    logger.info(f"Found column: FROM-TO")
+                    for idx, value in enumerate(display_df['FROM-TO']):
+                        if pd.notna(value):
+                            logger.info(f"Train {idx} - FROM-TO: '{value}', First three chars: '{str(value)[:3]}'")
+                    
 
                 # Reset index and add a sequential serial number column
                 display_df = display_df.reset_index(drop=True)
