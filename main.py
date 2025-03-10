@@ -435,21 +435,27 @@ with st.sidebar:
     # Show how many filters are active
     st.caption(f"Showing {len(selected_options)} out of {len(options)} train types")
     
-    # Option to select all or none in a more compact layout
+    # Option to select all or none with callbacks instead of full page reloads
     col1, col2 = st.columns(2)
+    
+    # Define callback functions that update the session state without reloading
+    def select_all_callback():
+        st.session_state.active_train_filters = options.copy()
+        st.session_state.train_type_multiselect = options.copy()
+        for train_type in train_types.keys():
+            st.session_state.train_type_filters[train_type] = True
+    
+    def clear_all_callback():
+        st.session_state.active_train_filters = []
+        st.session_state.train_type_multiselect = []
+        for train_type in train_types.keys():
+            st.session_state.train_type_filters[train_type] = False
+    
     with col1:
-        if st.button("Select All Types", key="select_all"):
-            st.session_state.active_train_filters = options.copy()
-            for train_type in train_types.keys():
-                st.session_state.train_type_filters[train_type] = True
-            st.experimental_rerun()
+        st.button("Select All Types", key="select_all", on_click=select_all_callback)
     
     with col2:
-        if st.button("Clear All Types", key="clear_all"):
-            st.session_state.active_train_filters = []
-            for train_type in train_types.keys():
-                st.session_state.train_type_filters[train_type] = False
-            st.experimental_rerun()
+        st.button("Clear All Types", key="clear_all", on_click=clear_all_callback)
     
     st.markdown("</div>", unsafe_allow_html=True)
     
@@ -666,18 +672,38 @@ def extract_stations_from_data(df):
     return stations
 
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=300, show_spinner="Loading data...")
 def load_and_process_data():
-    """Cache data loading and processing"""
-    success, message = st.session_state[
-        'icms_data_handler'].load_data_from_drive()
-    if success:
-        status_table = st.session_state[
-            'icms_data_handler'].get_train_status_table()
-        cached_data = st.session_state['icms_data_handler'].get_cached_data()
-        if cached_data:
-            return True, status_table, pd.DataFrame(cached_data), message
-    return False, None, None, message
+    """Cache data loading and processing with optimized performance"""
+    try:
+        # Check if we have data in the session state that's recent enough
+        if 'data_last_loaded' in st.session_state and 'cached_processed_data' in st.session_state:
+            time_diff = (datetime.now() - st.session_state['data_last_loaded']).total_seconds()
+            # If data is less than 5 minutes old, use it
+            if time_diff < 300:
+                return (True, 
+                        st.session_state.get('cached_status_table'), 
+                        st.session_state.get('cached_processed_data'), 
+                        "Using cached data")
+                
+        # Otherwise load fresh data
+        success, message = st.session_state['icms_data_handler'].load_data_from_drive()
+        if success:
+            status_table = st.session_state['icms_data_handler'].get_train_status_table()
+            cached_data = st.session_state['icms_data_handler'].get_cached_data()
+            
+            if cached_data:
+                # Store in session state for faster access
+                processed_data = pd.DataFrame(cached_data)
+                st.session_state['cached_status_table'] = status_table
+                st.session_state['cached_processed_data'] = processed_data
+                st.session_state['data_last_loaded'] = datetime.now()
+                return True, status_table, processed_data, message
+                
+        return False, None, None, message
+    except Exception as e:
+        logger.error(f"Error loading data: {str(e)}")
+        return False, None, None, f"Error: {str(e)}"
 
 
 @st.cache_data(ttl=3600)  # Cache for 1 hour
@@ -1373,43 +1399,70 @@ try:
                     # Add a column with just the train type for filtering
                     df_with_types['__train_type'] = df_with_types[train_types_column].apply(extract_train_type_for_filter)
                 
-                # Filter 1: Filter rows containing plus sign in brackets like "(+5)"
-                def contains_plus_in_brackets(row):
-                    # Use regex to find values with plus sign inside brackets like "(+5)"
-                    row_as_str = row.astype(str).str.contains('\(\+\d+\)', regex=True)
-                    return row_as_str.any()
+                # Define a cached function to process filters to improve performance
+                @st.cache_data(ttl=5, show_spinner="Applying filters...")
+                def filter_dataframe(df, train_type_filters, has_train_types):
+                    """
+                    Filter the dataframe based on train types and plus sign criteria
+                    Returns the filtered dataframe and active filters
+                    """
+                    # Make a copy to avoid warnings
+                    df_filtered = df.copy()
+                    
+                    # Filter 1: Filter rows containing plus sign in brackets like "(+5)"
+                    def contains_plus_in_brackets(row):
+                        # Use regex to find values with plus sign inside brackets like "(+5)"
+                        row_as_str = row.astype(str).str.contains('\(\+\d+\)', regex=True)
+                        return row_as_str.any()
 
-                # Apply the plus sign filter
-                filtered_by_plus = df_with_types[df_with_types.apply(contains_plus_in_brackets, axis=1)]
-
-                # Filter 2: Apply train type filter if we have train types
-                active_filters = []
-                if has_train_types:
-                    # Handle special cases for MEMU which might be "MEM" and VND which might be "VNDB"
-                    def train_type_filter(row):
-                        if pd.isna(row['__train_type']):
-                            return True  # Keep rows with missing train type
+                    # Apply the plus sign filter - vectorized for better performance when possible
+                    filtered_by_plus = df_filtered[df_filtered.apply(contains_plus_in_brackets, axis=1)]
+                    
+                    # Filter 2: Apply train type filter if we have train types
+                    active_filters = []
+                    
+                    if has_train_types:
+                        # Extract active filters for display
+                        active_filters = [k for k, v in train_type_filters.items() if v]
                         
-                        train_type = row['__train_type']
-                        
-                        # Handle MEM as MEMU
-                        if train_type.startswith('MEM'):
-                            return st.session_state.train_type_filters.get('MEMU', True)
-                        
-                        # Handle VND including VNDB
-                        if train_type.startswith('VND'):
-                            return st.session_state.train_type_filters.get('VND', True)
+                        # Fast path: if all filters are active, we don't need to filter
+                        if len(active_filters) == len(train_type_filters):
+                            final_df = filtered_by_plus
+                        else:
+                            # Handle special cases for MEMU which might be "MEM" and VND which might be "VNDB"
+                            def is_train_type_selected(train_type):
+                                if pd.isna(train_type):
+                                    return True
+                                
+                                # Handle MEM as MEMU
+                                if train_type.startswith('MEM'):
+                                    return train_type_filters.get('MEMU', True)
+                                
+                                # Handle VND including VNDB
+                                if train_type.startswith('VND'):
+                                    return train_type_filters.get('VND', True)
+                                
+                                # Direct match for other types
+                                return train_type_filters.get(train_type, True)
                             
-                        # Direct match for other types
-                        return st.session_state.train_type_filters.get(train_type, True)
+                            # Apply train type filter using vectorized operations where possible
+                            mask = filtered_by_plus['__train_type'].apply(is_train_type_selected)
+                            final_df = filtered_by_plus[mask]
+                    else:
+                        final_df = filtered_by_plus
                     
-                    # Apply train type filter to the plus-filtered data
-                    filtered_df = filtered_by_plus[filtered_by_plus.apply(train_type_filter, axis=1)]
+                    # Remove the temporary column before returning
+                    if '__train_type' in final_df.columns:
+                        final_df = final_df.drop(columns=['__train_type'])
                     
-                    # Get list of active filters for display
-                    active_filters = [k for k, v in st.session_state.train_type_filters.items() if v]
-                else:
-                    filtered_df = filtered_by_plus
+                    return final_df, active_filters
+                
+                # Apply the cached filter function
+                filtered_df, active_filters = filter_dataframe(
+                    df_with_types, 
+                    st.session_state.train_type_filters, 
+                    has_train_types
+                )
 
                 # If filtered dataframe is empty, show a message and use original dataframe
                 if filtered_df.empty:
@@ -1421,10 +1474,6 @@ try:
                         st.success(f"Showing {len(filtered_df)} trains with filter types: {', '.join(active_filters)}")
                     else:
                         st.success(f"Showing {len(filtered_df)} trains with no type filters")
-                    
-                    # Remove the temporary column before displaying
-                    if '__train_type' in filtered_df.columns:
-                        filtered_df = filtered_df.drop(columns=['__train_type'])
                     
                     display_df = filtered_df
 
@@ -1621,97 +1670,104 @@ try:
                     st.session_state[
                         'last_selected_codes'] = selected_station_codes
 
-                    # Create a folium map with fewer features for better performance
-                    m = folium.Map(
-                        location=[16.5167,
-                                  80.6167],  # Centered around Vijayawada
-                        zoom_start=7,
-                        control_scale=True,
-                        prefer_canvas=True
-                    )  # Use canvas renderer for better performance
-
-                    # Use a lightweight tile layer
-                    folium.TileLayer(
-                        tiles='CartoDB positron',  # Lighter map style
-                        attr='&copy; OpenStreetMap contributors',
-                        opacity=0.7).add_to(m)
-
-                    # Get cached station coordinates
-                    station_coords = get_station_coordinates()
-
-                    # Add markers efficiently
-                    displayed_stations = []
-                    valid_points = []
-
-                    # Add ALL stations with clear labels
-                    for code, coords in station_coords.items():
-                        # Skip selected stations - they'll get bigger markers later
-                        if code in selected_station_codes:
-                            continue
-
-                        # Add small circle markers for all stations
-                        folium.CircleMarker([coords['lat'], coords['lon']],
-                                            radius=3,
-                                            color='#800000',
-                                            fill=True,
-                                            fill_color='gray',
-                                            fill_opacity=0.6,
-                                            tooltip=f"{code}").add_to(m)
-
-                        # Add permanent text label for station with dynamic width
-                        label_width = max(
-                            len(code) * 7,
-                            20)  # Adjust width based on station code length
-                        folium.Marker(
-                            [coords['lat'], coords['lon'] + 0.005],
-                            icon=folium.DivIcon(
-                                icon_size=(0, 0),
-                                icon_anchor=(0, 0),
-                                html=
-                                f'<div style="display:inline-block; min-width:{label_width}px; font-size:10px; background-color:rgba(255,255,255,0.7); padding:1px 3px; border-radius:2px; border:1px solid #800000; text-align:center;">{code}</div>'
-                            )).add_to(m)
-
-                    # Add the selected stations with train icons and prominent labels
-                    for code in selected_station_codes:
-                        normalized_code = code.strip().upper()
-
-                        if normalized_code in station_coords:
-                            lat = station_coords[normalized_code]['lat']
-                            lon = station_coords[normalized_code]['lon']
-
+                    # Create a cached map function for better performance
+                    @st.cache_data(ttl=60, show_spinner=False)
+                    def create_optimized_map(selected_codes_frozenset, center_lat=16.5167, center_lon=80.6167):
+                        """Create an optimized map with selected stations highlighted"""
+                        # Convert frozenset back to list
+                        selected_station_codes_list = list(selected_codes_frozenset)
+                        
+                        # Create a folium map with fewer features for better performance
+                        m = folium.Map(
+                            location=[center_lat, center_lon],  # Centered around Vijayawada
+                            zoom_start=7,
+                            control_scale=True,
+                            prefer_canvas=True  # Use canvas renderer for speed
+                        )
+                        
+                        # Use a lightweight tile layer
+                        folium.TileLayer(
+                            tiles='CartoDB positron',  # Lighter map style
+                            attr='&copy; OpenStreetMap contributors',
+                            opacity=0.7).add_to(m)
+                        
+                        # Get cached station coordinates
+                        station_coords = get_station_coordinates()
+                        
+                        # Process stations more efficiently
+                        regular_stations = []
+                        selected_stations = []
+                        valid_points = []
+                        
+                        # First classification pass - separate regular and selected stations
+                        for code, coords in station_coords.items():
+                            if code in selected_station_codes_list:
+                                selected_stations.append((code, coords))
+                            else:
+                                regular_stations.append((code, coords))
+                        
+                        # Add regular stations with optimized rendering
+                        for code, coords in regular_stations:
+                            # Add small circle markers for all stations
+                            folium.CircleMarker([coords['lat'], coords['lon']],
+                                                radius=3,
+                                                color='#800000',
+                                                fill=True,
+                                                fill_color='gray',
+                                                fill_opacity=0.6,
+                                                tooltip=f"{code}").add_to(m)
+                            
+                            # Add permanent text label for station with dynamic width
+                            label_width = max(len(code) * 7, 20)  # Adjust width based on station code length
+                            folium.Marker(
+                                [coords['lat'], coords['lon'] + 0.005],
+                                icon=folium.DivIcon(
+                                    icon_size=(0, 0),
+                                    icon_anchor=(0, 0),
+                                    html=f'<div style="display:inline-block; min-width:{label_width}px; font-size:10px; background-color:rgba(255,255,255,0.7); padding:1px 3px; border-radius:2px; border:1px solid #800000; text-align:center;">{code}</div>'
+                                )).add_to(m)
+                        
+                        # Add selected stations with train icons
+                        for code, coords in selected_stations:
+                            normalized_code = code.strip().upper()
+                            lat = coords['lat']
+                            lon = coords['lon']
+                            
                             # Add a large train icon marker for selected stations
                             folium.Marker(
                                 [lat, lon],
                                 popup=f"<b>{normalized_code}</b>",
                                 tooltip=normalized_code,
                                 icon=folium.Icon(color='red',
-                                                 icon='train',
-                                                 prefix='fa'),
+                                                icon='train',
+                                                prefix='fa'),
                             ).add_to(m)
-
+                            
                             # Add a prominent label with bolder styling and dynamic width
-                            label_width = max(
-                                len(normalized_code) * 10,
-                                30)  # Larger width for selected stations
+                            label_width = max(len(normalized_code) * 10, 30)  # Larger width for selected stations
                             folium.Marker(
                                 [lat, lon + 0.01],
                                 icon=folium.DivIcon(
                                     icon_size=(0, 0),
                                     icon_anchor=(0, 0),
-                                    html=
-                                    f'<div style="display:inline-block; min-width:{label_width}px; font-size:14px; font-weight:bold; background-color:rgba(255,255,255,0.9); padding:3px 5px; border-radius:3px; border:2px solid red; text-align:center;">{normalized_code}</div>'
+                                    html=f'<div style="display:inline-block; min-width:{label_width}px; font-size:14px; font-weight:bold; background-color:rgba(255,255,255,0.9); padding:3px 5px; border-radius:3px; border:2px solid red; text-align:center;">{normalized_code}</div>'
                                 )).add_to(m)
-
-                            displayed_stations.append(normalized_code)
+                            
                             valid_points.append([lat, lon])
-
-                    # Add railway lines between selected stations if more than one
-                    if len(valid_points) > 1:
-                        folium.PolyLine(valid_points,
+                        
+                        # Add railway lines between selected stations if more than one
+                        if len(valid_points) > 1:
+                            folium.PolyLine(valid_points,
                                         weight=2,
                                         color='gray',
                                         opacity=0.8,
                                         dash_array='5, 10').add_to(m)
+                        
+                        return m, valid_points
+                        
+                    # Call the cached map function
+                    with st.spinner("Rendering map..."):
+                        m, valid_points = create_optimized_map(current_selected)
 
                     # Use a feature that allows map to remember its state (zoom, pan position)
                     st_folium(m, width=None, height=600, key="persistent_map")
