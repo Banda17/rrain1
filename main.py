@@ -357,7 +357,7 @@ st.markdown(
     """
     <div style="display: flex; align-items: center; padding: 5px 0;">
         <div style="flex: 0 0 100px; text-align: right; padding-right: 10px;">
-            <img src="./scr_logo.svg" width="80" alt="SCR Logo" />
+            <img src="./scr_logo.png" width="80" alt="SCR Logo" />
         </div>
         <div style="flex: 1; padding-left: 0;">
             <h1 style="color: #0d6efd; margin: 0; padding: 0; font-size: 2.2rem;">South Central Railway</h1>
