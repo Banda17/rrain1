@@ -1355,6 +1355,71 @@ try:
 
                 # Apply styling to the dataframe
                 styled_df = df.style.apply(highlight_delay, axis=None)
+                
+                # Add train type filters to the main content area
+                st.subheader("Train Type Filters")
+                
+                # Create a multiselect dropdown with train types in a clearly visible filter section
+                st.markdown("""
+                <div style='background-color: #f0f2f6; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #ddd;'>
+                    <h3 style='margin-top: 0; color: #0066cc; font-size: 18px;'>🔍 Train Type Filters</h3>
+                    <p style='margin-bottom: 10px; font-size: 14px;'>Select train types to show in the table below:</p>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Create the formatted options with more descriptive labels
+                options = [f"{code} - {desc}" for code, desc in train_types.items()]
+                
+                # Get current active filters
+                if 'active_train_filters' not in st.session_state:
+                    st.session_state.active_train_filters = options.copy()
+                
+                # Use multiselect for dropdown with checkboxes
+                col1, col2, col3 = st.columns([3, 1, 1])
+                
+                with col1:
+                    selected_options = st.multiselect(
+                        "Select Train Categories:",
+                        options=options,
+                        default=st.session_state.get('active_train_filters', options.copy()),
+                        key="train_type_multiselect",
+                        help="Choose which train categories to display. Selecting none will show all trains."
+                    )
+                
+                # Extract train codes from the selected options
+                selected_train_types = [opt.split(' - ')[0] for opt in selected_options]
+                
+                # Update train_type_filters based on selection
+                for train_type in train_types.keys():
+                    st.session_state.train_type_filters[train_type] = (train_type in selected_train_types)
+                
+                # Save the current selection
+                st.session_state.active_train_filters = selected_options
+                
+                # Define callback functions that update the session state without reloading
+                def select_all_callback():
+                    st.session_state.active_train_filters = options.copy()
+                    st.session_state.train_type_multiselect = options.copy()
+                    for train_type in train_types.keys():
+                        st.session_state.train_type_filters[train_type] = True
+                
+                def clear_all_callback():
+                    st.session_state.active_train_filters = []
+                    st.session_state.train_type_multiselect = []
+                    for train_type in train_types.keys():
+                        st.session_state.train_type_filters[train_type] = False
+                
+                with col2:
+                    st.button("Select All Types", key="select_all", on_click=select_all_callback)
+                
+                with col3:
+                    st.button("Clear All Types", key="clear_all", on_click=clear_all_callback)
+                
+                # Show how many filters are active with better formatting
+                st.caption(f"Showing {len(selected_options)} out of {len(options)} train categories")
+                
+                # Add a separator
+                st.markdown("<hr>", unsafe_allow_html=True)
 
                 # Process the FROM-TO column to extract train types before filtering
                 train_types_column = 'FROM-TO'
