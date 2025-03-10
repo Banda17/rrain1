@@ -1370,6 +1370,9 @@ try:
                     if 'Select' not in display_df.columns:
                         display_df.insert(0, 'Select',
                                           False)  # Add selection column
+                    
+                    # Fill any NaN values in the Select column with False to prevent filtering errors
+                    display_df['Select'] = display_df['Select'].fillna(False)
 
                     # Display the main data table with integrated selection checkboxes
                     st.subheader("Train Status Data")
@@ -1421,7 +1424,9 @@ try:
                         num_rows="dynamic")
 
                     # Add a footer to the card with information about the data
-                    selected_count = len(edited_df[edited_df['Select']])
+                    # Fill NaN values in the Select column to prevent filtering errors
+                    edited_df['Select'] = edited_df['Select'].fillna(False)
+                    selected_count = len(edited_df[edited_df['Select'] == True])
                     st.markdown(
                         f'<div class="card-footer bg-light d-flex justify-content-between align-items-center"><span>Total Rows: {len(display_df)}</span><span>Selected: {selected_count}</span></div>',
                         unsafe_allow_html=True)
@@ -1438,7 +1443,8 @@ try:
                     # Check if we need to rebuild the map from scratch or can use session state
 
                     # Extract station codes from selected rows
-                    selected_rows = edited_df[edited_df['Select']]
+                    # Ensure we're using boolean indexing with no NaN values
+                    selected_rows = edited_df[edited_df['Select'] == True]
                     # Determine which column contains station codes
                     station_column = 'Station' if 'Station' in edited_df.columns else 'CRD'
                     selected_station_codes = extract_station_codes(
