@@ -653,22 +653,47 @@ def handle_timing_status_change():
         f"Timing status changed to: {st.session_state['filter_status']}")
 
 
+@st.cache_data(ttl=300)
 def extract_stations_from_data(df):
-    """Extract unique stations from the data for the map"""
+    """Extract unique stations from the data for the map with optimized caching"""
+    # Use session state if available to avoid reprocessing
+    if 'map_stations' in st.session_state and st.session_state.get('stations_last_updated', None) is not None:
+        time_diff = (datetime.now() - st.session_state['stations_last_updated']).total_seconds()
+        if time_diff < 300:  # Less than 5 minutes old
+            return st.session_state['map_stations']
+    
     stations = []
     if df is not None and not df.empty:
         # Try different column names that might contain station information
         station_columns = [
-            'Station', 'station', 'STATION', 'Station Name', 'station_name'
+            'Station', 'station', 'STATION', 'Station Name', 'station_name', 'CRD'
         ]
+        
+        # Vectorized approach for better performance
         for col in station_columns:
             if col in df.columns:
-                # Extract unique values and convert to list
-                stations = df[col].dropna().unique().tolist()
-                break
+                # Use pandas's built-in methods for better performance
+                unique_values = df[col].dropna().astype(str).str.strip().unique()
+                
+                # Filter to keep only valid station codes (2-5 uppercase letters)
+                if col == 'CRD':
+                    # Handle special format in CRD column where first word is station code
+                    stations = []
+                    for val in unique_values:
+                        parts = val.split()
+                        if parts and len(parts[0]) >= 2 and len(parts[0]) <= 5 and parts[0].isupper():
+                            stations.append(parts[0])
+                else:
+                    # For other columns, use direct values if they look like station codes
+                    stations = [val for val in unique_values 
+                              if len(val) >= 2 and len(val) <= 5 and val.isupper()]
+                
+                if stations:
+                    break
 
-    # Store in session state for use in the map
+    # Store in session state for use in the map with timestamp
     st.session_state['map_stations'] = stations
+    st.session_state['stations_last_updated'] = datetime.now()
     return stations
 
 
@@ -1115,55 +1140,67 @@ def get_station_coordinates():
 
 @st.cache_data(ttl=300)
 def extract_station_codes(selected_stations, station_column=None):
-    """Extract station codes from selected DataFrame using optimized approach"""
-    selected_station_codes = []
-
+    """Extract station codes from selected DataFrame using vectorized operations for better performance"""
     if selected_stations.empty:
-        return selected_station_codes
-
-    # Look for station code in 'CRD' or 'Station' column
+        return []
+        
+    # Use a set for faster lookups/deduplication
+    selected_station_codes = set()
+    
+    # Look for station code in common columns, with prioritized order
     potential_station_columns = [
         'CRD', 'Station', 'Station Code', 'station', 'STATION'
     ]
-
-    # Try each potential column
+    
+    # 1. Try each potential column with vectorized operations where possible
     for col_name in potential_station_columns:
         if col_name in selected_stations.columns:
-            for _, row in selected_stations.iterrows():
-                if pd.notna(row[col_name]):
-                    # Extract station code from text (may contain additional details)
-                    text_value = str(row[col_name]).strip()
-
-                    # Handle 'CRD' column which might have format "NZD ..."
-                    if col_name == 'CRD':
-                        # Extract first word which is likely the station code
-                        parts = text_value.split()
-                        if parts:
-                            code = parts[0].strip()
-                            if code and code not in selected_station_codes:
-                                selected_station_codes.append(code)
-                    else:
-                        # For other columns, use the full value
-                        if text_value and text_value not in selected_station_codes:
-                            selected_station_codes.append(text_value)
-
-    # If still no codes found, try a more generic approach with any column
+            # Get all non-null values for the column
+            valid_values = selected_stations[selected_stations[col_name].notna()][col_name]
+            
+            if col_name == 'CRD':
+                # Handle CRD column special format - get first word from each value
+                for val in valid_values:
+                    text = str(val).strip()
+                    parts = text.split()
+                    if parts:
+                        code = parts[0].strip()
+                        if code and 2 <= len(code) <= 5 and code.isupper():
+                            selected_station_codes.add(code)
+            else:
+                # For other columns, filter for valid station codes (2-5 uppercase letters)
+                for val in valid_values:
+                    text = str(val).strip()
+                    if text and 2 <= len(text) <= 5 and text.isupper():
+                        selected_station_codes.add(text)
+            
+            # If we found codes, no need to check other columns
+            if selected_station_codes:
+                break
+                
+    # 2. If still no codes found, do a more generic search across all columns
     if not selected_station_codes:
-        for col in selected_stations.columns:
-            if any(keyword in col for keyword in
-                   ['station', 'Station', 'STATION', 'Running', 'CRD']):
-                for _, row in selected_stations.iterrows():
-                    if pd.notna(row[col]):
-                        text = str(row[col])
-                        # Try to extract a station code (usually 2-5 uppercase letters)
-                        words = text.split()
-                        for word in words:
-                            word = word.strip()
-                            if 2 <= len(word) <= 5 and word.isupper():
-                                if word not in selected_station_codes:
-                                    selected_station_codes.append(word)
-
-    return selected_station_codes
+        # Look for columns that might contain station info
+        station_related_cols = [col for col in selected_stations.columns 
+                              if any(keyword in col for keyword in
+                                     ['station', 'Station', 'STATION', 'Running', 'CRD'])]
+        
+        for col in station_related_cols:
+            # Extract valid values to process
+            valid_values = selected_stations[selected_stations[col].notna()][col]
+            
+            # Process each value
+            for val in valid_values:
+                text = str(val)
+                # Try to extract station codes (2-5 uppercase letters)
+                words = text.split()
+                for word in words:
+                    word = word.strip()
+                    if 2 <= len(word) <= 5 and word.isupper():
+                        selected_station_codes.add(word)
+    
+    # Convert set back to list for return
+    return list(selected_station_codes)
 
 
 # Initialize sessionstate
@@ -1775,9 +1812,9 @@ try:
                     st.markdown('</div></div>', unsafe_allow_html=True)
 
                     # Show success message if stations are selected
-                    if displayed_stations:
+                    if len(selected_station_codes) > 0:
                         st.success(
-                            f"Showing {len(displayed_stations)} selected stations on the map"
+                            f"Showing {len(selected_station_codes)} selected stations on the map"
                         )
                     else:
                         st.info(
