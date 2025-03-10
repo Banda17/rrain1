@@ -477,6 +477,19 @@ def initialize_session_state():
             'default': MapViewer(),
             'type': MapViewer
         },
+        'train_type_filters': {  # New state variable for train type filtering
+            'default': {
+                'SUF': True,   # Superfast
+                'MEX': True,   # Express
+                'TOD': True,   # Tejas, Vande Bharat
+                'MEMU': True,  # MEMU
+                'DMU': True,   # DMU
+                'VND': True,   # Vande Bharat
+                'PEX': True,   # Passenger Express
+                'RJ': True     # Rajdhani
+            },
+            'type': Dict
+        },
         'last_selected_codes':
         {  # Store last selected station codes for map persistence
             'default': [],
