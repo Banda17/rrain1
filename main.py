@@ -380,7 +380,6 @@ with st.sidebar:
     st.subheader("Train Type Filters")
     
     # Initialize train_type_filters if it doesn't exist in session state
-    # This is done here because the initialize_session_state function might not have been called yet
     if 'train_type_filters' not in st.session_state:
         st.session_state.train_type_filters = {
             'SUF': True,   # Superfast
@@ -393,66 +392,66 @@ with st.sidebar:
             'RJ': True     # Rajdhani
         }
     
-    # Create columns for a more compact layout with multiple checkboxes per row
-    col1, col2 = st.columns(2)
+    # All train types with descriptions
+    train_types = {
+        'SUF': 'Superfast',
+        'MEX': 'Express',
+        'DMU': 'DMU',
+        'MEMU': 'MEMU',
+        'PEX': 'Passenger Express',
+        'TOD': 'Tejas/Vande',
+        'VND': 'Vande Bharat',
+        'RJ': 'Rajdhani'
+    }
     
+    # Create a multiselect dropdown with train types
+    st.markdown("<div style='background-color: #f0f2f6; padding: 10px; border-radius: 5px;'>", unsafe_allow_html=True)
+    
+    # Create the formatted options
+    options = [f"{code} - {desc}" for code, desc in train_types.items()]
+    
+    # Get current active filters
+    if 'active_train_filters' not in st.session_state:
+        st.session_state.active_train_filters = options.copy()
+    
+    # Use multiselect for dropdown with checkboxes
+    selected_options = st.multiselect(
+        "Filter by Train Types:",
+        options=options,
+        default=st.session_state.active_train_filters,
+        key="train_type_multiselect"
+    )
+    
+    # Extract train codes from the selected options
+    selected_train_types = [opt.split(' - ')[0] for opt in selected_options]
+    
+    # Update train_type_filters based on selection
+    for train_type in train_types.keys():
+        st.session_state.train_type_filters[train_type] = (train_type in selected_train_types)
+    
+    # Save the current selection
+    st.session_state.active_train_filters = selected_options
+    
+    # Show how many filters are active
+    st.caption(f"Showing {len(selected_options)} out of {len(options)} train types")
+    
+    # Option to select all or none in a more compact layout
+    col1, col2 = st.columns(2)
     with col1:
-        if st.checkbox("Superfast (SUF)", value=st.session_state.train_type_filters.get('SUF', True), key="filter_SUF"):
-            st.session_state.train_type_filters['SUF'] = True
-        else:
-            st.session_state.train_type_filters['SUF'] = False
-            
-        if st.checkbox("Express (MEX)", value=st.session_state.train_type_filters.get('MEX', True), key="filter_MEX"):
-            st.session_state.train_type_filters['MEX'] = True
-        else:
-            st.session_state.train_type_filters['MEX'] = False
-            
-        if st.checkbox("DMU", value=st.session_state.train_type_filters.get('DMU', True), key="filter_DMU"):
-            st.session_state.train_type_filters['DMU'] = True
-        else:
-            st.session_state.train_type_filters['DMU'] = False
-            
-        if st.checkbox("Pass Exp (PEX)", value=st.session_state.train_type_filters.get('PEX', True), key="filter_PEX"):
-            st.session_state.train_type_filters['PEX'] = True
-        else:
-            st.session_state.train_type_filters['PEX'] = False
+        if st.button("Select All Types", key="select_all"):
+            st.session_state.active_train_filters = options.copy()
+            for train_type in train_types.keys():
+                st.session_state.train_type_filters[train_type] = True
+            st.experimental_rerun()
     
     with col2:
-        if st.checkbox("MEMU", value=st.session_state.train_type_filters.get('MEMU', True), key="filter_MEMU"):
-            st.session_state.train_type_filters['MEMU'] = True
-        else:
-            st.session_state.train_type_filters['MEMU'] = False
-            
-        if st.checkbox("Tejas/Vande (TOD)", value=st.session_state.train_type_filters.get('TOD', True), key="filter_TOD"):
-            st.session_state.train_type_filters['TOD'] = True
-        else:
-            st.session_state.train_type_filters['TOD'] = False
-            
-        if st.checkbox("Vande Bharat (VND)", value=st.session_state.train_type_filters.get('VND', True), key="filter_VND"):
-            st.session_state.train_type_filters['VND'] = True
-        else:
-            st.session_state.train_type_filters['VND'] = False
-            
-        if st.checkbox("Rajdhani (RJ)", value=st.session_state.train_type_filters.get('RJ', True), key="filter_RJ"):
-            st.session_state.train_type_filters['RJ'] = True
-        else:
-            st.session_state.train_type_filters['RJ'] = False
-            
-    # Option to select all or none
-    col3, col4 = st.columns(2)
-    with col3:
-        if st.button("Select All Types", key="select_all"):
-            for train_type in ['SUF', 'MEX', 'DMU', 'MEMU', 'PEX', 'TOD', 'VND', 'RJ']:
-                st.session_state.train_type_filters[train_type] = True
-                st.session_state[f"filter_{train_type}"] = True
+        if st.button("Clear All Types", key="clear_all"):
+            st.session_state.active_train_filters = []
+            for train_type in train_types.keys():
+                st.session_state.train_type_filters[train_type] = False
             st.experimental_rerun()
     
-    with col4:
-        if st.button("Clear All Types", key="clear_all"):
-            for train_type in ['SUF', 'MEX', 'DMU', 'MEMU', 'PEX', 'TOD', 'VND', 'RJ']:
-                st.session_state.train_type_filters[train_type] = False
-                st.session_state[f"filter_{train_type}"] = False
-            st.experimental_rerun()
+    st.markdown("</div>", unsafe_allow_html=True)
     
     st.markdown("---")
 
