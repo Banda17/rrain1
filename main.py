@@ -1375,16 +1375,13 @@ try:
                     st.session_state.active_train_filters = options.copy()
                 
                 # Use multiselect for dropdown with checkboxes
-                col1, col2, col3 = st.columns([3, 1, 1])
-                
-                with col1:
-                    selected_options = st.multiselect(
-                        "Select Train Categories:",
-                        options=options,
-                        default=st.session_state.get('active_train_filters', options.copy()),
-                        key="train_type_multiselect",
-                        help="Choose which train categories to display. Selecting none will show all trains."
-                    )
+                # Initialize the multiselect without using session state for default
+                selected_options = st.multiselect(
+                    "Select Train Categories:",
+                    options=options,
+                    default=options.copy(),  # Default to all options selected
+                    help="Choose which train categories to display. Selecting none will show all trains."
+                )
                 
                 # Extract train codes from the selected options
                 selected_train_types = [opt.split(' - ')[0] for opt in selected_options]
@@ -1396,24 +1393,16 @@ try:
                 # Save the current selection
                 st.session_state.active_train_filters = selected_options
                 
-                # Define callback functions that update the session state without reloading
-                def select_all_callback():
-                    st.session_state.active_train_filters = options.copy()
-                    st.session_state.train_type_multiselect = options.copy()
-                    for train_type in train_types.keys():
-                        st.session_state.train_type_filters[train_type] = True
-                
+                # Define callback for clearing filters
                 def clear_all_callback():
                     st.session_state.active_train_filters = []
-                    st.session_state.train_type_multiselect = []
                     for train_type in train_types.keys():
                         st.session_state.train_type_filters[train_type] = False
                 
+                # Add a clear button in a column to keep layout clean
+                col1, col2 = st.columns([4, 1])
                 with col2:
-                    st.button("Select All Types", key="select_all", on_click=select_all_callback)
-                
-                with col3:
-                    st.button("Clear All Types", key="clear_all", on_click=clear_all_callback)
+                    st.button("Clear All", key="clear_all", on_click=clear_all_callback)
                 
                 # Show how many filters are active with better formatting
                 st.caption(f"Showing {len(selected_options)} out of {len(options)} train categories")
