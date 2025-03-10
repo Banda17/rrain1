@@ -353,13 +353,13 @@ def color_train_number(train_no):
 
 
 # Split header into logo and text sections using columns for better alignment
-logo_col, text_col, space_col = st.columns([1, 3, 1])
+logo_col, text_col, space_col = st.columns([0.6, 3, 6])
 
 # Add logo in the first column
 with logo_col:
     # Add some padding at the top to vertically center with the text
     st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
-    st.image("scr_logo.svg", width=90)
+    st.image("attached_assets/scr_logo.png", width=90)
 
 # Add title text in the middle column
 with text_col:
@@ -1358,17 +1358,17 @@ try:
 
                     # Use combination approach: Standard data_editor for selection + styled display
 
-                    # Check if Select column already exists
-                    if 'Select' not in display_df.columns:
-                        display_df.insert(0, 'Select',
-                                          False)  # Add selection column
-
-                    # Display the main data table with integrated selection checkboxes
+                    # We're removing the Select column to clean up the UI
+                    # Display the main data table with a cleaner look
                     st.subheader("Train Status Data")
 
                     # Apply cell styling function to color the train numbers
                     styled_df = display_df.copy()
 
+                    # Remove the "Select" column if it exists (to remove checkbox column)
+                    if 'Select' in styled_df.columns:
+                        styled_df = styled_df.drop(columns=['Select'])
+                        
                     # Remove the "Train Class" column if it exists before displaying
                     if 'Train Class' in styled_df.columns:
                         styled_df = styled_df.drop(columns=['Train Class'])
@@ -1386,11 +1386,6 @@ try:
                             st.column_config.NumberColumn("#",
                                                           help="Serial Number",
                                                           format="%d"),
-                            "Select":
-                            st.column_config.CheckboxColumn(
-                                "Select",
-                                help="Select to show on map",
-                                default=False),
                             "Train No.":
                             st.column_config.TextColumn("Train No.",
                                                         help="Train Number"),
@@ -1404,18 +1399,14 @@ try:
                             st.column_config.TextColumn(
                                 "Delay", help="Delay in Minutes")
                         },
-                        disabled=[
-                            col for col in display_df.columns
-                            if col != 'Select'
-                        ],
+                        disabled=True,  # Disable all fields to make read-only
                         use_container_width=True,
                         height=600,
                         num_rows="dynamic")
 
                     # Add a footer to the card with information about the data
-                    selected_count = len(edited_df[edited_df['Select']])
                     st.markdown(
-                        f'<div class="card-footer bg-light d-flex justify-content-between align-items-center"><span>Total Rows: {len(display_df)}</span><span>Selected: {selected_count}</span></div>',
+                        f'<div class="card-footer bg-light d-flex justify-content-between align-items-center"><span>Total Rows: {len(display_df)}</span><span>Last Updated: {datetime.now().strftime("%H:%M:%S")}</span></div>',
                         unsafe_allow_html=True)
                     st.markdown('</div></div>', unsafe_allow_html=True)
 
@@ -1423,18 +1414,19 @@ try:
                 with map_col:
                     # Add a card for the map content
                     st.markdown(
-                        '<div class="card mb-3"><div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center"><span>Interactive GPS Map</span><span class="badge bg-light text-dark rounded-pill">Showing selected stations</span></div><div class="card-body p-0">',
+                        '<div class="card mb-3"><div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center"><span>Interactive GPS Map</span><span class="badge bg-light text-dark rounded-pill">Showing all stations</span></div><div class="card-body p-0">',
                         unsafe_allow_html=True)
 
                     # Create the interactive map
                     # Check if we need to rebuild the map from scratch or can use session state
 
-                    # Extract station codes from selected rows
-                    selected_rows = edited_df[edited_df['Select']]
+                    # Since we removed the Select column, we'll display all visible stations
+                    # Get first 5 stations to highlight on map
                     # Determine which column contains station codes
                     station_column = 'Station' if 'Station' in edited_df.columns else 'CRD'
+                    # Get sample of 5 stations from data to highlight
                     selected_station_codes = extract_station_codes(
-                        selected_rows, station_column)
+                        edited_df.head(5), station_column)
 
                     # Store the selected codes for comparison
                     if 'last_selected_codes' not in st.session_state:
@@ -1565,10 +1557,10 @@ try:
                         </div>
                         <div class="card-body">
                             <ul class="list-group list-group-flush">
-                                <li class="list-group-item">Select stations using the checkboxes in the table</li>
-                                <li class="list-group-item">Selected stations will appear with red train markers on the map</li>
+                                <li class="list-group-item">Red train icons highlight important stations from the data</li>
                                 <li class="list-group-item">All other stations are shown as small gray dots</li>
-                                <li class="list-group-item">Railway lines automatically connect selected stations in sequence</li>
+                                <li class="list-group-item">Railway lines connect highlighted stations</li>
+                                <li class="list-group-item">Hover over stations to see their code</li>
                                 <li class="list-group-item">Zoom and pan the map to explore different areas</li>
                             </ul>
                         </div>
