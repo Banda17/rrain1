@@ -1626,8 +1626,6 @@ try:
                     display_df['Select'] = display_df['Select'].fillna(False)
 
                     # Display the main data table with integrated selection checkboxes
-                    st.subheader("Train Status Data")
-
                     # Apply cell styling function to color the train numbers
                     styled_df = display_df.copy()
 
