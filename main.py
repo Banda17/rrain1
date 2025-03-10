@@ -1101,7 +1101,6 @@ try:
                 columns_to_drop = [
                     'Sr.',
                     'Exit Time for NLT Status',
-                    'FROM-TO',
                     'Start date',
                     'Event',
                     'Train Class ',
@@ -1279,6 +1278,19 @@ try:
                 else:
                     st.success(f"Showing {len(filtered_df)} rows'")
                     display_df = filtered_df
+
+                # Process the FROM-TO column to extract only the first part (MEX, SUF, etc.)
+                if 'FROM-TO' in display_df.columns:
+                    # Extract only the first part of the FROM-TO column (e.g., "MEX", "SUF", "TOD")
+                    logger.info(f"Found column: FROM-TO")
+                    for idx, value in enumerate(display_df['FROM-TO']):
+                        if pd.notna(value) and isinstance(value, str):
+                            # Get the first part before any brackets or spaces
+                            first_part = value.split('[')[0].split(' ')[0].strip()
+                            # Log for debugging
+                            logger.info(f"Train {idx} - FROM-TO: '{value}', First three chars: '{first_part}'")
+                            # Replace the value with just the first part
+                            display_df.at[idx, 'FROM-TO'] = first_part
 
                 # Reset index and add a sequential serial number column
                 display_df = display_df.reset_index(drop=True)
