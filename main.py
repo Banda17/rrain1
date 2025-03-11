@@ -1580,48 +1580,7 @@ try:
                         '<div class="card shadow-sm mb-3"><div class="card-header bg-primary text-white d-flex justify-content-between align-items-center"><span>Train Data</span><span class="badge bg-light text-dark rounded-pill">Select stations to display on map</span></div><div class="card-body p-0">',
                         unsafe_allow_html=True)
                     
-                    # Create train type filter inside the card
-                    with st.expander("🔍 Train Type Filters", expanded=False):
-                        st.write("Select Train Categories:")
-                        
-                        # Initialize session state if needed
-                        if 'train_type_filters' not in st.session_state:
-                            st.session_state.train_type_filters = {key: True for key in train_types.keys()}
-                        
-                        # Track if all are selected for the Select All checkbox state
-                        all_selected = all(st.session_state.train_type_filters.values())
-                        
-                        # Create a "Select All" checkbox
-                        previous_all_selected = all_selected
-                        select_all = st.checkbox("(Select All)", 
-                                               value=all_selected, 
-                                               key="select_all_checkbox")
-                        
-                        # If select_all state changed, update all filters
-                        if select_all != previous_all_selected:
-                            for train_type in train_types.keys():
-                                st.session_state.train_type_filters[train_type] = select_all
-                        
-                        # Create checkbox for each train type
-                        selected_types = []
-                        for code, desc in train_types.items():
-                            # Use the current value from session state
-                            is_selected = st.checkbox(
-                                f"{code} - {desc}",
-                                value=st.session_state.train_type_filters.get(code, True),
-                                key=f"checkbox_{code}"
-                            )
-                            
-                            # Update session state with the new value
-                            st.session_state.train_type_filters[code] = is_selected
-                            
-                            if is_selected:
-                                selected_types.append(code)
-                        
-                        # Show how many filters are active
-                        st.caption(
-                            f"Showing {len(selected_types)} out of {len(train_types)} train categories"
-                        )
+                    # Train filter moved to sidebar to not push down table content
 
                     # Use combination approach: Standard data_editor for selection + styled display
 
