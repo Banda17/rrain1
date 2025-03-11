@@ -1373,69 +1373,8 @@ try:
                 # Apply styling to the dataframe
                 styled_df = df.style.apply(highlight_delay, axis=None)
 
-                # Add train type filters to the main content area
-                st.subheader("Train Type Filters")
-
-                # Create a multiselect dropdown with train types in a clearly visible filter section
-                st.markdown("""
-                <div style='background-color: #f0f2f6; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #ddd;'>
-                    <h3 style='margin-top: 0; color: #0066cc; font-size: 18px;'>🔍 Train Type Filters</h3>
-                    <p style='margin-bottom: 10px; font-size: 14px;'>Select train types to show in the table below:</p>
-                </div>
-                """,
-                            unsafe_allow_html=True)
-
-                # Create the formatted options with more descriptive labels
-                options = [
-                    f"{code} - {desc}" for code, desc in train_types.items()
-                ]
-
-                # Get current active filters
-                if 'active_train_filters' not in st.session_state:
-                    st.session_state.active_train_filters = options.copy()
-
-                # Use multiselect for dropdown with checkboxes
-                # Initialize the multiselect without using session state for default
-                selected_options = st.multiselect(
-                    "Select Train Categories:",
-                    options=options,
-                    default=options.copy(),  # Default to all options selected
-                    help=
-                    "Choose which train categories to display. Selecting none will show all trains."
-                )
-
-                # Extract train codes from the selected options
-                selected_train_types = [
-                    opt.split(' - ')[0] for opt in selected_options
-                ]
-
-                # Update train_type_filters based on selection
-                for train_type in train_types.keys():
-                    st.session_state.train_type_filters[train_type] = (
-                        train_type in selected_train_types)
-
-                # Save the current selection
-                st.session_state.active_train_filters = selected_options
-
-                # Define callback for clearing filters
-                def clear_all_callback():
-                    st.session_state.active_train_filters = []
-                    for train_type in train_types.keys():
-                        st.session_state.train_type_filters[train_type] = False
-
-                # Add a clear button in a column to keep layout clean
-                col1, col2 = st.columns([4, 1])
-                with col2:
-                    st.button("Clear All",
-                              key="clear_all",
-                              on_click=clear_all_callback)
-
-                # Show how many filters are active with better formatting
-                st.caption(
-                    f"Showing {len(selected_options)} out of {len(options)} train categories"
-                )
-
-                # Add a separator
+                # Train type filters have been moved to the Train Data card
+                # Add a separator for clarity in the layout
                 st.markdown("<hr>", unsafe_allow_html=True)
 
                 # Process the FROM-TO column to extract train types before filtering
@@ -1657,7 +1596,8 @@ try:
                             "Select Train Categories:",
                             options=options,
                             default=options.copy(),  # Default to all options selected
-                            help="Choose which train categories to display. Selecting none will show all trains."
+                            help="Choose which train categories to display. Selecting none will show all trains.",
+                            key="train_type_filter_expander"  # Unique key to avoid duplication
                         )
                         
                         # Extract train codes from the selected options
@@ -1683,7 +1623,7 @@ try:
                         col1, col2 = st.columns([4, 1])
                         with col2:
                             st.button("Clear All",
-                                    key="clear_all",
+                                    key="clear_filters_expander",
                                     on_click=clear_all_callback)
                         
                         # Show how many filters are active with better formatting
