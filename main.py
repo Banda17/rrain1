@@ -1638,10 +1638,27 @@ try:
 
                 # Train data section
                 with train_data_col:
-                    # Add a card for the table content
-                    st.markdown(
-                        '<div class="card shadow-sm mb-3"><div class="card-header bg-primary text-white d-flex justify-content-between align-items-center"><span>Train Data</span><span class="badge bg-light text-dark rounded-pill">Select stations to display on map</span></div><div class="card-body p-0">',
-                        unsafe_allow_html=True)
+                    # Add a card for the table content with updated button style header
+                    st.markdown("""
+                    <style>
+                    .map-select-button {
+                        background-color: #0d6efd;
+                        color: white;
+                        border: none;
+                        border-radius: 5px;
+                        padding: 5px 10px;
+                        font-size: 14px;
+                        cursor: pointer;
+                        text-align: center;
+                    }
+                    </style>
+                    <div class="card shadow-sm mb-3">
+                        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                            <span>Train Data</span>
+                            <button class="map-select-button">Select stations to display on map</button>
+                        </div>
+                        <div class="card-body p-0">
+                    """, unsafe_allow_html=True)
                     
                     # Train filter added above the table for better visibility
 
@@ -1714,10 +1731,15 @@ try:
 
                 # Map section
                 with map_col:
-                    # Add a card for the map content
-                    st.markdown(
-                        '<div class="card mb-3"><div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center"><span>Interactive GPS Map</span><span class="badge bg-light text-dark rounded-pill">Showing selected stations</span></div><div class="card-body p-0">',
-                        unsafe_allow_html=True)
+                    # Add a card for the map content with matching button style
+                    st.markdown("""
+                    <div class="card mb-3">
+                        <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                            <span>Interactive GPS Map</span>
+                            <button class="map-select-button">Showing selected stations</button>
+                        </div>
+                        <div class="card-body p-0">
+                    """, unsafe_allow_html=True)
 
                     # Create the interactive map
                     # Check if we need to rebuild the map from scratch or can use session state
