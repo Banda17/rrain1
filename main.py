@@ -1640,6 +1640,56 @@ try:
                     st.markdown(
                         '<div class="card shadow-sm mb-3"><div class="card-header bg-primary text-white d-flex justify-content-between align-items-center"><span>Train Data</span><span class="badge bg-light text-dark rounded-pill">Select stations to display on map</span></div><div class="card-body p-0">',
                         unsafe_allow_html=True)
+                    
+                    # Create train type filter inside the card
+                    with st.expander("🔍 Train Type Filters", expanded=False):
+                        # Create the formatted options with more descriptive labels
+                        options = [
+                            f"{code} - {desc}" for code, desc in train_types.items()
+                        ]
+                        
+                        # Get current active filters
+                        if 'active_train_filters' not in st.session_state:
+                            st.session_state.active_train_filters = options.copy()
+                        
+                        # Use multiselect for dropdown with checkboxes
+                        selected_options = st.multiselect(
+                            "Select Train Categories:",
+                            options=options,
+                            default=options.copy(),  # Default to all options selected
+                            help="Choose which train categories to display. Selecting none will show all trains."
+                        )
+                        
+                        # Extract train codes from the selected options
+                        selected_train_types = [
+                            opt.split(' - ')[0] for opt in selected_options
+                        ]
+                        
+                        # Update train_type_filters based on selection
+                        for train_type in train_types.keys():
+                            st.session_state.train_type_filters[train_type] = (
+                                train_type in selected_train_types)
+                        
+                        # Save the current selection
+                        st.session_state.active_train_filters = selected_options
+                        
+                        # Define callback for clearing filters
+                        def clear_all_callback():
+                            st.session_state.active_train_filters = []
+                            for train_type in train_types.keys():
+                                st.session_state.train_type_filters[train_type] = False
+                        
+                        # Add a clear button in a column to keep layout clean
+                        col1, col2 = st.columns([4, 1])
+                        with col2:
+                            st.button("Clear All",
+                                    key="clear_all",
+                                    on_click=clear_all_callback)
+                        
+                        # Show how many filters are active with better formatting
+                        st.caption(
+                            f"Showing {len(selected_options)} out of {len(options)} train categories"
+                        )
 
                     # Use combination approach: Standard data_editor for selection + styled display
 
