@@ -1394,52 +1394,15 @@ try:
                 if 'active_train_filters' not in st.session_state:
                     st.session_state.active_train_filters = options.copy()
 
-                # Create a two-column layout for train filters and station selection
-                filter_col1, filter_col2 = st.columns(2)
-                
-                with filter_col1:
-                    # Use multiselect for dropdown with checkboxes for train categories
-                    selected_options = st.multiselect(
-                        "Select Train Categories:",
-                        options=options,
-                        default=options.copy(),  # Default to all options selected
-                        help=
-                        "Choose which train categories to display. Selecting none will show all trains."
-                    )
-                
-                with filter_col2:
-                    # Get available station codes and names from coordinates
-                    station_coords = get_station_coordinates()
-                    station_options = []
-                    for code, coords in station_coords.items():
-                        # Build station list with code and name if available (from comment)
-                        station_name = ""
-                        if isinstance(coords, dict) and coords.get('lat') is not None and coords.get('lon') is not None:
-                            # Extract station name from comments if available
-                            # Look for a comment marker after the coordinates
-                            station_name = f" ({code})"
-                            if "#" in str(coords):
-                                parts = str(coords).split("#")
-                                if len(parts) > 1:
-                                    station_name = f" ({parts[1].strip()})"
-                        station_options.append(f"{code}{station_name}")
-                    
-                    # Make sure session state for selected stations exists
-                    if 'selected_map_stations' not in st.session_state:
-                        st.session_state.selected_map_stations = []
-                    
-                    # Add station selection dropdown
-                    selected_stations = st.multiselect(
-                        "Select Stations to Display on Map:",
-                        options=sorted(station_options),
-                        default=[],
-                        help="Choose which stations to display on the map."
-                    )
-                    
-                    # Update session state with selected stations (extract codes only)
-                    st.session_state.selected_map_stations = [
-                        station.split(' ')[0] for station in selected_stations
-                    ]
+                # Use multiselect for dropdown with checkboxes
+                # Initialize the multiselect without using session state for default
+                selected_options = st.multiselect(
+                    "Select Train Categories:",
+                    options=options,
+                    default=options.copy(),  # Default to all options selected
+                    help=
+                    "Choose which train categories to display. Selecting none will show all trains."
+                )
 
                 # Extract train codes from the selected options
                 selected_train_types = [
