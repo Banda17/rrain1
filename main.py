@@ -1372,6 +1372,64 @@ try:
 
                 # Apply styling to the dataframe
                 styled_df = df.style.apply(highlight_delay, axis=None)
+                
+                # Add Punctuality Summary Table
+                st.markdown("""
+                <style>
+                .punctuality-container {
+                    margin-bottom: 20px;
+                    width: 100%;
+                }
+                .punctuality-title {
+                    font-weight: bold;
+                    font-size: 18px;
+                    margin-bottom: 8px;
+                    color: #333;
+                }
+                .punctuality-table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    border: 1px solid #ccc;
+                    font-size: 14px;
+                }
+                .punctuality-table th {
+                    background-color: #0066b2;
+                    color: white;
+                    text-align: center;
+                    padding: 8px;
+                    border: 1px solid #ddd;
+                    font-weight: bold;
+                }
+                .punctuality-table td {
+                    text-align: center;
+                    padding: 8px;
+                    border: 1px solid #ddd;
+                }
+                .punctuality-percentage {
+                    font-weight: bold;
+                    color: #008000;
+                }
+                </style>
+                <div class="punctuality-container">
+                    <div class="punctuality-title">Punctuality</div>
+                    <table class="punctuality-table">
+                        <tr>
+                            <th>Date</th>
+                            <th>Scheduled Trains</th>
+                            <th>Reported Trains</th>
+                            <th>Late Trains</th>
+                            <th>Punctuality Percentage</th>
+                        </tr>
+                        <tr>
+                            <td>11 Mar 2025</td>
+                            <td>42</td>
+                            <td>37</td>
+                            <td>12</td>
+                            <td class="punctuality-percentage">67.6%</td>
+                        </tr>
+                    </table>
+                </div>
+                """, unsafe_allow_html=True)
 
                 # Add train filter UI with checkboxes
                 st.markdown("""
