@@ -25,7 +25,7 @@ except ImportError:
     )
 
 # Page configuration - MUST be the first Streamlit command
-st.set_page_config(page_title="Train Tracking System",
+st.set_page_config(page_title="Late Train Tracking System",
                    page_icon="🚂",
                    layout="wide",
                    initial_sidebar_state="collapsed")
@@ -360,7 +360,7 @@ st.markdown("""
         </div>
         <div style="flex: 1; padding-left: 0;">
             <h1 style="color: #0d6efd; margin: 0; padding: 0; font-size: 2.2rem;">South Central Railway</h1>
-            <h2 style="color: #6c757d; margin: 0; padding: 0; font-size: 1.5rem;">Vijayawada Division</h2>
+            <h2 style="color: #6c757d; margin: 0; padding: 0; font-size: 1.5rem;">Late Train Tracking - Vijayawada Division</h2>
         </div>
         <div style="flex: 0 0 100px;"></div>
     </div>
