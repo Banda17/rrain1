@@ -352,27 +352,20 @@ def color_train_number(train_no):
     return f'<span style="color: {colors["color"]}; background-color: {colors["bg_color"]}; font-weight: bold; padding: 2px 5px; border-radius: 3px;">{train_no_str}</span>'
 
 
-# Create a more compact header with Streamlit components instead of HTML
-from PIL import Image
-
-col1, col2, col3 = st.columns([1, 5, 1])
-
-with col1:
-    try:
-        # Try to load the logo as a Streamlit image
-        logo = Image.open("scr_logo.png")
-        st.image(logo, width=80)
-    except Exception as e:
-        st.error(f"Could not load logo: {e}")
-
-with col2:
-    st.markdown("""
-        <h1 style="color: #0d6efd; margin: 0; padding: 0; font-size: 2.2rem;">South Central Railway</h1>
-        <h2 style="color: #6c757d; margin: 0; padding: 0; font-size: 1.5rem;">Vijayawada Division</h2>
-    """, unsafe_allow_html=True)
-
-with col3:
-    st.write("")  # Empty column for spacing
+# Create a more compact header with tighter spacing - use a single row with custom HTML
+st.markdown("""
+    <div style="display: flex; align-items: center; padding: 5px 0;">
+        <div style="flex: 0 0 100px; text-align: right; padding-right: 10px;">
+            <img src="attached_assets/scr_logo.png" width="80" alt="SCR Logo" />
+        </div>
+        <div style="flex: 1; padding-left: 0;">
+            <h1 style="color: #0d6efd; margin: 0; padding: 0; font-size: 2.2rem;">South Central Railway</h1>
+            <h2 style="color: #6c757d; margin: 0; padding: 0; font-size: 1.5rem;">Vijayawada Division</h2>
+        </div>
+        <div style="flex: 0 0 100px;"></div>
+    </div>
+    """,
+            unsafe_allow_html=True)
 
 # Add a horizontal line to separate the header from content
 st.markdown("<hr style='margin-top: 0; margin-bottom: 15px;'>",
@@ -389,8 +382,10 @@ if 'train_type_filters' not in st.session_state:
         'MEMU': True,  # MEMU
         'PEX': True,  # Passenger Express
         'TOD': True,  # Tejas/Vande
-        'VND': True,  # Vande Bharat
-        'RJ': True  # Rajdhani
+        'VNDB': True,  # Vande Bharat
+        'RAJ': True,  # Rajdhani
+        'JSH': True, #JANSATABDHI
+        'DNRT': True #Duronto
     }
 
 # All train types with descriptions
@@ -400,9 +395,11 @@ train_types = {
     'DMU': 'DMU',
     'MEMU': 'MEMU',
     'PEX': 'Passenger Express',
-    'TOD': 'Tejas/Vande',
-    'VND': 'Vande Bharat',
-    'RJ': 'Rajdhani'
+    'TOD': 'Train On Demand',
+    'VNDB': 'VandeBharat',
+    'RAJ': 'Rajdhani',
+    'JSH': 'Jansthabdhi',
+    'DNRT': 'Duronto'
 }
 
 # Add custom CSS for train number styling
@@ -1397,15 +1394,52 @@ try:
                 if 'active_train_filters' not in st.session_state:
                     st.session_state.active_train_filters = options.copy()
 
-                # Use multiselect for dropdown with checkboxes
-                # Initialize the multiselect without using session state for default
-                selected_options = st.multiselect(
-                    "Select Train Categories:",
-                    options=options,
-                    default=options.copy(),  # Default to all options selected
-                    help=
-                    "Choose which train categories to display. Selecting none will show all trains."
-                )
+                # Create a two-column layout for train filters and station selection
+                filter_col1, filter_col2 = st.columns(2)
+                
+                with filter_col1:
+                    # Use multiselect for dropdown with checkboxes for train categories
+                    selected_options = st.multiselect(
+                        "Select Train Categories:",
+                        options=options,
+                        default=options.copy(),  # Default to all options selected
+                        help=
+                        "Choose which train categories to display. Selecting none will show all trains."
+                    )
+                
+                with filter_col2:
+                    # Get available station codes and names from coordinates
+                    station_coords = get_station_coordinates()
+                    station_options = []
+                    for code, coords in station_coords.items():
+                        # Build station list with code and name if available (from comment)
+                        station_name = ""
+                        if isinstance(coords, dict) and coords.get('lat') is not None and coords.get('lon') is not None:
+                            # Extract station name from comments if available
+                            # Look for a comment marker after the coordinates
+                            station_name = f" ({code})"
+                            if "#" in str(coords):
+                                parts = str(coords).split("#")
+                                if len(parts) > 1:
+                                    station_name = f" ({parts[1].strip()})"
+                        station_options.append(f"{code}{station_name}")
+                    
+                    # Make sure session state for selected stations exists
+                    if 'selected_map_stations' not in st.session_state:
+                        st.session_state.selected_map_stations = []
+                    
+                    # Add station selection dropdown
+                    selected_stations = st.multiselect(
+                        "Select Stations to Display on Map:",
+                        options=sorted(station_options),
+                        default=[],
+                        help="Choose which stations to display on the map."
+                    )
+                    
+                    # Update session state with selected stations (extract codes only)
+                    st.session_state.selected_map_stations = [
+                        station.split(' ')[0] for station in selected_stations
+                    ]
 
                 # Extract train codes from the selected options
                 selected_train_types = [
