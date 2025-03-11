@@ -515,7 +515,7 @@ def initialize_session_state():
                 'TOD': True,  # Tejas, Vande Bharat
                 'MEMU': True,  # MEMU
                 'DMU': True,  # DMU
-                'VND': True,  # Vande Bharat
+                'VNDB': True,  # Vande Bharat
                 'PEX': True,  # Passenger Express
                 'RJ': True  # Rajdhani
             },
