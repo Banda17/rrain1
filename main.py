@@ -1585,64 +1585,67 @@ try:
                         background-color: #f8f9fa;
                         border-bottom: 1px solid #dee2e6;
                         padding: 10px 15px;
+                        display: flex;
+                        align-items: center;
                     }
                     .filter-title {
                         font-weight: bold;
                         color: #495057;
-                        margin-bottom: 5px;
+                        margin-right: 10px;
+                        white-space: nowrap;
                     }
-                    .filter-cols {
-                        display: flex;
-                        flex-wrap: wrap;
-                    }
-                    .filter-col {
-                        flex: 1;
-                        min-width: 120px;
-                        padding-right: 10px;
+                    .filter-dropdown {
+                        flex-grow: 1;
+                        max-width: 600px;
                     }
                     </style>
                     <div class="filter-container">
-                        <div class="filter-title">🔍 Train Type Filters</div>
+                        <div class="filter-title">🔍 Train Type Filters:</div>
                     </div>
                     """, unsafe_allow_html=True)
                     
-                    # Create a 3-column layout for filters
-                    filter_cols = st.columns(3)
+                    # Create a dropdown for train type filters
+                    filter_col1, filter_col2 = st.columns([3, 1])
                     
-                    # Track if all are selected
-                    all_selected = all(st.session_state.train_type_filters.values())
-                    
-                    # Create a "Select All" checkbox in the first column
-                    with filter_cols[0]:
-                        select_all = st.checkbox("(Select All)", 
-                                           value=all_selected, 
-                                           key="select_all_checkbox")
+                    with filter_col1:
+                        # Create options for the multiselect dropdown
+                        options = []
+                        for code, desc in train_types.items():
+                            options.append(f"{code} - {desc}")
                         
-                        # If select_all state changed, update all filters
-                        if select_all != all_selected:
-                            for train_type in train_types.keys():
-                                st.session_state.train_type_filters[train_type] = select_all
-                    
-                    # Split the train types into 3 columns
-                    train_type_items = list(train_types.items())
-                    items_per_col = len(train_type_items) // 3 + (1 if len(train_type_items) % 3 > 0 else 0)
-                    
-                    # Create checkbox for each train type, distributed across columns
-                    for col_idx, col in enumerate(filter_cols):
-                        with col:
-                            start_idx = col_idx * items_per_col
-                            end_idx = min(start_idx + items_per_col, len(train_type_items))
+                        # Track which train types are currently selected
+                        selected_train_types = []
+                        for code, is_selected in st.session_state.train_type_filters.items():
+                            if is_selected:
+                                selected_train_types.append(f"{code} - {train_types.get(code, '')}")
+                        
+                        # If none are selected, show a message
+                        if len(selected_train_types) == 0:
+                            selected_train_types = ["No filters selected - showing all trains"]
                             
-                            for code, desc in train_type_items[start_idx:end_idx]:
-                                # Use the current value from session state
-                                is_selected = st.checkbox(
-                                    f"{code} - {desc}",
-                                    value=st.session_state.train_type_filters.get(code, True),
-                                    key=f"checkbox_{code}"
-                                )
-                                
-                                # Update session state with the new value
-                                st.session_state.train_type_filters[code] = is_selected
+                        # Create a multi-select dropdown for train types
+                        new_selected = st.multiselect(
+                            "Select train types to display:",
+                            options=options,
+                            default=selected_train_types,
+                            key="train_type_dropdown"
+                        )
+                        
+                        # Update session state based on the multiselect
+                        for code in train_types.keys():
+                            code_with_desc = f"{code} - {train_types.get(code, '')}"
+                            is_selected = code_with_desc in new_selected
+                            st.session_state.train_type_filters[code] = is_selected
+                    
+                    with filter_col2:
+                        # Add a "Select All" button
+                        all_selected = all(st.session_state.train_type_filters.values())
+                        if st.button("Select All" if not all_selected else "Deselect All", key="select_all_button"):
+                            new_state = not all_selected
+                            for train_type in train_types.keys():
+                                st.session_state.train_type_filters[train_type] = new_state
+                            # Force a rerun to update the multiselect
+                            st.experimental_rerun()
                     
                     # Continue with the card body
                     st.markdown('<div class="card-body p-0">', unsafe_allow_html=True)
