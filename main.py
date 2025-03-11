@@ -1161,8 +1161,16 @@ def extract_station_codes(selected_stations, station_column=None):
 # Initialize sessionstate
 initialize_session_state()
 
-# Main page title
-st.title("TRAIN TRACKING")
+# Create a header with logo and title using columns
+header_col1, header_col2 = st.columns([1, 5])
+
+# Display logo using Streamlit's native image method
+with header_col1:
+    st.image("attached_assets/scr_logo.png", width=100)
+    
+# Main page title in the second column
+with header_col2:
+    st.title("LATE TRAIN TRACKING")
 
 # Add a refresh button atthe top with just an icon
 col1, col2 = st.columns((10, 2))
@@ -1373,72 +1381,30 @@ try:
                 # Apply styling to the dataframe
                 styled_df = df.style.apply(highlight_delay, axis=None)
 
-                # Add train filter UI with checkboxes
+                # Add filter styling
                 st.markdown("""
                 <style>
                 .filter-container {
                     border: 1px solid #ddd;
                     border-radius: 5px;
-                    padding: 15px;
+                    padding: 10px;
                     background-color: #f9f9f9;
-                    margin-bottom: 15px;
-                    max-width: 300px;
+                    margin-top: 10px;
+                    margin-bottom: 10px;
                 }
                 .filter-title {
                     font-weight: bold;
-                    margin-bottom: 10px;
+                    margin-bottom: 5px;
+                    font-size: 14px;
                 }
-                .checkbox-list {
-                    max-height: 200px;
-                    overflow-y: auto;
-                    padding-right: 10px;
+                .filter-dropdown {
+                    width: 100%;
+                    padding: 5px;
+                    border-radius: 4px;
+                    border: 1px solid #ddd;
                 }
                 </style>
-                <div class="filter-container">
-                    <div class="filter-title">🔍 Train Type Filters</div>
-                </div>
                 """, unsafe_allow_html=True)
-                
-                # Create a 3-column layout for filters
-                filter_cols = st.columns(3)
-                
-                # Track if all are selected
-                all_selected = all(st.session_state.train_type_filters.values())
-                
-                # Create a "Select All" checkbox in the first column
-                with filter_cols[0]:
-                    select_all = st.checkbox("(Select All)", 
-                                         value=all_selected, 
-                                         key="select_all_checkbox")
-                    
-                    # If select_all state changed, update all filters
-                    if select_all != all_selected:
-                        for train_type in train_types.keys():
-                            st.session_state.train_type_filters[train_type] = select_all
-                
-                # Split the train types into 3 columns
-                train_type_items = list(train_types.items())
-                items_per_col = len(train_type_items) // 3 + (1 if len(train_type_items) % 3 > 0 else 0)
-                
-                # Create checkbox for each train type, distributed across columns
-                for col_idx, col in enumerate(filter_cols):
-                    with col:
-                        start_idx = col_idx * items_per_col
-                        end_idx = min(start_idx + items_per_col, len(train_type_items))
-                        
-                        for code, desc in train_type_items[start_idx:end_idx]:
-                            # Use the current value from session state
-                            is_selected = st.checkbox(
-                                f"{code} - {desc}",
-                                value=st.session_state.train_type_filters.get(code, True),
-                                key=f"checkbox_{code}"
-                            )
-                            
-                            # Update session state with the new value
-                            st.session_state.train_type_filters[code] = is_selected
-                
-                # Add a separator after the filters
-                st.markdown("<hr>", unsafe_allow_html=True)
 
                 # Process the FROM-TO column to extract train types before filtering
                 train_types_column = 'FROM-TO'
@@ -1638,12 +1604,51 @@ try:
 
                 # Train data section
                 with train_data_col:
-                    # Add a card for the table content
-                    st.markdown(
-                        '<div class="card shadow-sm mb-3"><div class="card-header bg-primary text-white d-flex justify-content-between align-items-center"><span>Train Data</span><span class="badge bg-light text-dark rounded-pill">Select stations to display on map</span></div><div class="card-body p-0">',
-                        unsafe_allow_html=True)
+                    # Create filter UI elements
+                    filter_container = st.empty()  # Placeholder for filters
                     
-                    # Train filter added above the table for better visibility
+                    # Create a 3-column layout for filters
+                    filter_cols = st.columns(3)
+                    
+                    # Track if all are selected
+                    all_selected = all(st.session_state.train_type_filters.values())
+                    
+                    # Create a "Select All" checkbox in the first column
+                    with filter_cols[0]:
+                        select_all = st.checkbox("(Select All)", 
+                                             value=all_selected, 
+                                             key="select_all_checkbox")
+                        
+                        # If select_all state changed, update all filters
+                        if select_all != all_selected:
+                            for train_type in train_types.keys():
+                                st.session_state.train_type_filters[train_type] = select_all
+                    
+                    # Split the train types into 3 columns
+                    train_type_items = list(train_types.items())
+                    items_per_col = len(train_type_items) // 3 + (1 if len(train_type_items) % 3 > 0 else 0)
+                    
+                    # Create checkbox for each train type, distributed across columns
+                    for col_idx, col in enumerate(filter_cols):
+                        with col:
+                            start_idx = col_idx * items_per_col
+                            end_idx = min(start_idx + items_per_col, len(train_type_items))
+                            
+                            for code, desc in train_type_items[start_idx:end_idx]:
+                                # Use the current value from session state
+                                is_selected = st.checkbox(
+                                    f"{code} - {desc}",
+                                    value=st.session_state.train_type_filters.get(code, True),
+                                    key=f"checkbox_{code}"
+                                )
+                                
+                                # Update session state with the new value
+                                st.session_state.train_type_filters[code] = is_selected
+                    
+                    # Add a card for the table content with Train Data title
+                    st.markdown(
+                        '<div class="card shadow-sm mb-3"><div class="card-header bg-primary text-white d-flex justify-content-between align-items-center"><span>Train Data | 🔍 Train Type Filters</span><span class="badge bg-light text-dark rounded-pill">Select stations to display on map</span></div><div class="card-body p-0">',
+                        unsafe_allow_html=True)
 
                     # Use combination approach: Standard data_editor for selection + styled display
 
