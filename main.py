@@ -1582,53 +1582,45 @@ try:
                     
                     # Create train type filter inside the card
                     with st.expander("🔍 Train Type Filters", expanded=False):
-                        # Create the formatted options with more descriptive labels
-                        options = [
-                            f"{code} - {desc}" for code, desc in train_types.items()
-                        ]
+                        st.write("Select Train Categories:")
                         
-                        # Get current active filters
-                        if 'active_train_filters' not in st.session_state:
-                            st.session_state.active_train_filters = options.copy()
+                        # Initialize session state if needed
+                        if 'train_type_filters' not in st.session_state:
+                            st.session_state.train_type_filters = {key: True for key in train_types.keys()}
                         
-                        # Use multiselect for dropdown with checkboxes
-                        selected_options = st.multiselect(
-                            "Select Train Categories:",
-                            options=options,
-                            default=options.copy(),  # Default to all options selected
-                            help="Choose which train categories to display. Selecting none will show all trains.",
-                            key="train_type_filter_expander"  # Unique key to avoid duplication
-                        )
+                        # Track if all are selected for the Select All checkbox state
+                        all_selected = all(st.session_state.train_type_filters.values())
                         
-                        # Extract train codes from the selected options
-                        selected_train_types = [
-                            opt.split(' - ')[0] for opt in selected_options
-                        ]
+                        # Create a "Select All" checkbox
+                        previous_all_selected = all_selected
+                        select_all = st.checkbox("(Select All)", 
+                                               value=all_selected, 
+                                               key="select_all_checkbox")
                         
-                        # Update train_type_filters based on selection
-                        for train_type in train_types.keys():
-                            st.session_state.train_type_filters[train_type] = (
-                                train_type in selected_train_types)
-                        
-                        # Save the current selection
-                        st.session_state.active_train_filters = selected_options
-                        
-                        # Define callback for clearing filters
-                        def clear_all_callback():
-                            st.session_state.active_train_filters = []
+                        # If select_all state changed, update all filters
+                        if select_all != previous_all_selected:
                             for train_type in train_types.keys():
-                                st.session_state.train_type_filters[train_type] = False
+                                st.session_state.train_type_filters[train_type] = select_all
                         
-                        # Add a clear button in a column to keep layout clean
-                        col1, col2 = st.columns([4, 1])
-                        with col2:
-                            st.button("Clear All",
-                                    key="clear_filters_expander",
-                                    on_click=clear_all_callback)
+                        # Create checkbox for each train type
+                        selected_types = []
+                        for code, desc in train_types.items():
+                            # Use the current value from session state
+                            is_selected = st.checkbox(
+                                f"{code} - {desc}",
+                                value=st.session_state.train_type_filters.get(code, True),
+                                key=f"checkbox_{code}"
+                            )
+                            
+                            # Update session state with the new value
+                            st.session_state.train_type_filters[code] = is_selected
+                            
+                            if is_selected:
+                                selected_types.append(code)
                         
-                        # Show how many filters are active with better formatting
+                        # Show how many filters are active
                         st.caption(
-                            f"Showing {len(selected_options)} out of {len(options)} train categories"
+                            f"Showing {len(selected_types)} out of {len(train_types)} train categories"
                         )
 
                     # Use combination approach: Standard data_editor for selection + styled display
