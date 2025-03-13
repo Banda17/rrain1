@@ -1239,9 +1239,24 @@ try:
 
                 # Safe conversion of NaN values to None
                 def safe_convert(value):
-                    if pd.isna(value) or pd.isnull(value):
+                    """
+                    Safely convert values to strings handling NaN, None, and empty values consistently.
+                    
+                    Args:
+                        value: The value to convert
+                        
+                    Returns:
+                        String representation or None for null values
+                    """
+                    if pd.isna(value) or pd.isnull(value) or str(value).lower() == 'nan' or value is None:
                         return None
-                    return str(value) if value is not None else None
+                    
+                    # Convert to string and handle empty strings
+                    string_val = str(value).strip()
+                    if not string_val:
+                        return None
+                        
+                    return string_val
 
                 # Apply safe conversion to all elements
                 for column in df.columns:

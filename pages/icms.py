@@ -354,9 +354,24 @@ if success:
                 
             # Safe conversion of NaN values to empty string
             def safe_convert(value):
-                if pd.isna(value) or pd.isnull(value) or str(value).lower() == 'nan':
+                """
+                Safely convert values to strings handling NaN, None, and empty values consistently.
+                
+                Args:
+                    value: The value to convert
+                    
+                Returns:
+                    String representation or empty string for null values
+                """
+                if pd.isna(value) or pd.isnull(value) or str(value).lower() == 'nan' or value is None:
                     return ""
-                return str(value) if value is not None else ""
+                
+                # Convert to string and handle empty strings
+                string_val = str(value).strip()
+                if not string_val:
+                    return ""
+                    
+                return string_val
 
             # Apply safe conversion to all elements
             # Use .map() on each column instead of deprecated .applymap()
