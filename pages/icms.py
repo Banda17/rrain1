@@ -213,21 +213,37 @@ if punctuality_data is not None and not punctuality_data.empty:
         # Create a dictionary with data for the totals table
         # Use the actual column values when possible with error handling
         try:
-            # Safely extract values with error checking
-            scheduled = latest_row.iloc[1] if len(latest_row) > 1 else 42
-            reported = latest_row.iloc[2] if len(latest_row) > 2 else 38  
-            late = latest_row.iloc[3] if len(latest_row) > 3 else 12
+            # Print debug info about the punctuality data to ensure we're extracting correctly
+            st.write(f"Extracted Data Columns: {', '.join(punctuality_data.columns)}")
+            
+            # Directly use the column values instead of index positions
+            # For safety, we try to match column names but use positional fallbacks
+            
+            # Look for common column names that might be present
+            scheduled_col = next((col for col in punctuality_data.columns if "SCHEDULED" in col.upper()), None)
+            reported_col = next((col for col in punctuality_data.columns if "REPORTED" in col.upper()), None)
+            late_col = next((col for col in punctuality_data.columns if "LATE" in col.upper()), None)
+            
+            # Extract the values from the table - use column name if found, otherwise use index
+            scheduled = latest_row[scheduled_col] if scheduled_col else latest_row.iloc[1] 
+            reported = latest_row[reported_col] if reported_col else latest_row.iloc[2]
+            late = latest_row[late_col] if late_col else latest_row.iloc[3]
+            
+            # For debugging
+            st.write("Data extracted:", scheduled, reported, late)
             
             # Try to convert to integers for calculation
             try:
-                reported_int = int(reported)
-                late_int = int(late)
+                reported_int = int(str(reported).replace('%', '').strip())
+                late_int = int(str(late).replace('%', '').strip())
                 ontime = reported_int - late_int
             except (ValueError, TypeError):
+                st.write("Could not convert values to integers for calculation")
                 ontime = 26  # Default value if conversion fails
-                
-            # Get percentage or use default
-            percentage = latest_row.iloc[-1] if "%" in str(latest_row.iloc[-1]) else "68.4%"
+            
+            # Get percentage or use default - look for percentage column or use last column
+            percentage_col = next((col for col in punctuality_data.columns if "PERCENTAGE" in col.upper() or "%" in col), None)
+            percentage = latest_row[percentage_col] if percentage_col else latest_row.iloc[-1]
             
             # Populate dictionary with extracted values
             totals_data = {
