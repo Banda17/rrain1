@@ -209,11 +209,34 @@ if success:
     if punctuality_success and not punctuality_raw_data.empty:
         st.success(f"Successfully loaded punctuality data with {len(punctuality_raw_data)} rows")
         
-        # Display the punctuality data 
+        # Display the punctuality data in a styled HTML table
         st.markdown('<div class="punctuality-container"><div class="punctuality-title">Punctuality</div>', unsafe_allow_html=True)
         
-        # Display the DataFrame directly
-        st.dataframe(punctuality_raw_data, use_container_width=True)
+        # Convert DataFrame to HTML table with styling
+        html_table = '<table class="punctuality-table">'
+        
+        # Add header row
+        html_table += '<tr>'
+        for col in punctuality_raw_data.columns:
+            html_table += f'<th>{col}</th>'
+        html_table += '</tr>'
+        
+        # Add data rows
+        for _, row in punctuality_raw_data.iterrows():
+            html_table += '<tr>'
+            for i, col in enumerate(punctuality_raw_data.columns):
+                cell_value = row[col]
+                # Add special color class for percentage values
+                if col == 'Punctuality %' or '%' in str(cell_value):
+                    html_table += f'<td class="punctuality-percentage">{cell_value}</td>'
+                else:
+                    html_table += f'<td>{cell_value}</td>'
+            html_table += '</tr>'
+        
+        html_table += '</table>'
+        
+        # Display the HTML table
+        st.markdown(html_table, unsafe_allow_html=True)
         
         st.markdown('</div>', unsafe_allow_html=True)
         
@@ -230,9 +253,35 @@ if success:
             'Punctuality %': ["68.4%"],
         })
         
-        # Display the punctuality table
+        # Display the punctuality data in a styled HTML table
         st.markdown('<div class="punctuality-container"><div class="punctuality-title">Punctuality</div>', unsafe_allow_html=True)
-        st.dataframe(punctuality_data, use_container_width=True)
+        
+        # Convert DataFrame to HTML table with styling
+        html_table = '<table class="punctuality-table">'
+        
+        # Add header row
+        html_table += '<tr>'
+        for col in punctuality_data.columns:
+            html_table += f'<th>{col}</th>'
+        html_table += '</tr>'
+        
+        # Add data rows
+        for _, row in punctuality_data.iterrows():
+            html_table += '<tr>'
+            for i, col in enumerate(punctuality_data.columns):
+                cell_value = row[col]
+                # Add special color class for percentage values
+                if col == 'Punctuality %' or '%' in str(cell_value):
+                    html_table += f'<td class="punctuality-percentage">{cell_value}</td>'
+                else:
+                    html_table += f'<td>{cell_value}</td>'
+            html_table += '</tr>'
+        
+        html_table += '</table>'
+        
+        # Display the HTML table
+        st.markdown(html_table, unsafe_allow_html=True)
+        
         st.markdown('</div>', unsafe_allow_html=True)
         
         # Additional space after the punctuality table
