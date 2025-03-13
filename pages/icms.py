@@ -74,7 +74,37 @@ st.markdown("""
 
 .punctuality-percentage {
     font-weight: bold;
-    color: #4CAF50;
+    color: #ffffff;
+    background-color: #4CAF50;
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+.punctuality-header {
+    background: linear-gradient(135deg, #226cfb, #2b32b2);
+    color: white;
+    text-align: center;
+    padding: 12px;
+    border-radius: 4px;
+    font-weight: bold;
+}
+
+.punctuality-schedule {
+    background-color: #e3f2fd;
+    color: #0d47a1;
+    font-weight: bold;
+}
+
+.punctuality-reported {
+    background-color: #fff9c4;
+    color: #ff6f00;
+    font-weight: bold;
+}
+
+.punctuality-late {
+    background-color: #ffebee;
+    color: #c62828;
+    font-weight: bold;
 }
 
 /* MS section styling */
@@ -215,8 +245,8 @@ if success:
         # Convert DataFrame to HTML table with styling
         html_table = '<table class="punctuality-table">'
         
-        # Add header row
-        html_table += '<tr>'
+        # Add header row with special styling
+        html_table += '<tr class="punctuality-header">'
         for col in punctuality_raw_data.columns:
             html_table += f'<th>{col}</th>'
         html_table += '</tr>'
@@ -226,9 +256,16 @@ if success:
             html_table += '<tr>'
             for i, col in enumerate(punctuality_raw_data.columns):
                 cell_value = row[col]
-                # Add special color class for percentage values
+                
+                # Apply appropriate styling based on the column
                 if col == 'Punctuality %' or '%' in str(cell_value):
                     html_table += f'<td class="punctuality-percentage">{cell_value}</td>'
+                elif col == 'Scheduled':
+                    html_table += f'<td class="punctuality-schedule">{cell_value}</td>'
+                elif col == 'Reported':
+                    html_table += f'<td class="punctuality-reported">{cell_value}</td>'
+                elif col == 'Late':
+                    html_table += f'<td class="punctuality-late">{cell_value}</td>'
                 else:
                     html_table += f'<td>{cell_value}</td>'
             html_table += '</tr>'
@@ -259,8 +296,8 @@ if success:
         # Convert DataFrame to HTML table with styling
         html_table = '<table class="punctuality-table">'
         
-        # Add header row
-        html_table += '<tr>'
+        # Add header row with special styling
+        html_table += '<tr class="punctuality-header">'
         for col in punctuality_data.columns:
             html_table += f'<th>{col}</th>'
         html_table += '</tr>'
@@ -270,9 +307,16 @@ if success:
             html_table += '<tr>'
             for i, col in enumerate(punctuality_data.columns):
                 cell_value = row[col]
-                # Add special color class for percentage values
+                
+                # Apply appropriate styling based on the column
                 if col == 'Punctuality %' or '%' in str(cell_value):
                     html_table += f'<td class="punctuality-percentage">{cell_value}</td>'
+                elif col == 'Scheduled':
+                    html_table += f'<td class="punctuality-schedule">{cell_value}</td>'
+                elif col == 'Reported':
+                    html_table += f'<td class="punctuality-reported">{cell_value}</td>'
+                elif col == 'Late':
+                    html_table += f'<td class="punctuality-late">{cell_value}</td>'
                 else:
                     html_table += f'<td>{cell_value}</td>'
             html_table += '</tr>'
@@ -383,7 +427,7 @@ else:
     <div class="punctuality-container">
         <div class="punctuality-title">Punctuality</div>
         <table class="punctuality-table">
-            <tr>
+            <tr class="punctuality-header">
                 <th>Date</th>
                 <th>Scheduled</th>
                 <th>Reported</th>
@@ -392,9 +436,9 @@ else:
             </tr>
             <tr>
                 <td>13 Mar 2025</td>
-                <td>42</td>
-                <td>37</td>
-                <td>12</td>
+                <td class="punctuality-schedule">42</td>
+                <td class="punctuality-reported">37</td>
+                <td class="punctuality-late">12</td>
                 <td class="punctuality-percentage">67.6%</td>
             </tr>
         </table>
