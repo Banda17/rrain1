@@ -47,7 +47,7 @@ class DataHandler:
         self.last_update = None
         self.update_interval = 300  # 5 minutes in seconds
         self.db_session = get_database_connection()
-        self.spreadsheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRO2ZV-BOcL11_5NhlrOnn5Keph3-cVp7Tyr1t6RxsoDvxZjdOyDsmRkdvesJLbSnZwY8v3CATt1Of9/pub?gid=377625640&single=true&output=csv"
+        self.spreadsheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRO2ZV-BOcL11_5NhlrOnn5Keph3-cVp7Tyr1t6RxsoDvxZjdOyDsmRkdvesJLbSnZwY8v3CATt1Of9/pub?gid=0&single=true&output=csv"
         self.performance_metrics = {'load_time': 0.0, 'process_time': 0.0}
 
     def _fetch_csv_data(self) -> pd.DataFrame:
