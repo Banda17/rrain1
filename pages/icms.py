@@ -396,20 +396,60 @@ if success:
             
             # Function to check if a value is positive or contains (+)
             def is_positive_or_plus(value):
-                if value is None or value == "":
-                    return False
-                if isinstance(value, str):
-                    # Check for numbers in brackets with +
-                    bracket_match = re.search(r'\(.*?\+.*?\)', value)
-                    if bracket_match:
-                        return True
-                    # Try to convert to number if possible
-                    try:
-                        num = float(value.replace('(', '').replace(')', '').strip())
-                        return num > 0
-                    except:
+                """
+                Check if a value is positive or contains a plus sign.
+                Enhanced to handle NaN values, empty strings, and special characters.
+                
+                Args:
+                    value: The value to check, can be string, number, or None
+                    
+                Returns:
+                    Boolean indicating if the value is positive or contains a plus sign
+                """
+                try:
+                    # Handle None, NaN, and pd.NA values
+                    if value is None or pd.isna(value):
                         return False
-                return False
+                        
+                    if isinstance(value, str):
+                        # Handle empty strings
+                        if not value.strip():
+                            return False
+                            
+                        # Check if the string contains a plus sign
+                        if '+' in value:
+                            return True
+                        
+                        # Check for numbers in brackets with +
+                        bracket_match = re.search(r'\(.*?\+.*?\)', value)
+                        if bracket_match:
+                            return True
+
+                        # Handle special cases with non-breaking spaces or multiple values
+                        if '\xa0' in value or '  ' in value:
+                            # Take just the first part if there are multiple numbers
+                            value = value.split('\xa0')[0].split('  ')[0].strip()
+
+                        # Remove parentheses and other characters
+                        clean_value = value.replace('(', '').replace(')', '').strip()
+                        
+                        # Handle empty string after cleaning
+                        if not clean_value:
+                            return False
+                            
+                        # Try to convert to float
+                        try:
+                            return float(clean_value) > 0
+                        except ValueError:
+                            # If conversion fails, check if it starts with a minus sign
+                            return not clean_value.startswith('-')
+                            
+                    elif isinstance(value, (int, float)):
+                        return value > 0
+                        
+                except Exception as e:
+                    # Log error and return False for safety
+                    return False
             
             # Filter and display the main data table
             if 'Delay' in df.columns:

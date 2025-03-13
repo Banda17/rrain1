@@ -339,16 +339,55 @@ class DataHandler:
             self.db_session.rollback()
 
     def get_timing_status(self, actual_time: datetime, scheduled_time: datetime) -> Tuple[str, int]:
-        """Calculate if train is early, late, or on time"""
+        """
+        Calculate if train is early, late, or on time with enhanced validation
+        
+        Args:
+            actual_time: The actual arrival/departure time
+            scheduled_time: The scheduled arrival/departure time
+            
+        Returns:
+            Tuple of (status_string, time_difference_in_minutes)
+        """
         try:
+            # Validate input timestamps
+            if actual_time is None or scheduled_time is None:
+                logger.warning("Received None timestamp in get_timing_status")
+                return "UNKNOWN ❓", 0
+                
+            # Handle non-datetime objects
+            if not isinstance(actual_time, datetime) or not isinstance(scheduled_time, datetime):
+                logger.warning(f"Invalid timestamp types: actual={type(actual_time)}, scheduled={type(scheduled_time)}")
+                
+                # Try to convert strings to datetime if possible
+                if isinstance(actual_time, str) and isinstance(scheduled_time, str):
+                    try:
+                        # Try standard format
+                        actual_time = datetime.fromisoformat(actual_time)
+                        scheduled_time = datetime.fromisoformat(scheduled_time)
+                    except ValueError:
+                        # Try common format with timezone info
+                        try:
+                            from dateutil import parser
+                            actual_time = parser.parse(actual_time)
+                            scheduled_time = parser.parse(scheduled_time)
+                        except:
+                            logger.error("Failed to parse timestamp strings")
+                            return "UNKNOWN ❓", 0
+                else:
+                    return "UNKNOWN ❓", 0
+            
+            # Calculate time difference in minutes
             diff_minutes = int((actual_time - scheduled_time).total_seconds() / 60)
 
+            # Apply business rules for status determination
             if diff_minutes <= -5:
                 return "EARLY ⏰", diff_minutes
             elif diff_minutes > 5:
                 return "LATE ⚠️", diff_minutes
             else:
                 return "ON TIME ✅", diff_minutes
+                
         except Exception as e:
             logger.error(f"Error calculating timing status: {str(e)}")
             return "UNKNOWN ❓", 0
