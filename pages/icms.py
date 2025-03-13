@@ -359,7 +359,9 @@ if success:
                 return str(value) if value is not None else ""
 
             # Apply safe conversion to all elements
-            df = df.applymap(safe_convert)
+            # Use .map() on each column instead of deprecated .applymap()
+            for col in df.columns:
+                df[col] = df[col].map(safe_convert)
             
             # Extract the necessary columns for our tables
             st.subheader("Data Processing")

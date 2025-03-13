@@ -315,11 +315,12 @@ def style_train_numbers_dataframe(df, train_column='Train No.'):
         return ''
 
     # Apply different styling based on column content
-    df_styled = df.style.applymap(style_train_numbers, subset=[train_column])
+    # Use the newer API style.map instead of deprecated style.applymap
+    df_styled = df.style.map(style_train_numbers, subset=[train_column])
 
     # Apply styling for delay values
     if 'Delay' in df.columns:
-        df_styled = df_styled.applymap(
+        df_styled = df_styled.map(
             lambda x: 'color: red; font-weight: bold'
             if isinstance(x, str) and ('+' in x or 'LATE' in x) else
             ('color: green; font-weight: bold'
