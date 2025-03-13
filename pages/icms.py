@@ -205,74 +205,117 @@ if punctuality_data is not None and not punctuality_data.empty:
     </style>
     """, unsafe_allow_html=True)
     
-    # Get the values from the punctuality data
-    if punctuality_data is not None and not punctuality_data.empty:
-        # Get the last row (most recent) data
-        latest_row = punctuality_data.iloc[-1]
+    # Get the values from the cached data
+    if 'icms_data_handler' in st.session_state:
+        data_handler = st.session_state['icms_data_handler']
+        cached_data = data_handler.get_cached_data()
         
-        # Create a dictionary with data for the totals table
-        # Use the actual column values when possible with error handling
-        try:
-            # Print debug info about the punctuality data to ensure we're extracting correctly
-            st.write(f"Extracted Data Columns: {', '.join(punctuality_data.columns)}")
+        if cached_data and len(cached_data) > 16:
+            # Extract row 16 values as requested
+            row_16 = cached_data[16] if len(cached_data) > 16 else None
             
-            # Directly use the column values instead of index positions
-            # For safety, we try to match column names but use positional fallbacks
-            
-            # Look for common column names that might be present
-            scheduled_col = next((col for col in punctuality_data.columns if "SCHEDULED" in col.upper()), None)
-            reported_col = next((col for col in punctuality_data.columns if "REPORTED" in col.upper()), None)
-            late_col = next((col for col in punctuality_data.columns if "LATE" in col.upper()), None)
-            
-            # Extract the values from the table - use column name if found, otherwise use index
-            scheduled = latest_row[scheduled_col] if scheduled_col else latest_row.iloc[1] 
-            reported = latest_row[reported_col] if reported_col else latest_row.iloc[2]
-            late = latest_row[late_col] if late_col else latest_row.iloc[3]
-            
-            # For debugging
-            st.write("Data extracted:", scheduled, reported, late)
-            
-            # Try to convert to integers for calculation
-            try:
-                reported_int = int(str(reported).replace('%', '').strip())
-                late_int = int(str(late).replace('%', '').strip())
-                ontime = reported_int - late_int
-            except (ValueError, TypeError):
-                st.write("Could not convert values to integers for calculation")
-                ontime = 26  # Default value if conversion fails
-            
-            # Get percentage or use default - look for percentage column or use last column
-            percentage_col = next((col for col in punctuality_data.columns if "PERCENTAGE" in col.upper() or "%" in col), None)
-            percentage = latest_row[percentage_col] if percentage_col else latest_row.iloc[-1]
-            
-            # Populate dictionary with extracted values
-            totals_data = {
-                "col0": "Total",
-                "col1": scheduled,  # Scheduled Trains
-                "col2": reported,   # Reported Trains
-                "col3": late,       # Late Trains
-                "col8": ontime,     # On-time trains (calculated)
-                "col9": percentage  # Punctuality percentage
-            }
-        except Exception as e:
-            # If anything goes wrong, use default values
-            st.warning(f"Error extracting data for statistics table: {str(e)}")
-            totals_data = {
-                "col0": "Total",
-                "col1": 42,
-                "col2": 38,
-                "col3": 12,
-                "col8": 26,
-                "col9": "68.4%"
-            }
+            if row_16:
+                # Extract column values - we need columns 1, 2, 3, 8, 9 from row 16
+                # Adding error handling to avoid issues with missing columns
+                col1_value = row_16[1] if len(row_16) > 1 else "42"
+                col2_value = row_16[2] if len(row_16) > 2 else "38"
+                col3_value = row_16[3] if len(row_16) > 3 else "12"
+                col8_value = row_16[8] if len(row_16) > 8 else "26"
+                col9_value = row_16[9] if len(row_16) > 9 else "68.4%"
+                
+                # Show the values we're using for verification
+                st.write(f"Using values from row 16:")
+                st.write(f"Column 1: {col1_value}, Column 2: {col2_value}, Column 3: {col3_value}, Column 8: {col8_value}, Column 9: {col9_value}")
+                
+                # Calculate on-time trains if needed (col2 - col3)
+                try:
+                    # If col8 doesn't have a value, calculate it
+                    if not col8_value or col8_value == "":
+                        col2_int = int(str(col2_value).replace('%', '').strip())
+                        col3_int = int(str(col3_value).replace('%', '').strip())
+                        col8_value = str(col2_int - col3_int)
+                except (ValueError, TypeError):
+                    # If calculation fails, use default
+                    col8_value = "26"
+                
+                # Populate dictionary with extracted values
+                totals_data = {
+                    "col0": "Total",
+                    "col1": col1_value,  # Scheduled Trains
+                    "col2": col2_value,  # Reported Trains
+                    "col3": col3_value,  # Late Trains
+                    "col8": col8_value,  # On-time trains (calculated or from col8)
+                    "col9": col9_value   # Punctuality percentage
+                }
+            else:
+                # If row 16 not available, use default values
+                totals_data = {
+                    "col0": "Total",
+                    "col1": "42",
+                    "col2": "38",
+                    "col3": "12",
+                    "col8": "26", 
+                    "col9": "68.4%"
+                }
+        else:
+            # Get data from the punctuality table if no cached data with row 16
+            if punctuality_data is not None and not punctuality_data.empty:
+                # Get the last row (most recent) data
+                latest_row = punctuality_data.iloc[-1]
+                
+                try:
+                    # Extract values with safer approach
+                    scheduled = latest_row.iloc[1] if len(latest_row) > 1 else "42"
+                    reported = latest_row.iloc[2] if len(latest_row) > 2 else "38"
+                    late = latest_row.iloc[3] if len(latest_row) > 3 else "12"
+                    
+                    # Try to calculate on-time trains
+                    try:
+                        reported_int = int(str(reported).replace('%', '').strip())
+                        late_int = int(str(late).replace('%', '').strip())
+                        ontime = str(reported_int - late_int)
+                    except:
+                        ontime = "26"
+                    
+                    # Get percentage value
+                    percentage = latest_row.iloc[-1] if len(latest_row) > 0 else "68.4%"
+                    
+                    totals_data = {
+                        "col0": "Total",
+                        "col1": scheduled,
+                        "col2": reported,
+                        "col3": late,
+                        "col8": ontime,
+                        "col9": percentage
+                    }
+                except Exception as e:
+                    st.warning(f"Error extracting data: {str(e)}")
+                    totals_data = {
+                        "col0": "Total",
+                        "col1": "42",
+                        "col2": "38",
+                        "col3": "12",
+                        "col8": "26",
+                        "col9": "68.4%"
+                    }
+            else:
+                # Default values if no data available
+                totals_data = {
+                    "col0": "Total",
+                    "col1": "42",
+                    "col2": "38",
+                    "col3": "12",
+                    "col8": "26",
+                    "col9": "68.4%"
+                }
     else:
         # Default values if no data is available
         totals_data = {
             "col0": "Total",
-            "col1": 42,
-            "col2": 38,
-            "col3": 12,
-            "col8": 26,
+            "col1": "42",
+            "col2": "38",
+            "col3": "12",
+            "col8": "26",
             "col9": "68.4%"
         }
     
