@@ -295,12 +295,14 @@ class DataHandler:
                             time_actual = pd.Timestamp.now()
                     
                     time_scheduled = time_actual  # Simplified for now
-                    status, delay = self.get_timing_status(time_actual, time_scheduled)
                     
                     # Skip records with NaT values to prevent database errors
                     if pd.isna(time_actual) or pd.isna(time_scheduled):
                         logger.warning(f"Skipping record with NaT timestamp: Train={row.get('Train Name', 'unknown')}, Station={row.get('Station', 'unknown')}")
                         continue
+                        
+                    # Calculate timing status only after validating timestamps
+                    status, delay = self.get_timing_status(time_actual, time_scheduled)
                         
                     # Ensure train_id is a string and not a timestamp
                     train_id = str(row.get('Train Name', ''))
