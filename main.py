@@ -1515,6 +1515,9 @@ try:
                 # Add punctuality data section
                 punctuality_expander = st.expander("View Punctuality Data", expanded=True)
                 with punctuality_expander:
+                    # Setup logger
+                    logger = logging.getLogger(__name__)
+                    
                     # Fetch punctuality data
                     try:
                         PUNCTUALITY_DATA_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRO2ZV-BOcL11_5NhlrOnn5Keph3-cVp7Tyr1t6RxsoDvxZjdOyDsmRkdvesJLbSnZwY8v3CATt1Of9/pub?gid=1136087799&single=true&output=csv"
@@ -1522,8 +1525,9 @@ try:
                         import requests
                         import io
                         
-                        # Function to fetch sheet data
-                        def fetch_sheet_data(url):
+                        # Function to fetch sheet data with caching
+                        @st.cache_data(ttl=300, show_spinner=False)
+                        def fetch_punctuality_data(url):
                             try:
                                 # Use requests to get data with proper headers
                                 headers = {
@@ -1540,7 +1544,7 @@ try:
                                 return pd.DataFrame(), False
                         
                         # Fetch punctuality data
-                        punctuality_raw_data, punctuality_success = fetch_sheet_data(PUNCTUALITY_DATA_URL)
+                        punctuality_raw_data, punctuality_success = fetch_punctuality_data(PUNCTUALITY_DATA_URL)
                         
                         if punctuality_success and not punctuality_raw_data.empty:
                             # Skip first row (which typically contains column descriptions/notes)
