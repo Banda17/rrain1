@@ -1428,8 +1428,179 @@ try:
                 # Apply styling to the dataframe
                 styled_df = df.style.apply(highlight_delay, axis=None)
                 
-                # Add a note that the Punctuality and MS Information tables are available in the ICMS page
-                st.info("📈 Punctuality and MS Information tables are available in the ICMS page. Click on 'ICMS Data' in the sidebar to view them.")
+                # Add a separate Punctuality section on the main page
+                st.subheader("📈 Punctuality Data")
+                
+                # Create CSS for the punctuality section
+                st.markdown("""
+                <style>
+                /* Punctuality section styling */
+                .punctuality-container {
+                    margin-top: 1rem;
+                    background-color: white;
+                    padding: 1rem;
+                    border-radius: 8px;
+                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+                }
+
+                .punctuality-title {
+                    font-size: 1.2rem;
+                    font-weight: bold;
+                    margin-bottom: 0.5rem;
+                    color: #2c3e50;
+                    text-align: center;
+                    padding: 5px;
+                    background-color: #f8f9fa;
+                    border-radius: 4px;
+                }
+
+                .punctuality-table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-top: 0.5rem;
+                    font-size: 14px;
+                }
+
+                .punctuality-table th {
+                    background-color: #424242;
+                    color: white;
+                    text-align: center;
+                    padding: 8px;
+                    border: 1px solid #ddd;
+                }
+
+                .punctuality-table td {
+                    text-align: center;
+                    padding: 8px;
+                    border: 1px solid #ddd;
+                }
+
+                .punctuality-percentage {
+                    font-weight: bold;
+                    color: #ffffff;
+                    background-color: #4CAF50;
+                    padding: 2px 8px;
+                    border-radius: 4px;
+                }
+
+                .punctuality-header {
+                    background-color: #1e88e5;
+                    color: white;
+                    text-align: center;
+                    padding: 12px;
+                    border-radius: 4px;
+                    font-weight: bold;
+                }
+
+                .punctuality-schedule {
+                    background-color: #e3f2fd;
+                    color: #0d47a1;
+                    font-weight: bold;
+                }
+
+                .punctuality-reported {
+                    background-color: #fff9c4;
+                    color: #ff6f00;
+                    font-weight: bold;
+                }
+
+                .punctuality-late {
+                    background-color: #ffebee;
+                    color: #c62828;
+                    font-weight: bold;
+                }
+                </style>
+                """, unsafe_allow_html=True)
+                
+                # Add punctuality data section
+                punctuality_expander = st.expander("View Punctuality Data", expanded=True)
+                with punctuality_expander:
+                    # Fetch punctuality data
+                    try:
+                        PUNCTUALITY_DATA_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRO2ZV-BOcL11_5NhlrOnn5Keph3-cVp7Tyr1t6RxsoDvxZjdOyDsmRkdvesJLbSnZwY8v3CATt1Of9/pub?gid=1136087799&single=true&output=csv"
+                        
+                        import requests
+                        import io
+                        
+                        # Function to fetch sheet data
+                        def fetch_sheet_data(url):
+                            try:
+                                # Use requests to get data with proper headers
+                                headers = {
+                                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                                }
+                                response = requests.get(url, headers=headers)
+                                response.raise_for_status()
+                                
+                                # Load into pandas
+                                df = pd.read_csv(io.StringIO(response.content.decode('utf-8')))
+                                return df, True
+                            except Exception as e:
+                                logger.error(f"Error fetching punctuality data: {str(e)}")
+                                return pd.DataFrame(), False
+                        
+                        # Fetch punctuality data
+                        punctuality_raw_data, punctuality_success = fetch_sheet_data(PUNCTUALITY_DATA_URL)
+                        
+                        if punctuality_success and not punctuality_raw_data.empty:
+                            # Skip first row (which typically contains column descriptions/notes)
+                            punctuality_data = punctuality_raw_data.iloc[1:].reset_index(drop=True)
+                            
+                            # Safe conversion of values
+                            for col in punctuality_data.columns:
+                                punctuality_data[col] = punctuality_data[col].apply(safe_convert)
+                            
+                            # Create HTML table with styling
+                            st.markdown('<div class="punctuality-container"><div class="punctuality-title">Punctuality</div>', unsafe_allow_html=True)
+                            
+                            # Convert DataFrame to HTML table with styling
+                            html_table = '<table class="punctuality-table">'
+                            
+                            # Add header row with special styling
+                            html_table += '<tr class="punctuality-header">'
+                            for col in punctuality_data.columns:
+                                html_table += f'<th>{col}</th>'
+                            html_table += '</tr>'
+                            
+                            # Add data rows
+                            for _, row in punctuality_data.iterrows():
+                                html_table += '<tr>'
+                                for i, col in enumerate(punctuality_data.columns):
+                                    cell_value = row[col]
+                                    
+                                    # Replace NaN values with empty strings
+                                    if pd.isna(cell_value) or pd.isnull(cell_value) or str(cell_value).lower() == 'nan':
+                                        display_value = ""
+                                    else:
+                                        display_value = cell_value
+                                    
+                                    # Apply appropriate styling based on the column
+                                    if col == 'Punctuality %' or (isinstance(display_value, str) and '%' in str(display_value)):
+                                        html_table += f'<td class="punctuality-percentage">{display_value}</td>'
+                                    elif col == 'Scheduled':
+                                        html_table += f'<td class="punctuality-schedule">{display_value}</td>'
+                                    elif col == 'Reported':
+                                        html_table += f'<td class="punctuality-reported">{display_value}</td>'
+                                    elif col == 'Late':
+                                        html_table += f'<td class="punctuality-late">{display_value}</td>'
+                                    else:
+                                        html_table += f'<td>{display_value}</td>'
+                                html_table += '</tr>'
+                            
+                            html_table += '</table>'
+                            html_table += '</div>'
+                            
+                            # Display the styled table
+                            st.markdown(html_table, unsafe_allow_html=True)
+                        else:
+                            st.error("Unable to fetch punctuality data. Please check the ICMS page for details.")
+                            
+                    except Exception as e:
+                        st.error(f"Error processing punctuality data: {str(e)}")
+                        logger.error(f"Error in punctuality section: {str(e)}")
+                        
+                # Add a note about MS Information tables
+                st.info("Additional MS Information tables are available in the ICMS page. Click on 'ICMS Data' in the sidebar to view them.")
 
                 # Add train filter UI with checkboxes
                 st.markdown("""
