@@ -269,49 +269,8 @@ if success and not raw_data.empty:
             st.dataframe(punctuality_data, use_container_width=True)
             st.markdown('</div>', unsafe_allow_html=True)
             
-            # Calculate Additional Statistics
-            try:
-                # Calculate on-time trains
-                scheduled = punctuality_data['Scheduled'].iloc[0]
-                reported = punctuality_data['Reported'].iloc[0]
-                late = punctuality_data['Late'].iloc[0]
-                
-                # Convert to numeric, handling non-numeric values
-                try:
-                    if isinstance(reported, str):
-                        reported = int(reported.replace('%', '').strip())
-                    if isinstance(late, str):
-                        late = int(late.replace('%', '').strip())
-                    on_time = reported - late
-                except:
-                    on_time = 26  # Default fallback
-                
-                # Create the additional statistics table
-                st.markdown(f"""
-                <div class="ms-container">
-                    <div class="ms-title">Additional Statistics</div>
-                    <table class="totals-table">
-                        <tr>
-                            <th>Description</th>
-                            <th>Scheduled</th>
-                            <th>Reported</th>
-                            <th>Late</th>
-                            <th>On-Time</th>
-                            <th>Punctuality %</th>
-                        </tr>
-                        <tr class="totals-row">
-                            <td>Total</td>
-                            <td>{scheduled}</td>
-                            <td>{reported}</td>
-                            <td>{late}</td>
-                            <td>{on_time}</td>
-                            <td>{punctuality_data['Punctuality %'].iloc[0]}</td>
-                        </tr>
-                    </table>
-                </div>
-                """, unsafe_allow_html=True)
-            except Exception as e:
-                st.error(f"Error creating Additional Statistics table: {str(e)}")
+            # Additional space after the punctuality table
+            st.write("")
         
         # Filter and display the main data table
         if 'Delay' in df.columns:
@@ -376,27 +335,7 @@ else:
         </table>
     </div>
     
-    <div class="ms-container">
-        <div class="ms-title">Additional Statistics</div>
-        <table class="totals-table">
-            <tr>
-                <th>Description</th>
-                <th>Scheduled</th>
-                <th>Reported</th>
-                <th>Late</th>
-                <th>On-Time</th>
-                <th>Punctuality %</th>
-            </tr>
-            <tr class="totals-row">
-                <td>Total</td>
-                <td>42</td>
-                <td>38</td>
-                <td>12</td>
-                <td>26</td>
-                <td>68.4%</td>
-            </tr>
-        </table>
-    </div>
+
     """, unsafe_allow_html=True)
 
 # Footer
