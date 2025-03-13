@@ -192,20 +192,59 @@ def format_delay_value(delay: Optional[int]) -> str:
         return "N/A"
 
 
-# Add the missing helper function above the format_delay_value function
+# Helper function to check if a value is positive or contains a plus sign
 def is_positive_or_plus(value):
-    """Check if a value is positive or contains a plus sign."""
-    if value is None:
-        return False
-    value_str = str(value).strip()
-    # Check if the value contains a plus sign or has a numerical value > 0
-    if '+' in value_str:
-        return True
+    """
+    Check if a value is positive or contains a plus sign.
+    Enhanced to handle NaN values, empty strings, and special characters.
+    
+    Args:
+        value: The value to check, can be string, number, or None
+        
+    Returns:
+        Boolean indicating if the value is positive or contains a plus sign
+    """
     try:
-        # Try to convert to float and check if positive
-        return float(value_str) > 0
-    except (ValueError, TypeError):
+        # Handle None, NaN, and pd.NA values
+        if value is None or pd.isna(value):
+            return False
+            
+        if isinstance(value, str):
+            # Handle empty strings
+            if not value.strip():
+                return False
+                
+            # Check if the string contains a plus sign
+            if '+' in value:
+                return True
+
+            # Handle special cases with non-breaking spaces or multiple values
+            if '\xa0' in value or '  ' in value:
+                # Take just the first part if there are multiple numbers
+                value = value.split('\xa0')[0].split('  ')[0].strip()
+
+            # Remove parentheses and other characters
+            clean_value = value.replace('(', '').replace(')', '').strip()
+            
+            # Handle empty string after cleaning
+            if not clean_value:
+                return False
+                
+            # Try to convert to float
+            try:
+                return float(clean_value) > 0
+            except ValueError:
+                # If conversion fails, check if it starts with a minus sign
+                return not clean_value.startswith('-')
+                
+        elif isinstance(value, (int, float)):
+            return value > 0
+            
+    except Exception as e:
+        logger.error(f"Error in is_positive_or_plus: {str(e)}")
         return False
+        
+    return False
 
 
 def get_train_number_color(train_no):
@@ -1906,39 +1945,7 @@ except Exception as e:
     logger.exception("Exception in main app")
 
 
-# Function to check if a value is positive or contains (+)
-def is_positive_or_plus(value):
-    try:
-        if value is None:
-            return False
-
-        if isinstance(value, str):
-            # Check if the string contains a plus sign
-            if '+' in value:
-                return True
-
-            # Clean the string of any non-numeric characters except minus sign and decimal point
-            # First handle the case with multiple values (like "-7 \xa0-36")
-            if '\xa0' in value or '  ' in value:
-                # Take just the first part if there are multiple numbers
-                value = value.split('\xa0')[0].split('  ')[0].strip()
-
-            # Remove parentheses and other characters
-            clean_value = value.replace('(', '').replace(')', '').strip()
-
-            # Try to convert to float
-            if clean_value:
-                try:
-                    return float(clean_value) > 0
-                except ValueError:
-                    # If conversion fails, check if it starts with a minus sign
-                    return not clean_value.startswith('-')
-        elif isinstance(value, (int, float)):
-            return value > 0
-    except Exception as e:
-        logger.error(f"Error in is_positive_or_plus: {str(e)}")
-        return False
-    return False
+# Note: is_positive_or_plus function is now defined at the top of the file with enhanced NaN handling
 
 
 # Note: Custom formatter is already imported at the top of the file
