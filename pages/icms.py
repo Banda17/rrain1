@@ -91,9 +91,19 @@ if punctuality_data is not None and not punctuality_data.empty:
     # Start table
     html_table = '<table class="punctuality-table"><tr>'
     
-    # Add headers
+    # Add headers with standardized names for better appearance
+    header_mapping = {
+        'Date': 'Date', 
+        'Scheduled Trains': 'Scheduled',
+        'Reported Trains': 'Reported',
+        'Late Trains': 'Late',
+        'Punctuality Percentage': 'Punctuality %'
+    }
+    
+    # Map columns to standardized headers where possible
     for col in punctuality_data.columns:
-        html_table += f'<th>{col}</th>'
+        display_name = header_mapping.get(col, col)
+        html_table += f'<th>{display_name}</th>'
     html_table += '</tr>'
     
     # Add rows
@@ -152,9 +162,10 @@ if punctuality_data is not None and not punctuality_data.empty:
         # Start MS table
         ms_table = '<table class="ms-table"><tr>'
         
-        # Add headers
+        # Add headers with standardized names using the same mapping
         for col in ms_data.columns:
-            ms_table += f'<th>{col}</th>'
+            display_name = header_mapping.get(col, col)
+            ms_table += f'<th>{display_name}</th>'
         ms_table += '</tr>'
         
         # Add rows
@@ -372,10 +383,10 @@ else:
         <table class="punctuality-table">
             <tr>
                 <th>Date</th>
-                <th>Scheduled Trains</th>
-                <th>Reported Trains</th>
-                <th>Late Trains</th>
-                <th>Punctuality Percentage</th>
+                <th>Scheduled</th>
+                <th>Reported</th>
+                <th>Late</th>
+                <th>Punctuality %</th>
             </tr>
             <tr>
                 <td>13 Mar 2025</td>
