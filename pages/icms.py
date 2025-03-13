@@ -15,8 +15,9 @@ st.set_page_config(
     layout="wide"
 )
 
-# URL for the data
-SPREADSHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRO2ZV-BOcL11_5NhlrOnn5Keph3-cVp7Tyr1t6RxsoDvxZjdOyDsmRkdvesJLbSnZwY8v3CATt1Of9/pub?gid=0&single=true&output=csv"
+# URLs for the data
+MAIN_DATA_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRO2ZV-BOcL11_5NhlrOnn5Keph3-cVp7Tyr1t6RxsoDvxZjdOyDsmRkdvesJLbSnZwY8v3CATt1Of9/pub?gid=0&single=true&output=csv"
+PUNCTUALITY_DATA_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRO2ZV-BOcL11_5NhlrOnn5Keph3-cVp7Tyr1t6RxsoDvxZjdOyDsmRkdvesJLbSnZwY8v3CATt1Of9/pub?gid=1136087799&single=true&output=csv"
 
 # Custom CSS for styling
 st.markdown("""
@@ -163,22 +164,22 @@ st.markdown("""
 st.title("ICMS Data View")
 st.write("This page displays data from the ICMS system with punctuality statistics.")
 
-# Function to fetch data directly from the spreadsheet URL
+# Function to fetch data directly from a spreadsheet URL
 @st.cache_data(ttl=300, show_spinner=False)
-def fetch_sheet_data():
+def fetch_sheet_data(url):
     try:
         # Use requests to get data with proper headers
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
-        response = requests.get(SPREADSHEET_URL, headers=headers)
+        response = requests.get(url, headers=headers)
         response.raise_for_status()
         
         # Load into pandas
         df = pd.read_csv(io.StringIO(response.content.decode('utf-8')))
         return df, True
     except Exception as e:
-        st.error(f"Error fetching data: {str(e)}")
+        st.error(f"Error fetching data from {url}: {str(e)}")
         return pd.DataFrame(), False
 
 # Create a placeholder for the refresh animation
@@ -188,126 +189,141 @@ refresh_placeholder = st.empty()
 st.session_state['is_refreshing'] = True
 create_pulsing_refresh_animation(refresh_placeholder, "Fetching data from Google Sheets...")
 
-# Fetch the data
-raw_data, success = fetch_sheet_data()
+# Fetch both datasets
+st.info("Fetching punctuality data and train details...")
+
+# Fetch punctuality data first
+punctuality_raw_data, punctuality_success = fetch_sheet_data(PUNCTUALITY_DATA_URL)
+
+# Fetch main data
+main_raw_data, main_success = fetch_sheet_data(MAIN_DATA_URL)
 
 # Clear the refresh animation when done
 st.session_state['is_refreshing'] = False
 refresh_placeholder.empty()
 
-if success and not raw_data.empty:
-    # Process the fetched data
-    st.success(f"Successfully loaded data with {len(raw_data)} rows")
-    
-    try:
-        # Skip first two rows (0 and 1) and reset index
-        if len(raw_data) > 2:
-            df = raw_data.iloc[2:].reset_index(drop=True)
-        else:
-            df = raw_data.copy()
-            
-        # Safe conversion of NaN values to None
-        def safe_convert(value):
-            if pd.isna(value) or pd.isnull(value):
-                return None
-            return str(value) if value is not None else None
+success = main_success or punctuality_success  # We'll proceed if at least one succeeded
 
-        # Apply safe conversion to all elements
-        df = df.applymap(safe_convert)
+if success:
+    # First process and display the punctuality data
+    if punctuality_success and not punctuality_raw_data.empty:
+        st.success(f"Successfully loaded punctuality data with {len(punctuality_raw_data)} rows")
         
-        # Extract the necessary columns for our tables
-        st.subheader("Data Processing")
-        st.write("Processing data for display...")
+        # Display the punctuality data 
+        st.markdown('<div class="punctuality-container"><div class="punctuality-title">Punctuality</div>', unsafe_allow_html=True)
         
-        # Check for expected columns
-        expected_cols = ['Sr.', 'Train No.', 'FROM-TO', 'Delay']
-        missing_cols = [col for col in expected_cols if col not in df.columns]
+        # Display the DataFrame directly
+        st.dataframe(punctuality_raw_data, use_container_width=True)
         
-        if missing_cols:
-            st.warning(f"Missing expected columns: {', '.join(missing_cols)}")
-            st.write("Available columns:", ', '.join(df.columns))
+        st.markdown('</div>', unsafe_allow_html=True)
         
-        # Display the raw data table first (just top rows)
-        with st.expander("View Raw Data Sample"):
-            st.dataframe(df.head(5))
+        # Additional space after the punctuality table
+        st.write("")
+    else:
+        st.warning("Failed to load punctuality data. Using default values.")
+        # Create a default punctuality table
+        punctuality_data = pd.DataFrame({
+            'Date': [datetime.now().strftime('%d %b %Y')],
+            'Scheduled': [42],
+            'Reported': [38],
+            'Late': [12],
+            'Punctuality %': ["68.4%"],
+        })
         
-        # Function to check if a value is positive or contains (+)
-        def is_positive_or_plus(value):
-            if value is None:
-                return False
-            if isinstance(value, str):
-                # Check for numbers in brackets with +
-                bracket_match = re.search(r'\(.*?\+.*?\)', value)
-                if bracket_match:
-                    return True
-                # Try to convert to number if possible
-                try:
-                    num = float(value.replace('(', '').replace(')', '').strip())
-                    return num > 0
-                except:
+        # Display the punctuality table
+        st.markdown('<div class="punctuality-container"><div class="punctuality-title">Punctuality</div>', unsafe_allow_html=True)
+        st.dataframe(punctuality_data, use_container_width=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        # Additional space after the punctuality table
+        st.write("")
+    
+    # Then process and display the main train data
+    if main_success and not main_raw_data.empty:
+        try:
+            # Skip first two rows (0 and 1) and reset index
+            if len(main_raw_data) > 2:
+                df = main_raw_data.iloc[2:].reset_index(drop=True)
+            else:
+                df = main_raw_data.copy()
+                
+            # Safe conversion of NaN values to None
+            def safe_convert(value):
+                if pd.isna(value) or pd.isnull(value):
+                    return None
+                return str(value) if value is not None else None
+
+            # Apply safe conversion to all elements
+            df = df.applymap(safe_convert)
+            
+            # Extract the necessary columns for our tables
+            st.subheader("Data Processing")
+            st.write("Processing train data for display...")
+            
+            # Check for expected columns
+            expected_cols = ['Sr.', 'Train No.', 'FROM-TO', 'Delay']
+            missing_cols = [col for col in expected_cols if col not in df.columns]
+            
+            if missing_cols:
+                st.warning(f"Missing expected columns: {', '.join(missing_cols)}")
+                st.write("Available columns:", ', '.join(df.columns))
+            
+            # Display the raw data table first (just top rows)
+            with st.expander("View Raw Data Sample"):
+                st.dataframe(df.head(5))
+            
+            # Function to check if a value is positive or contains (+)
+            def is_positive_or_plus(value):
+                if value is None:
                     return False
-            return False
-        
-        # Extract row 16 for Additional Statistics if it exists
-        row_16 = None
-        if len(raw_data) > 16:
-            row_16 = raw_data.iloc[16]
-        
-        # Create Punctuality Table from the first few rows of data
-        if not df.empty and len(df) >= 3:
-            # Create a dataframe for the punctuality table from the first 3 rows
-            punctuality_data = pd.DataFrame({
-                'Date': [datetime.now().strftime('%d %b %Y')],
-                'Scheduled': [row_16.iloc[1] if row_16 is not None and len(row_16) > 1 else 42],
-                'Reported': [row_16.iloc[2] if row_16 is not None and len(row_16) > 2 else 38],
-                'Late': [row_16.iloc[3] if row_16 is not None and len(row_16) > 3 else 12],
-                'Punctuality %': [f"{row_16.iloc[9]}" if row_16 is not None and len(row_16) > 9 else "68.4%"],
-            })
+                if isinstance(value, str):
+                    # Check for numbers in brackets with +
+                    bracket_match = re.search(r'\(.*?\+.*?\)', value)
+                    if bracket_match:
+                        return True
+                    # Try to convert to number if possible
+                    try:
+                        num = float(value.replace('(', '').replace(')', '').strip())
+                        return num > 0
+                    except:
+                        return False
+                return False
             
-            # Display the punctuality table
-            st.markdown('<div class="punctuality-container"><div class="punctuality-title">Punctuality</div>', unsafe_allow_html=True)
-            st.dataframe(punctuality_data, use_container_width=True)
-            st.markdown('</div>', unsafe_allow_html=True)
+            # Filter and display the main data table
+            if 'Delay' in df.columns:
+                filtered_df = df[df['Delay'].apply(is_positive_or_plus)]
+                st.write(f"Showing {len(filtered_df)} entries with positive delays")
+            else:
+                filtered_df = df
+                st.warning("Delay column not found in data")
             
-            # Additional space after the punctuality table
-            st.write("")
+            # Show the filtered data
+            st.subheader("Train Delay Details")
+            st.dataframe(
+                filtered_df,
+                use_container_width=True,
+                column_config={
+                    "Train No.": st.column_config.TextColumn("Train No.", help="Train Number"),
+                    "FROM-TO": st.column_config.TextColumn("FROM-TO", help="Source to Destination"),
+                    "IC EntryDelay": st.column_config.TextColumn("IC Entry Delay", help="Entry Delay"),
+                    "Delay": st.column_config.TextColumn("Delay", help="Delay in Minutes")
+                }
+            )
+        except Exception as e:
+            st.error(f"An error occurred while processing train data: {str(e)}")
+            st.exception(e)
         
-        # Filter and display the main data table
-        if 'Delay' in df.columns:
-            filtered_df = df[df['Delay'].apply(is_positive_or_plus)]
-            st.write(f"Showing {len(filtered_df)} entries with positive delays")
-        else:
-            filtered_df = df
-            st.warning("Delay column not found in data")
-        
-        # Show the filtered data
-        st.subheader("Train Delay Details")
-        st.dataframe(
-            filtered_df,
-            use_container_width=True,
-            column_config={
-                "Train No.": st.column_config.TextColumn("Train No.", help="Train Number"),
-                "FROM-TO": st.column_config.TextColumn("FROM-TO", help="Source to Destination"),
-                "IC EntryDelay": st.column_config.TextColumn("IC Entry Delay", help="Entry Delay"),
-                "Delay": st.column_config.TextColumn("Delay", help="Delay in Minutes")
-            }
-        )
-        
-        # Display refresh timestamp
-        now = datetime.now()
-        st.markdown(f"<p style='text-align: right; color: gray; font-size: 12px;'>Last refreshed: {now.strftime('%d %b %Y %H:%M:%S')} IST</p>", unsafe_allow_html=True)
-        
-        # Show "Auto-refreshing every 5 minutes" message
-        st.caption("Auto-refreshing every 5 minutes")
-        
-        # Auto-refresh every 5 minutes with improved progress visualization
-        show_countdown_progress(300, 0.1)  # 300 seconds = 5 minutes, update every 0.1 seconds
-        
-        st.rerun()
-        
-    except Exception as e:
-        st.error(f"An error occurred while processing the data: {str(e)}")
-        st.exception(e)
+    # Display refresh timestamp
+    now = datetime.now()
+    st.markdown(f"<p style='text-align: right; color: gray; font-size: 12px;'>Last refreshed: {now.strftime('%d %b %Y %H:%M:%S')} IST</p>", unsafe_allow_html=True)
+    
+    # Show "Auto-refreshing every 5 minutes" message
+    st.caption("Auto-refreshing every 5 minutes")
+    
+    # Auto-refresh every 5 minutes with improved progress visualization
+    show_countdown_progress(300, 0.1)  # 300 seconds = 5 minutes, update every 0.1 seconds
+    
+    st.rerun()
 
 else:
     # Display error message if data fetch failed
