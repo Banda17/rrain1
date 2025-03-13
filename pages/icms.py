@@ -81,7 +81,7 @@ st.markdown("""
 }
 
 .punctuality-header {
-    background: linear-gradient(135deg, #226cfb, #2b32b2);
+    background-color: #1e88e5;
     color: white;
     text-align: center;
     padding: 12px;
@@ -257,17 +257,23 @@ if success:
             for i, col in enumerate(punctuality_raw_data.columns):
                 cell_value = row[col]
                 
-                # Apply appropriate styling based on the column
-                if col == 'Punctuality %' or '%' in str(cell_value):
-                    html_table += f'<td class="punctuality-percentage">{cell_value}</td>'
-                elif col == 'Scheduled':
-                    html_table += f'<td class="punctuality-schedule">{cell_value}</td>'
-                elif col == 'Reported':
-                    html_table += f'<td class="punctuality-reported">{cell_value}</td>'
-                elif col == 'Late':
-                    html_table += f'<td class="punctuality-late">{cell_value}</td>'
+                # Replace NaN values with empty strings
+                if pd.isna(cell_value) or pd.isnull(cell_value) or str(cell_value).lower() == 'nan':
+                    display_value = ""
                 else:
-                    html_table += f'<td>{cell_value}</td>'
+                    display_value = cell_value
+                    
+                # Apply appropriate styling based on the column
+                if col == 'Punctuality %' or (isinstance(display_value, str) and '%' in str(display_value)):
+                    html_table += f'<td class="punctuality-percentage">{display_value}</td>'
+                elif col == 'Scheduled':
+                    html_table += f'<td class="punctuality-schedule">{display_value}</td>'
+                elif col == 'Reported':
+                    html_table += f'<td class="punctuality-reported">{display_value}</td>'
+                elif col == 'Late':
+                    html_table += f'<td class="punctuality-late">{display_value}</td>'
+                else:
+                    html_table += f'<td>{display_value}</td>'
             html_table += '</tr>'
         
         html_table += '</table>'
@@ -308,17 +314,23 @@ if success:
             for i, col in enumerate(punctuality_data.columns):
                 cell_value = row[col]
                 
-                # Apply appropriate styling based on the column
-                if col == 'Punctuality %' or '%' in str(cell_value):
-                    html_table += f'<td class="punctuality-percentage">{cell_value}</td>'
-                elif col == 'Scheduled':
-                    html_table += f'<td class="punctuality-schedule">{cell_value}</td>'
-                elif col == 'Reported':
-                    html_table += f'<td class="punctuality-reported">{cell_value}</td>'
-                elif col == 'Late':
-                    html_table += f'<td class="punctuality-late">{cell_value}</td>'
+                # Replace NaN values with empty strings
+                if pd.isna(cell_value) or pd.isnull(cell_value) or str(cell_value).lower() == 'nan':
+                    display_value = ""
                 else:
-                    html_table += f'<td>{cell_value}</td>'
+                    display_value = cell_value
+                
+                # Apply appropriate styling based on the column
+                if col == 'Punctuality %' or (isinstance(display_value, str) and '%' in str(display_value)):
+                    html_table += f'<td class="punctuality-percentage">{display_value}</td>'
+                elif col == 'Scheduled':
+                    html_table += f'<td class="punctuality-schedule">{display_value}</td>'
+                elif col == 'Reported':
+                    html_table += f'<td class="punctuality-reported">{display_value}</td>'
+                elif col == 'Late':
+                    html_table += f'<td class="punctuality-late">{display_value}</td>'
+                else:
+                    html_table += f'<td>{display_value}</td>'
             html_table += '</tr>'
         
         html_table += '</table>'
@@ -340,11 +352,11 @@ if success:
             else:
                 df = main_raw_data.copy()
                 
-            # Safe conversion of NaN values to None
+            # Safe conversion of NaN values to empty string
             def safe_convert(value):
-                if pd.isna(value) or pd.isnull(value):
-                    return None
-                return str(value) if value is not None else None
+                if pd.isna(value) or pd.isnull(value) or str(value).lower() == 'nan':
+                    return ""
+                return str(value) if value is not None else ""
 
             # Apply safe conversion to all elements
             df = df.applymap(safe_convert)
@@ -367,7 +379,7 @@ if success:
             
             # Function to check if a value is positive or contains (+)
             def is_positive_or_plus(value):
-                if value is None:
+                if value is None or value == "":
                     return False
                 if isinstance(value, str):
                     # Check for numbers in brackets with +
