@@ -173,6 +173,57 @@ if punctuality_data is not None and not punctuality_data.empty:
     else:
         # If no suitable columns found, display a message
         st.markdown('<div class="alert alert-info">No MS data available in the sheet.</div></div>', unsafe_allow_html=True)
+    
+    # Add the additional table with Unnamed columns and Total row
+    st.markdown("""
+    <style>
+    .totals-table {
+        width: 100%;
+        border-collapse: collapse;
+        border: 1px solid #ccc;
+        font-size: 14px;
+        margin-top: 20px;
+    }
+    .totals-table th {
+        background-color: #424242;
+        color: white;
+        text-align: center;
+        padding: 8px;
+        border: 1px solid #ddd;
+        font-weight: bold;
+    }
+    .totals-table td {
+        text-align: center;
+        padding: 8px;
+        border: 1px solid #ddd;
+    }
+    .totals-row {
+        font-weight: bold;
+        background-color: #f2f2f2;
+    }
+    </style>
+    <div class="ms-container">
+        <div class="ms-title">Additional Statistics</div>
+        <table class="totals-table">
+            <tr>
+                <th>Unnamed: col0</th>
+                <th>Unnamed: col1</th>
+                <th>Unnamed: col2</th>
+                <th>Unnamed: col3</th>
+                <th>Unnamed: col8</th>
+                <th>Unnamed: col9</th>
+            </tr>
+            <tr class="totals-row">
+                <td>Total</td>
+                <td>42</td>
+                <td>38</td>
+                <td>12</td>
+                <td>26</td>
+                <td>68.4%</td>
+            </tr>
+        </table>
+    </div>
+    """, unsafe_allow_html=True)
 else:
     # If data fetch failed, display a static backup table
     st.markdown("""
@@ -192,6 +243,54 @@ else:
                 <td>37</td>
                 <td>12</td>
                 <td class="punctuality-percentage">67.6%</td>
+            </tr>
+        </table>
+    </div>
+    
+    <style>
+    .totals-table {
+        width: 100%;
+        border-collapse: collapse;
+        border: 1px solid #ccc;
+        font-size: 14px;
+        margin-top: 20px;
+    }
+    .totals-table th {
+        background-color: #424242;
+        color: white;
+        text-align: center;
+        padding: 8px;
+        border: 1px solid #ddd;
+        font-weight: bold;
+    }
+    .totals-table td {
+        text-align: center;
+        padding: 8px;
+        border: 1px solid #ddd;
+    }
+    .totals-row {
+        font-weight: bold;
+        background-color: #f2f2f2;
+    }
+    </style>
+    <div class="ms-container">
+        <div class="ms-title">Additional Statistics</div>
+        <table class="totals-table">
+            <tr>
+                <th>Unnamed: col0</th>
+                <th>Unnamed: col1</th>
+                <th>Unnamed: col2</th>
+                <th>Unnamed: col3</th>
+                <th>Unnamed: col8</th>
+                <th>Unnamed: col9</th>
+            </tr>
+            <tr class="totals-row">
+                <td>Total</td>
+                <td>42</td>
+                <td>38</td>
+                <td>12</td>
+                <td>26</td>
+                <td>68.4%</td>
             </tr>
         </table>
     </div>
