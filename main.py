@@ -392,20 +392,28 @@ def color_train_number(train_no):
     return f'<span style="color: {colors["color"]}; background-color: {colors["bg_color"]}; font-weight: bold; padding: 2px 5px; border-radius: 3px;">{train_no_str}</span>'
 
 
-# Create a more compact header with tighter spacing - use a single row with custom HTML
-st.markdown("""
-    <div style="display: flex; align-items: center; padding: 5px 0;">
-        <div style="flex: 0 0 100px; text-align: right; padding-right: 10px;">
-            <img src="./static/scr_logo.png" width="80" alt="SCR Logo" />
-        </div>
-        <div style="flex: 1; padding-left: 0;">
+# Create a more compact header using Streamlit's native components
+col1, col2, col3 = st.columns([1, 5, 1])
+
+with col1:
+    # Use Streamlit's image display instead of HTML
+    try:
+        st.image("attached_assets/scr_logo.png", width=80)
+    except:
+        st.error("SCR logo not found")
+
+with col2:
+    st.markdown("""
+        <div style="padding-left: 0;">
             <h1 style="color: #0d6efd; margin: 0; padding: 0; font-size: 2.2rem;">South Central Railway</h1>
             <h2 style="color: #6c757d; margin: 0; padding: 0; font-size: 1.5rem;">Late Train Tracking - Vijayawada Division</h2>
         </div>
-        <div style="flex: 0 0 100px;"></div>
-    </div>
-    """,
-            unsafe_allow_html=True)
+        """, 
+        unsafe_allow_html=True)
+
+with col3:
+    # Empty column for balance
+    pass
 
 # Add a horizontal line to separate the header from content
 st.markdown("<hr style='margin-top: 0; margin-bottom: 15px;'>",
