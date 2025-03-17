@@ -1533,6 +1533,33 @@ try:
                         
                         import requests
                         import io
+                        import os
+                        import csv
+                        
+                        # Fallback data for when online source is unavailable
+                        def get_fallback_punctuality_data():
+                            """Create a fallback DataFrame when online data is unavailable"""
+                            try:
+                                # Check if we have a cached file and it's not empty
+                                cache_file = "temp/cached_punctuality.csv"
+                                if os.path.exists(cache_file) and os.path.getsize(cache_file) > 0:
+                                    logger.info(f"Using cached punctuality data from {cache_file}")
+                                    return pd.read_csv(cache_file), True
+                                
+                                # Otherwise create default fallback data
+                                logger.info("Using default fallback punctuality data structure")
+                                columns = ["Date", "Train Type", "Scheduled", "Reported", "On Time", "Late", "Early", "Punctuality %"]
+                                data = [
+                                    # Header row
+                                    columns,
+                                    # Default data row with placeholders
+                                    ["--", "--", "--", "--", "--", "--", "--", "--"]
+                                ]
+                                return pd.DataFrame(data[1:], columns=data[0]), True
+                            except Exception as e:
+                                logger.error(f"Error creating fallback data: {str(e)}")
+                                # If everything fails, return a simple dataframe
+                                return pd.DataFrame([["No Data Available"]], columns=["Status"]), False
                         
                         # Function to fetch sheet data with caching
                         @st.cache_data(ttl=300, show_spinner=False)
@@ -1546,38 +1573,41 @@ try:
                                 response.raise_for_status()
                                 
                                 # Load into pandas
-                                df = pd.read_csv(io.StringIO(response.content.decode('utf-8')))
+                                content = response.content.decode('utf-8')
+                                df = pd.read_csv(io.StringIO(content))
+                                
+                                # Save to cache file for offline use
+                                try:
+                                    os.makedirs("temp", exist_ok=True)
+                                    with open("temp/cached_punctuality.csv", "w", newline='') as f:
+                                        f.write(content)
+                                    logger.info("Successfully cached punctuality data for offline use")
+                                except Exception as e:
+                                    logger.warning(f"Failed to cache punctuality data: {str(e)}")
+                                
                                 return df, True
                             except Exception as e:
                                 logger.error(f"Error fetching punctuality data: {str(e)}")
                                 return pd.DataFrame(), False
                         
-                        # Fetch punctuality data
+                        # Try to fetch online data first
                         punctuality_raw_data, punctuality_success = fetch_punctuality_data(PUNCTUALITY_DATA_URL)
+                        
+                        # If online fetch failed, use cached/fallback data
+                        if not punctuality_success or punctuality_raw_data.empty:
+                            logger.warning("Online data fetch failed, using fallback data")
+                            punctuality_raw_data, punctuality_success = get_fallback_punctuality_data()
                         
                         # Debug information
                         if punctuality_success:
                             logger.info(f"Punctuality data rows: {len(punctuality_raw_data)}")
                             logger.info(f"Punctuality data columns: {punctuality_raw_data.columns.tolist()}")
                         else:
-                            logger.warning("Failed to fetch punctuality data")
+                            logger.warning("Failed to fetch or create punctuality data")
                         
-                        # Ensure we have valid data
-                        if punctuality_success and not punctuality_raw_data.empty:
-                            # If we have only one row, use it as both header and data
-                            if len(punctuality_raw_data) == 1:
-                                header_row = punctuality_raw_data.iloc[0]  # Use the only row as header
-                                data_row = pd.Series(['--'] * len(punctuality_raw_data.columns), index=punctuality_raw_data.columns)  # Create empty data row
-                                logger.info("Only one row available, using it as header with empty data row")
-                            # If we have two or more rows, use first as header, second as data
-                            elif len(punctuality_raw_data) >= 2:
-                                header_row = punctuality_raw_data.iloc[0]  # Header row
-                                data_row = punctuality_raw_data.iloc[1]    # First data row
-                                logger.info("Successfully retrieved header and data rows")
-                            else:
-                                # This shouldn't happen since we check for empty above, but added for safety
-                                raise ValueError("Punctuality data is empty but was reported as not empty")
-                            
+                        # Function to display punctuality table with consistent styling
+                        def display_punctuality_table(df, header_row, data_row):
+                            """Display a styled punctuality table with the given header and data rows"""
                             # Create HTML table with styling
                             st.markdown('<div class="punctuality-container"><div class="punctuality-title">Punctuality</div>', unsafe_allow_html=True)
                             
@@ -1586,7 +1616,7 @@ try:
                             
                             # Add header row with special styling
                             html_table += '<tr class="punctuality-header">'
-                            for col in punctuality_raw_data.columns:
+                            for col in df.columns:
                                 header_value = header_row[col]
                                 # Replace NaN values with empty strings
                                 if pd.isna(header_value) or pd.isnull(header_value) or str(header_value).lower() == 'nan':
@@ -1596,7 +1626,7 @@ try:
                             
                             # Add data row with styling
                             html_table += '<tr>'
-                            for col in punctuality_raw_data.columns:
+                            for col in df.columns:
                                 cell_value = data_row[col]
                                 
                                 # Replace NaN values with empty strings
@@ -1623,8 +1653,31 @@ try:
                             
                             # Display the styled table
                             st.markdown(html_table, unsafe_allow_html=True)
+                        
+                        # Ensure we have valid data to display
+                        if punctuality_success and not punctuality_raw_data.empty:
+                            # If we have only one row, use it as both header and data
+                            if len(punctuality_raw_data) == 1:
+                                header_row = punctuality_raw_data.iloc[0]  # Use the only row as header
+                                data_row = pd.Series(['--'] * len(punctuality_raw_data.columns), index=punctuality_raw_data.columns)  # Create empty data row
+                                logger.info("Only one row available, using it as header with empty data row")
+                            # If we have two or more rows, use first as header, second as data
+                            elif len(punctuality_raw_data) >= 2:
+                                header_row = punctuality_raw_data.iloc[0]  # Header row
+                                data_row = punctuality_raw_data.iloc[1]    # First data row
+                                logger.info("Successfully retrieved header and data rows")
+                            else:
+                                # This shouldn't happen since we check for empty above, but added for safety
+                                raise ValueError("Punctuality data is empty but was reported as not empty")
+                            
+                            # Display the styled table
+                            display_punctuality_table(punctuality_raw_data, header_row, data_row)
+                            
+                            # Add a note if using offline data
+                            if "cached_punctuality.csv" in str(punctuality_raw_data) or not punctuality_success:
+                                st.info("⚠️ Using cached data. Live data unavailable.", icon="⚠️")
                         else:
-                            st.error("Unable to fetch punctuality data. Please check the ICMS page for details.")
+                            st.error("Unable to fetch or create punctuality data. Please check your connection.")
                             
                     except Exception as e:
                         st.error(f"Error processing punctuality data: {str(e)}")
