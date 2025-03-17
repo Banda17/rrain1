@@ -1555,10 +1555,28 @@ try:
                         # Fetch punctuality data
                         punctuality_raw_data, punctuality_success = fetch_punctuality_data(PUNCTUALITY_DATA_URL)
                         
+                        # Debug information
+                        if punctuality_success:
+                            logger.info(f"Punctuality data rows: {len(punctuality_raw_data)}")
+                            logger.info(f"Punctuality data columns: {punctuality_raw_data.columns.tolist()}")
+                        else:
+                            logger.warning("Failed to fetch punctuality data")
+                        
+                        # Ensure we have valid data
                         if punctuality_success and not punctuality_raw_data.empty:
-                            # Get only the header and first data row (first two rows)
-                            header_row = punctuality_raw_data.iloc[0]  # Header row
-                            data_row = punctuality_raw_data.iloc[1]    # First data row
+                            # If we have only one row, use it as both header and data
+                            if len(punctuality_raw_data) == 1:
+                                header_row = punctuality_raw_data.iloc[0]  # Use the only row as header
+                                data_row = pd.Series(['--'] * len(punctuality_raw_data.columns), index=punctuality_raw_data.columns)  # Create empty data row
+                                logger.info("Only one row available, using it as header with empty data row")
+                            # If we have two or more rows, use first as header, second as data
+                            elif len(punctuality_raw_data) >= 2:
+                                header_row = punctuality_raw_data.iloc[0]  # Header row
+                                data_row = punctuality_raw_data.iloc[1]    # First data row
+                                logger.info("Successfully retrieved header and data rows")
+                            else:
+                                # This shouldn't happen since we check for empty above, but added for safety
+                                raise ValueError("Punctuality data is empty but was reported as not empty")
                             
                             # Create HTML table with styling
                             st.markdown('<div class="punctuality-container"><div class="punctuality-title">Punctuality</div>', unsafe_allow_html=True)
