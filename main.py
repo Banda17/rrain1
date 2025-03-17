@@ -1627,37 +1627,61 @@ try:
                                 width: 100%;
                                 border-collapse: collapse;
                                 font-family: Arial, sans-serif;
+                                box-shadow: 0 0 10px rgba(0,0,0,0.1);
                             }
                             .punctuality-table th {
                                 background-color: #1e6bb8;
                                 color: white;
                                 font-weight: bold;
                                 text-align: center;
-                                padding: 8px;
-                                border: 1px solid #ddd;
+                                padding: 10px;
+                                border: 1px solid #1a5aa0;
                             }
                             .punctuality-table td {
-                                padding: 8px;
+                                padding: 10px;
                                 border: 1px solid #ddd;
                                 text-align: center;
                                 background-color: #f2f2f2;
                             }
-                            .punctuality-percentage {
+                            /* Column specific formatting based on actual data */
+                            /* For the percentage column (rightmost) */
+                            .punctuality-table td:last-child {
                                 font-weight: bold;
-                                background-color: #e6f2ff !important;
+                                background-color: #d1e7ff !important;
                                 color: #004d99;
                             }
-                            .punctuality-schedule {
-                                background-color: #e6ffe6 !important;
+                            /* For scheduled column */
+                            .punctuality-table td:nth-child(2) {
+                                background-color: #d7f8d7 !important;
                                 color: #006600;
+                                font-weight: bold;
                             }
-                            .punctuality-reported {
-                                background-color: #fff2e6 !important;
+                            /* For reported column */
+                            .punctuality-table td:nth-child(3) {
+                                background-color: #ffe0b3 !important;
                                 color: #994d00;
+                                font-weight: bold;
                             }
-                            .punctuality-late {
-                                background-color: #ffe6e6 !important;
+                            /* For late column (LT) */
+                            .punctuality-table td:nth-child(9) {
+                                background-color: #ffcccc !important;
                                 color: #cc0000;
+                                font-weight: bold;
+                            }
+                            /* For not reported column */
+                            .punctuality-table td:nth-child(4) {
+                                background-color: #f0f0f0 !important;
+                                color: #666;
+                                font-weight: bold;
+                            }
+                            /* Other columns with alternating colors */
+                            .punctuality-table td:nth-child(5),
+                            .punctuality-table td:nth-child(7) {
+                                background-color: #e6f3ff !important;
+                            }
+                            .punctuality-table td:nth-child(6),
+                            .punctuality-table td:nth-child(8) {
+                                background-color: #f0f7ff !important;
                             }
                             </style>
                             """, unsafe_allow_html=True)
