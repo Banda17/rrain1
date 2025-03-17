@@ -1556,12 +1556,9 @@ try:
                         punctuality_raw_data, punctuality_success = fetch_punctuality_data(PUNCTUALITY_DATA_URL)
                         
                         if punctuality_success and not punctuality_raw_data.empty:
-                            # Skip first row (which typically contains column descriptions/notes)
-                            punctuality_data = punctuality_raw_data.iloc[1:].reset_index(drop=True)
-                            
-                            # Safe conversion of values
-                            for col in punctuality_data.columns:
-                                punctuality_data[col] = punctuality_data[col].apply(safe_convert)
+                            # Get only the header and first data row (first two rows)
+                            header_row = punctuality_raw_data.iloc[0]  # Header row
+                            data_row = punctuality_raw_data.iloc[1]    # First data row
                             
                             # Create HTML table with styling
                             st.markdown('<div class="punctuality-container"><div class="punctuality-title">Punctuality</div>', unsafe_allow_html=True)
@@ -1571,34 +1568,37 @@ try:
                             
                             # Add header row with special styling
                             html_table += '<tr class="punctuality-header">'
-                            for col in punctuality_data.columns:
-                                html_table += f'<th>{col}</th>'
+                            for col in punctuality_raw_data.columns:
+                                header_value = header_row[col]
+                                # Replace NaN values with empty strings
+                                if pd.isna(header_value) or pd.isnull(header_value) or str(header_value).lower() == 'nan':
+                                    header_value = col
+                                html_table += f'<th>{header_value}</th>'
                             html_table += '</tr>'
                             
-                            # Add data rows
-                            for _, row in punctuality_data.iterrows():
-                                html_table += '<tr>'
-                                for i, col in enumerate(punctuality_data.columns):
-                                    cell_value = row[col]
-                                    
-                                    # Replace NaN values with empty strings
-                                    if pd.isna(cell_value) or pd.isnull(cell_value) or str(cell_value).lower() == 'nan':
-                                        display_value = ""
-                                    else:
-                                        display_value = cell_value
-                                    
-                                    # Apply appropriate styling based on the column
-                                    if col == 'Punctuality %' or (isinstance(display_value, str) and '%' in str(display_value)):
-                                        html_table += f'<td class="punctuality-percentage">{display_value}</td>'
-                                    elif col == 'Scheduled':
-                                        html_table += f'<td class="punctuality-schedule">{display_value}</td>'
-                                    elif col == 'Reported':
-                                        html_table += f'<td class="punctuality-reported">{display_value}</td>'
-                                    elif col == 'Late':
-                                        html_table += f'<td class="punctuality-late">{display_value}</td>'
-                                    else:
-                                        html_table += f'<td>{display_value}</td>'
-                                html_table += '</tr>'
+                            # Add data row with styling
+                            html_table += '<tr>'
+                            for col in punctuality_raw_data.columns:
+                                cell_value = data_row[col]
+                                
+                                # Replace NaN values with empty strings
+                                if pd.isna(cell_value) or pd.isnull(cell_value) or str(cell_value).lower() == 'nan':
+                                    display_value = ""
+                                else:
+                                    display_value = cell_value
+                                
+                                # Apply appropriate styling based on the column content
+                                if isinstance(display_value, str) and '%' in str(display_value):
+                                    html_table += f'<td class="punctuality-percentage">{display_value}</td>'
+                                elif col == 'Scheduled' or 'schedule' in str(col).lower():
+                                    html_table += f'<td class="punctuality-schedule">{display_value}</td>'
+                                elif col == 'Reported' or 'report' in str(col).lower():
+                                    html_table += f'<td class="punctuality-reported">{display_value}</td>'
+                                elif col == 'Late' or 'late' in str(col).lower():
+                                    html_table += f'<td class="punctuality-late">{display_value}</td>'
+                                else:
+                                    html_table += f'<td>{display_value}</td>'
+                            html_table += '</tr>'
                             
                             html_table += '</table>'
                             html_table += '</div>'
@@ -1612,8 +1612,9 @@ try:
                         st.error(f"Error processing punctuality data: {str(e)}")
                         logger.error(f"Error in punctuality section: {str(e)}")
                         
-                # Add a note about MS Information tables
-                st.info("Additional MS Information tables are available in the ICMS page. Click on 'ICMS Data' in the sidebar to view them.")
+                # Remove the note about MS Information tables
+                # Comment out to remove the info message
+                # st.info("Additional MS Information tables are available in the ICMS page. Click on 'ICMS Data' in the sidebar to view them.")
 
                 # Add train filter UI with checkboxes
                 st.markdown("""
