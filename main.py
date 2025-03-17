@@ -209,12 +209,12 @@ def is_positive_or_plus(value):
         # Handle None, NaN, and pd.NA values
         if value is None or pd.isna(value):
             return False
-            
+
         if isinstance(value, str):
             # Handle empty strings
             if not value.strip():
                 return False
-                
+
             # Check if the string contains a plus sign
             if '+' in value:
                 return True
@@ -226,25 +226,25 @@ def is_positive_or_plus(value):
 
             # Remove parentheses and other characters
             clean_value = value.replace('(', '').replace(')', '').strip()
-            
+
             # Handle empty string after cleaning
             if not clean_value:
                 return False
-                
+
             # Try to convert to float
             try:
                 return float(clean_value) > 0
             except ValueError:
                 # If conversion fails, check if it starts with a minus sign
                 return not clean_value.startswith('-')
-                
+
         elif isinstance(value, (int, float)):
             return value > 0
-            
+
     except Exception as e:
         logger.error(f"Error in is_positive_or_plus: {str(e)}")
         return False
-        
+
     return False
 
 
@@ -409,8 +409,8 @@ with col2:
             <h1 style="color: #0d6efd; margin: 0; padding: 0; font-size: 2.2rem;">South Central Railway</h1>
             <h2 style="color: #6c757d; margin: 0; padding: 0; font-size: 1.5rem;">Late Train Tracking - Vijayawada Division</h2>
         </div>
-        """, 
-        unsafe_allow_html=True)
+        """,
+                unsafe_allow_html=True)
 
 with col3:
     # Empty column for balance
@@ -433,8 +433,8 @@ if 'train_type_filters' not in st.session_state:
         'TOD': True,  # Tejas/Vande
         'VNDB': True,  # Vande Bharat
         'RAJ': True,  # Rajdhani
-        'JSH': True, #JANSATABDHI
-        'DNRT': True #Duronto
+        'JSH': True,  #JANSATABDHI
+        'DNRT': True  #Duronto
     }
 
 # All train types with descriptions
@@ -1257,14 +1257,15 @@ try:
                     Returns:
                         String representation or None for null values
                     """
-                    if pd.isna(value) or pd.isnull(value) or str(value).lower() == 'nan' or value is None:
+                    if pd.isna(value) or pd.isnull(value) or str(
+                            value).lower() == 'nan' or value is None:
                         return None
-                    
+
                     # Convert to string and handle empty strings
                     string_val = str(value).strip()
                     if not string_val:
                         return None
-                        
+
                     return string_val
 
                 # Apply safe conversion to all elements
@@ -1436,10 +1437,10 @@ try:
 
                 # Apply styling to the dataframe
                 styled_df = df.style.apply(highlight_delay, axis=None)
-                
+
                 # Add a separate Punctuality section on the main page
                 st.subheader("📈 Punctuality Data")
-                
+
                 # Create CSS for the punctuality section
                 st.markdown("""
                 <style>
@@ -1448,8 +1449,8 @@ try:
                     margin-top: 1rem;
                     background-color: white;
                     padding: 1rem;
-                    border-radius: 8px;
-                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+                    border-radius: 2px;
+                    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
                 }
 
                 .punctuality-title {
@@ -1519,105 +1520,146 @@ try:
                     font-weight: bold;
                 }
                 </style>
-                """, unsafe_allow_html=True)
-                
+                """,
+                            unsafe_allow_html=True)
+
                 # Add punctuality data section
-                punctuality_expander = st.expander("View Punctuality Data", expanded=True)
+                punctuality_expander = st.expander("View Punctuality Data",
+                                                   expanded=True)
                 with punctuality_expander:
                     # Setup logger
                     logger = logging.getLogger(__name__)
-                    
+
                     # Fetch punctuality data
                     try:
                         PUNCTUALITY_DATA_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRO2ZV-BOcL11_5NhlrOnn5Keph3-cVp7Tyr1t6RxsoDvxZjdOyDsmRkdvesJLbSnZwY8v3CATt1Of9/pub?gid=1136087799&single=true&output=csv"  # Punctuality data from Google Sheets
-                        
+
                         import requests
                         import io
                         import os
                         import csv
-                        
+
                         # Fallback data for when online source is unavailable
                         def get_fallback_punctuality_data():
                             """Create a fallback DataFrame when online data is unavailable"""
                             try:
                                 # Check if we have a cached file and it's not empty and has valid data
                                 cache_file = "temp/cached_punctuality.csv"
-                                if os.path.exists(cache_file) and os.path.getsize(cache_file) > 0:
+                                if os.path.exists(
+                                        cache_file) and os.path.getsize(
+                                            cache_file) > 0:
                                     df = pd.read_csv(cache_file)
                                     # Make sure we have actual data and not just empty cells
-                                    if len(df) >= 2 and not df.iloc[1].isna().all():
-                                        logger.info(f"Using cached punctuality data from {cache_file}")
+                                    if len(df) >= 2 and not df.iloc[1].isna(
+                                    ).all():
+                                        logger.info(
+                                            f"Using cached punctuality data from {cache_file}"
+                                        )
                                         return df, True
-                                
+
                                 # Otherwise create default fallback data with sample values
-                                logger.info("Creating default fallback punctuality data")
-                                columns = ["MAIL/EXPRESS", "Sch.", "Rpt.", "Not Rpt.", "BT", "RT", "MKUP", "NLT", "LT", "% 2025"]
+                                logger.info(
+                                    "Creating default fallback punctuality data"
+                                )
+                                columns = [
+                                    "MAIL/EXPRESS", "Sch.", "Rpt.", "Not Rpt.",
+                                    "BT", "RT", "MKUP", "NLT", "LT", "% 2025"
+                                ]
                                 data = [
                                     # Default data row with realistic sample values
-                                    ["TOTAL", "182.0", "102.0", "79.0", "75.0", "4.0", "1.0", "2.0", "20.0", "80.39"]
+                                    [
+                                        "TOTAL", "182.0", "102.0", "79.0",
+                                        "75.0", "4.0", "1.0", "2.0", "20.0",
+                                        "80.39"
+                                    ]
                                 ]
                                 df = pd.DataFrame(data, columns=columns)
-                                
+
                                 # Save this default data to the cache file for future use
                                 try:
                                     os.makedirs("temp", exist_ok=True)
                                     df.to_csv(cache_file, index=False)
-                                    logger.info("Saved default punctuality data to cache")
+                                    logger.info(
+                                        "Saved default punctuality data to cache"
+                                    )
                                 except Exception as e:
-                                    logger.warning(f"Failed to save default data to cache: {str(e)}")
-                                
+                                    logger.warning(
+                                        f"Failed to save default data to cache: {str(e)}"
+                                    )
+
                                 return df, True
                             except Exception as e:
-                                logger.error(f"Error creating fallback data: {str(e)}")
+                                logger.error(
+                                    f"Error creating fallback data: {str(e)}")
                                 # If everything fails, return a simple dataframe
-                                return pd.DataFrame([["No Data Available"]], columns=["Status"]), False
-                        
+                                return pd.DataFrame([["No Data Available"]],
+                                                    columns=["Status"]), False
+
                         # Function to fetch sheet data with caching
                         @st.cache_data(ttl=300, show_spinner=False)
                         def fetch_punctuality_data(url):
                             try:
                                 # Use requests to get data with proper headers
                                 headers = {
-                                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                                    'User-Agent':
+                                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
                                 }
                                 response = requests.get(url, headers=headers)
                                 response.raise_for_status()
-                                
+
                                 # Load into pandas
                                 content = response.content.decode('utf-8')
                                 df = pd.read_csv(io.StringIO(content))
-                                
+
                                 # Save to cache file for offline use
                                 try:
                                     os.makedirs("temp", exist_ok=True)
-                                    with open("temp/cached_punctuality.csv", "w", newline='') as f:
+                                    with open("temp/cached_punctuality.csv",
+                                              "w",
+                                              newline='') as f:
                                         f.write(content)
-                                    logger.info("Successfully cached punctuality data for offline use")
+                                    logger.info(
+                                        "Successfully cached punctuality data for offline use"
+                                    )
                                 except Exception as e:
-                                    logger.warning(f"Failed to cache punctuality data: {str(e)}")
-                                
+                                    logger.warning(
+                                        f"Failed to cache punctuality data: {str(e)}"
+                                    )
+
                                 return df, True
                             except Exception as e:
-                                logger.error(f"Error fetching punctuality data: {str(e)}")
+                                logger.error(
+                                    f"Error fetching punctuality data: {str(e)}"
+                                )
                                 return pd.DataFrame(), False
-                        
+
                         # Try to fetch online data first
-                        punctuality_raw_data, punctuality_success = fetch_punctuality_data(PUNCTUALITY_DATA_URL)
-                        
+                        punctuality_raw_data, punctuality_success = fetch_punctuality_data(
+                            PUNCTUALITY_DATA_URL)
+
                         # If online fetch failed, use cached/fallback data
                         if not punctuality_success or punctuality_raw_data.empty:
-                            logger.warning("Online data fetch failed, using fallback data")
-                            punctuality_raw_data, punctuality_success = get_fallback_punctuality_data()
-                        
+                            logger.warning(
+                                "Online data fetch failed, using fallback data"
+                            )
+                            punctuality_raw_data, punctuality_success = get_fallback_punctuality_data(
+                            )
+
                         # Debug information
                         if punctuality_success:
-                            logger.info(f"Punctuality data rows: {len(punctuality_raw_data)}")
-                            logger.info(f"Punctuality data columns: {punctuality_raw_data.columns.tolist()}")
+                            logger.info(
+                                f"Punctuality data rows: {len(punctuality_raw_data)}"
+                            )
+                            logger.info(
+                                f"Punctuality data columns: {punctuality_raw_data.columns.tolist()}"
+                            )
                         else:
-                            logger.warning("Failed to fetch or create punctuality data")
-                        
+                            logger.warning(
+                                "Failed to fetch or create punctuality data")
+
                         # Function to display punctuality table with consistent styling
-                        def display_punctuality_table(df, header_row, data_row):
+                        def display_punctuality_table(df, header_row,
+                                                      data_row):
                             """Display a styled punctuality table with the given header and data rows"""
                             # Add CSS styling for the punctuality table
                             st.markdown("""
@@ -1639,7 +1681,7 @@ try:
                                 border-collapse: collapse;
                                 font-family: Arial, sans-serif;
                                 box-shadow: 0 0 10px rgba(0,0,0,0.3);
-                                border: 2px solid black;
+                                border: 1px solid black;
                             }
                             .punctuality-table th {
                                 background-color: #1e6bb8;
@@ -1647,11 +1689,11 @@ try:
                                 font-weight: bold;
                                 text-align: center;
                                 padding: 10px;
-                                border: 2px solid black;
+                                border: 1px solid black;
                             }
                             .punctuality-table td {
                                 padding: 10px;
-                                border: 2px solid black;
+                                border: 1px solid black;
                                 text-align: center;
                                 background-color: #f2f2f2;
                             }
@@ -1696,14 +1738,17 @@ try:
                                 background-color: #f0f7ff !important;
                             }
                             </style>
-                            """, unsafe_allow_html=True)
-                            
+                            """,
+                                        unsafe_allow_html=True)
+
                             # Create HTML table with styling
-                            st.markdown('<div class="punctuality-container"><div class="punctuality-title">Punctuality</div>', unsafe_allow_html=True)
-                            
+                            st.markdown(
+                                '<div class="punctuality-container"><div class="punctuality-title">Punctuality</div>',
+                                unsafe_allow_html=True)
+
                             # Convert DataFrame to HTML table with styling
                             html_table = '<table class="punctuality-table">'
-                            
+
                             # Add header row with special styling (now styled with CSS)
                             html_table += '<tr class="punctuality-header">'
                             for col in df.columns:
@@ -1711,20 +1756,21 @@ try:
                                 header_value = col
                                 html_table += f'<th>{header_value}</th>'
                             html_table += '</tr>'
-                            
+
                             # Add data row with styling (cells now have contrasting colors)
                             html_table += '<tr>'
-                            
+
                             # Log for debugging
                             logger.info(f"Data row type: {type(data_row)}")
                             logger.info(f"Data row values: {data_row}")
-                            
+
                             # Use position-based indexing instead of column names
                             for i, col in enumerate(df.columns):
                                 # Get cell value safely using the index
                                 if isinstance(data_row, pd.Series):
                                     try:
-                                        cell_value = data_row.iloc[i] if i < len(data_row) else ""
+                                        cell_value = data_row.iloc[
+                                            i] if i < len(data_row) else ""
                                     except:
                                         # Fallback to column name indexing for Series
                                         try:
@@ -1734,18 +1780,22 @@ try:
                                 else:
                                     # For list-like objects
                                     try:
-                                        cell_value = data_row[i] if i < len(data_row) else ""
+                                        cell_value = data_row[i] if i < len(
+                                            data_row) else ""
                                     except:
                                         cell_value = ""
-                                
+
                                 # Replace NaN values with empty strings
-                                if pd.isna(cell_value) or pd.isnull(cell_value) or str(cell_value).lower() == 'nan':
+                                if pd.isna(cell_value) or pd.isnull(
+                                        cell_value) or str(
+                                            cell_value).lower() == 'nan':
                                     display_value = ""
                                 else:
                                     display_value = cell_value
-                                
+
                                 # Apply appropriate styling based on column position
-                                if i == len(df.columns) - 1:  # Last column (percentage)
+                                if i == len(df.columns
+                                            ) - 1:  # Last column (percentage)
                                     html_table += f'<td class="punctuality-percentage">{display_value}</td>'
                                 elif i == 1:  # Sch. column (2nd column)
                                     html_table += f'<td class="punctuality-schedule">{display_value}</td>'
@@ -1758,55 +1808,78 @@ try:
                                 else:
                                     html_table += f'<td>{display_value}</td>'
                             html_table += '</tr>'
-                            
+
                             html_table += '</table>'
                             html_table += '</div>'
-                            
+
                             # Display the styled table
                             st.markdown(html_table, unsafe_allow_html=True)
-                        
+
                         # Ensure we have valid data to display
                         if punctuality_success and not punctuality_raw_data.empty:
-                            logger.info(f"Processing punctuality data with {len(punctuality_raw_data)} rows")
-                            
+                            logger.info(
+                                f"Processing punctuality data with {len(punctuality_raw_data)} rows"
+                            )
+
                             # Special case: For our fallback data, we use the column names as header
                             # and the first row directly as data
                             if len(punctuality_raw_data) == 1:
                                 # Use column names as header row and first row as data
-                                header_row = pd.Series(punctuality_raw_data.columns, index=punctuality_raw_data.columns)
+                                header_row = pd.Series(
+                                    punctuality_raw_data.columns,
+                                    index=punctuality_raw_data.columns)
                                 data_row = punctuality_raw_data.iloc[0]
-                                logger.info("Using column names as header and data row directly")
+                                logger.info(
+                                    "Using column names as header and data row directly"
+                                )
                             # If we have 3 or more rows with the second row empty (as in the Google Sheets data)
-                            elif len(punctuality_raw_data) >= 3 and punctuality_raw_data.iloc[1].isna().all():
+                            elif len(punctuality_raw_data
+                                     ) >= 3 and punctuality_raw_data.iloc[
+                                         1].isna().all():
                                 header_row = punctuality_raw_data.columns  # Use column names as header
-                                data_row = punctuality_raw_data.iloc[2]    # Use the third row as data
-                                logger.info("Using column names as header and third row as data")
+                                data_row = punctuality_raw_data.iloc[
+                                    2]  # Use the third row as data
+                                logger.info(
+                                    "Using column names as header and third row as data"
+                                )
                             # Standard case: use first row as header, second as data
                             elif len(punctuality_raw_data) >= 2:
                                 header_row = punctuality_raw_data.columns  # Use column names as header
-                                data_row = punctuality_raw_data.iloc[0]    # Use first row as data
-                                logger.info("Using column names as header and first row as data")
+                                data_row = punctuality_raw_data.iloc[
+                                    0]  # Use first row as data
+                                logger.info(
+                                    "Using column names as header and first row as data"
+                                )
                             else:
                                 # Should never happen but just in case
-                                raise ValueError("Unexpected punctuality data structure")
-                            
+                                raise ValueError(
+                                    "Unexpected punctuality data structure")
+
                             # Log the header and data for debugging
                             logger.info(f"Header: {header_row.tolist()}")
                             logger.info(f"Data: {data_row.tolist()}")
-                            
+
                             # Display the styled table
-                            display_punctuality_table(punctuality_raw_data, header_row, data_row)
-                            
+                            display_punctuality_table(punctuality_raw_data,
+                                                      header_row, data_row)
+
                             # Add a note if using offline data
-                            if "cached_punctuality.csv" in str(punctuality_raw_data) or not punctuality_success:
-                                st.info("⚠️ Using cached data. Live data unavailable.", icon="⚠️")
+                            if "cached_punctuality.csv" in str(
+                                    punctuality_raw_data
+                            ) or not punctuality_success:
+                                st.info(
+                                    "⚠️ Using cached data. Live data unavailable.",
+                                    icon="⚠️")
                         else:
-                            st.error("Unable to fetch or create punctuality data. Please check your connection.")
-                            
+                            st.error(
+                                "Unable to fetch or create punctuality data. Please check your connection."
+                            )
+
                     except Exception as e:
-                        st.error(f"Error processing punctuality data: {str(e)}")
+                        st.error(
+                            f"Error processing punctuality data: {str(e)}")
                         logger.error(f"Error in punctuality section: {str(e)}")
-                        
+
                 # Remove the note about MS Information tables
                 # Comment out to remove the info message
                 # st.info("Additional MS Information tables are available in the ICMS page. Click on 'ICMS Data' in the sidebar to view them.")
@@ -1835,46 +1908,52 @@ try:
                 <div class="filter-container">
                     <div class="filter-title">🔍 Train Type Filters</div>
                 </div>
-                """, unsafe_allow_html=True)
-                
+                """,
+                            unsafe_allow_html=True)
+
                 # Create a 3-column layout for filters
                 filter_cols = st.columns(3)
-                
+
                 # Track if all are selected
-                all_selected = all(st.session_state.train_type_filters.values())
-                
+                all_selected = all(
+                    st.session_state.train_type_filters.values())
+
                 # Create a "Select All" checkbox in the first column
                 with filter_cols[0]:
-                    select_all = st.checkbox("(Select All)", 
-                                         value=all_selected, 
-                                         key="select_all_checkbox")
-                    
+                    select_all = st.checkbox("(Select All)",
+                                             value=all_selected,
+                                             key="select_all_checkbox")
+
                     # If select_all state changed, update all filters
                     if select_all != all_selected:
                         for train_type in train_types.keys():
-                            st.session_state.train_type_filters[train_type] = select_all
-                
+                            st.session_state.train_type_filters[
+                                train_type] = select_all
+
                 # Split the train types into 3 columns
                 train_type_items = list(train_types.items())
-                items_per_col = len(train_type_items) // 3 + (1 if len(train_type_items) % 3 > 0 else 0)
-                
+                items_per_col = len(train_type_items) // 3 + (
+                    1 if len(train_type_items) % 3 > 0 else 0)
+
                 # Create checkbox for each train type, distributed across columns
                 for col_idx, col in enumerate(filter_cols):
                     with col:
                         start_idx = col_idx * items_per_col
-                        end_idx = min(start_idx + items_per_col, len(train_type_items))
-                        
+                        end_idx = min(start_idx + items_per_col,
+                                      len(train_type_items))
+
                         for code, desc in train_type_items[start_idx:end_idx]:
                             # Use the current value from session state
                             is_selected = st.checkbox(
                                 f"{code} - {desc}",
-                                value=st.session_state.train_type_filters.get(code, True),
-                                key=f"checkbox_{code}"
-                            )
-                            
+                                value=st.session_state.train_type_filters.get(
+                                    code, True),
+                                key=f"checkbox_{code}")
+
                             # Update session state with the new value
-                            st.session_state.train_type_filters[code] = is_selected
-                
+                            st.session_state.train_type_filters[
+                                code] = is_selected
+
                 # Add a separator after the filters
                 st.markdown("<hr>", unsafe_allow_html=True)
 
@@ -2080,7 +2159,7 @@ try:
                     st.markdown(
                         '<div class="card shadow-sm mb-3"><div class="card-header bg-primary text-white d-flex justify-content-between align-items-center"><span>Train Data</span><span class="badge bg-light text-dark rounded-pill">Select stations to display on map</span></div><div class="card-body p-0">',
                         unsafe_allow_html=True)
-                    
+
                     # Train filter added above the table for better visibility
 
                     # Use combination approach: Standard data_editor for selection + styled display
@@ -2339,9 +2418,7 @@ except Exception as e:
     st.error(f"An error occurred: {str(e)}")
     logger.exception("Exception in main app")
 
-
 # Note: is_positive_or_plus function is now defined at the top of the file with enhanced NaN handling
-
 
 # Note: Custom formatter is already imported at the top of the file
 
