@@ -1608,13 +1608,67 @@ try:
                         # Function to display punctuality table with consistent styling
                         def display_punctuality_table(df, header_row, data_row):
                             """Display a styled punctuality table with the given header and data rows"""
+                            # Add CSS styling for the punctuality table
+                            st.markdown("""
+                            <style>
+                            .punctuality-container {
+                                margin: 10px 0;
+                                padding: 10px;
+                                border-radius: 5px;
+                                background-color: #f8f9fa;
+                            }
+                            .punctuality-title {
+                                font-size: 20px;
+                                font-weight: bold;
+                                margin-bottom: 10px;
+                                color: #004080;
+                            }
+                            .punctuality-table {
+                                width: 100%;
+                                border-collapse: collapse;
+                                font-family: Arial, sans-serif;
+                            }
+                            .punctuality-table th {
+                                background-color: #1e6bb8;
+                                color: white;
+                                font-weight: bold;
+                                text-align: center;
+                                padding: 8px;
+                                border: 1px solid #ddd;
+                            }
+                            .punctuality-table td {
+                                padding: 8px;
+                                border: 1px solid #ddd;
+                                text-align: center;
+                                background-color: #f2f2f2;
+                            }
+                            .punctuality-percentage {
+                                font-weight: bold;
+                                background-color: #e6f2ff !important;
+                                color: #004d99;
+                            }
+                            .punctuality-schedule {
+                                background-color: #e6ffe6 !important;
+                                color: #006600;
+                            }
+                            .punctuality-reported {
+                                background-color: #fff2e6 !important;
+                                color: #994d00;
+                            }
+                            .punctuality-late {
+                                background-color: #ffe6e6 !important;
+                                color: #cc0000;
+                            }
+                            </style>
+                            """, unsafe_allow_html=True)
+                            
                             # Create HTML table with styling
                             st.markdown('<div class="punctuality-container"><div class="punctuality-title">Punctuality</div>', unsafe_allow_html=True)
                             
                             # Convert DataFrame to HTML table with styling
                             html_table = '<table class="punctuality-table">'
                             
-                            # Add header row with special styling
+                            # Add header row with special styling (now styled with CSS)
                             html_table += '<tr class="punctuality-header">'
                             for col in df.columns:
                                 header_value = header_row[col]
@@ -1624,7 +1678,7 @@ try:
                                 html_table += f'<th>{header_value}</th>'
                             html_table += '</tr>'
                             
-                            # Add data row with styling
+                            # Add data row with styling (cells now have contrasting colors)
                             html_table += '<tr>'
                             for col in df.columns:
                                 cell_value = data_row[col]
