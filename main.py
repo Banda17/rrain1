@@ -424,18 +424,18 @@ st.markdown("<hr style='margin-top: 0; margin-bottom: 15px;'>",
 
 # Initialize train_type_filters if it doesn't exist in session state
 if 'train_type_filters' not in st.session_state:
-    # Only have MEX (Express) selected by default, all others deselected
+    # Select SUF, MEX, VNDB, RAJ, JSH, DNRT by default as requested
     st.session_state.train_type_filters = {
-        'SUF': False,  # Superfast
-        'MEX': True,   # Express - the only one selected by default
+        'SUF': True,   # Superfast
+        'MEX': True,   # Express
         'DMU': False,  # DMU
         'MEMU': False, # MEMU
         'PEX': False,  # Passenger Express
         'TOD': False,  # Tejas/Vande
-        'VNDB': False, # Vande Bharat
-        'RAJ': False,  # Rajdhani
-        'JSH': False,  # JANSATABDHI
-        'DNRT': False  # Duronto
+        'VNDB': True,  # Vande Bharat
+        'RAJ': True,   # Rajdhani
+        'JSH': True,   # JANSATABDHI
+        'DNRT': True   # Duronto
     }
 
 # All train types with descriptions
@@ -560,14 +560,16 @@ def initialize_session_state():
         },
         'train_type_filters': {  # New state variable for train type filtering
             'default': {
-                'SUF': False,  # Superfast
-                'MEX': True,   # Express - the only one selected by default
+                'SUF': True,   # Superfast
+                'MEX': True,   # Express
                 'TOD': False,  # Tejas, Vande Bharat
                 'MEMU': False, # MEMU
                 'DMU': False,  # DMU
-                'VND': False,  # Vande Bharat
+                'VND': True,   # Vande Bharat
                 'PEX': False,  # Passenger Express
-                'RJ': False    # Rajdhani
+                'RJ': True,    # Rajdhani
+                'JSH': True,   # Jansatabdhi
+                'DNRT': True   # Duronto
             },
             'type': Dict
         },
