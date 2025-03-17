@@ -424,17 +424,18 @@ st.markdown("<hr style='margin-top: 0; margin-bottom: 15px;'>",
 
 # Initialize train_type_filters if it doesn't exist in session state
 if 'train_type_filters' not in st.session_state:
+    # Only have MEX (Express) selected by default, all others deselected
     st.session_state.train_type_filters = {
-        'SUF': True,  # Superfast
-        'MEX': True,  # Express
-        'DMU': True,  # DMU
-        'MEMU': True,  # MEMU
-        'PEX': True,  # Passenger Express
-        'TOD': True,  # Tejas/Vande
-        'VNDB': True,  # Vande Bharat
-        'RAJ': True,  # Rajdhani
-        'JSH': True,  #JANSATABDHI
-        'DNRT': True  #Duronto
+        'SUF': False,  # Superfast
+        'MEX': True,   # Express - the only one selected by default
+        'DMU': False,  # DMU
+        'MEMU': False, # MEMU
+        'PEX': False,  # Passenger Express
+        'TOD': False,  # Tejas/Vande
+        'VNDB': False, # Vande Bharat
+        'RAJ': False,  # Rajdhani
+        'JSH': False,  # JANSATABDHI
+        'DNRT': False  # Duronto
     }
 
 # All train types with descriptions
@@ -559,14 +560,14 @@ def initialize_session_state():
         },
         'train_type_filters': {  # New state variable for train type filtering
             'default': {
-                'SUF': True,  # Superfast
-                'MEX': True,  # Express
-                'TOD': True,  # Tejas, Vande Bharat
-                'MEMU': True,  # MEMU
-                'DMU': True,  # DMU
-                'VND': True,  # Vande Bharat
-                'PEX': True,  # Passenger Express
-                'RJ': True  # Rajdhani
+                'SUF': False,  # Superfast
+                'MEX': True,   # Express - the only one selected by default
+                'TOD': False,  # Tejas, Vande Bharat
+                'MEMU': False, # MEMU
+                'DMU': False,  # DMU
+                'VND': False,  # Vande Bharat
+                'PEX': False,  # Passenger Express
+                'RJ': False    # Rajdhani
             },
             'type': Dict
         },
@@ -1681,7 +1682,7 @@ try:
                                 border-collapse: collapse;
                                 font-family: Arial, sans-serif;
                                 box-shadow: 0 0 10px rgba(0,0,0,0.3);
-                                border: 1px solid black;
+                                border: 2px solid black;
                             }
                             .punctuality-table th {
                                 background-color: #1e6bb8;
@@ -1689,11 +1690,11 @@ try:
                                 font-weight: bold;
                                 text-align: center;
                                 padding: 10px;
-                                border: 1px solid black;
+                                border: 2px solid black;
                             }
                             .punctuality-table td {
                                 padding: 10px;
-                                border: 1px solid black;
+                                border: 2px solid black;
                                 text-align: center;
                                 background-color: #f2f2f2;
                             }
