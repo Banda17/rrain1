@@ -1470,20 +1470,21 @@ try:
                     border-collapse: collapse;
                     margin-top: 0.5rem;
                     font-size: 14px;
+                    border: 1px solid black;
                 }
 
                 .punctuality-table th {
-                    background-color: #424242;
+                    background-color: #1e6bb8;
                     color: white;
                     text-align: center;
                     padding: 8px;
-                    border: 1px solid #ddd;
+                    border: 1px solid black;
                 }
 
                 .punctuality-table td {
                     text-align: center;
                     padding: 8px;
-                    border: 1px solid #ddd;
+                    border: 1px solid black;
                 }
 
                 .punctuality-percentage {
@@ -1682,7 +1683,7 @@ try:
                                 border-collapse: collapse;
                                 font-family: Arial, sans-serif;
                                 box-shadow: 0 0 10px rgba(0,0,0,0.3);
-                                border: 2px solid black;
+                                border: 1px solid black;
                             }
                             .punctuality-table th {
                                 background-color: #1e6bb8;
@@ -1690,11 +1691,11 @@ try:
                                 font-weight: bold;
                                 text-align: center;
                                 padding: 10px;
-                                border: 2px solid black;
+                                border: 1px solid black;
                             }
                             .punctuality-table td {
                                 padding: 10px;
-                                border: 2px solid black;
+                                border: 1px solid black;
                                 text-align: center;
                                 background-color: #f2f2f2;
                             }
