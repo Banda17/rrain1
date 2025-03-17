@@ -34,8 +34,9 @@ st.set_page_config(page_title="Late Train Tracking System",
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-# Add Bootstrap CSS - Update the style section to ensure grid layout works correctly
+# Add Bootstrap CSS and auto-refresh meta tag (every 5 minutes = 300 seconds)
 st.markdown("""
+    <meta http-equiv="refresh" content="300">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <style>
