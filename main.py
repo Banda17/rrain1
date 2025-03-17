@@ -1638,7 +1638,8 @@ try:
                                 width: 100%;
                                 border-collapse: collapse;
                                 font-family: Arial, sans-serif;
-                                box-shadow: 0 0 10px rgba(0,0,0,0.1);
+                                box-shadow: 0 0 10px rgba(0,0,0,0.3);
+                                border: 2px solid black;
                             }
                             .punctuality-table th {
                                 background-color: #1e6bb8;
@@ -1646,11 +1647,11 @@ try:
                                 font-weight: bold;
                                 text-align: center;
                                 padding: 10px;
-                                border: 1px solid #1a5aa0;
+                                border: 2px solid black;
                             }
                             .punctuality-table td {
                                 padding: 10px;
-                                border: 1px solid #ddd;
+                                border: 2px solid black;
                                 text-align: center;
                                 background-color: #f2f2f2;
                             }
