@@ -1706,17 +1706,36 @@ try:
                             # Add header row with special styling (now styled with CSS)
                             html_table += '<tr class="punctuality-header">'
                             for col in df.columns:
-                                header_value = header_row[col]
-                                # Replace NaN values with empty strings
-                                if pd.isna(header_value) or pd.isnull(header_value) or str(header_value).lower() == 'nan':
-                                    header_value = col
+                                # Use column names directly as header values
+                                header_value = col
                                 html_table += f'<th>{header_value}</th>'
                             html_table += '</tr>'
                             
                             # Add data row with styling (cells now have contrasting colors)
                             html_table += '<tr>'
-                            for col in df.columns:
-                                cell_value = data_row[col]
+                            
+                            # Log for debugging
+                            logger.info(f"Data row type: {type(data_row)}")
+                            logger.info(f"Data row values: {data_row}")
+                            
+                            # Use position-based indexing instead of column names
+                            for i, col in enumerate(df.columns):
+                                # Get cell value safely using the index
+                                if isinstance(data_row, pd.Series):
+                                    try:
+                                        cell_value = data_row.iloc[i] if i < len(data_row) else ""
+                                    except:
+                                        # Fallback to column name indexing for Series
+                                        try:
+                                            cell_value = data_row.get(col, "")
+                                        except:
+                                            cell_value = ""
+                                else:
+                                    # For list-like objects
+                                    try:
+                                        cell_value = data_row[i] if i < len(data_row) else ""
+                                    except:
+                                        cell_value = ""
                                 
                                 # Replace NaN values with empty strings
                                 if pd.isna(cell_value) or pd.isnull(cell_value) or str(cell_value).lower() == 'nan':
@@ -1724,15 +1743,17 @@ try:
                                 else:
                                     display_value = cell_value
                                 
-                                # Apply appropriate styling based on the column content
-                                if isinstance(display_value, str) and '%' in str(display_value):
+                                # Apply appropriate styling based on column position
+                                if i == len(df.columns) - 1:  # Last column (percentage)
                                     html_table += f'<td class="punctuality-percentage">{display_value}</td>'
-                                elif col == 'Scheduled' or 'schedule' in str(col).lower():
+                                elif i == 1:  # Sch. column (2nd column)
                                     html_table += f'<td class="punctuality-schedule">{display_value}</td>'
-                                elif col == 'Reported' or 'report' in str(col).lower():
+                                elif i == 2:  # Rpt. column (3rd column)
                                     html_table += f'<td class="punctuality-reported">{display_value}</td>'
-                                elif col == 'Late' or 'late' in str(col).lower():
+                                elif i == 8:  # LT column (9th column)
                                     html_table += f'<td class="punctuality-late">{display_value}</td>'
+                                elif i == 3:  # Not Rpt. column (4th column)
+                                    html_table += f'<td class="punctuality-not-reported">{display_value}</td>'
                                 else:
                                     html_table += f'<td>{display_value}</td>'
                             html_table += '</tr>'
