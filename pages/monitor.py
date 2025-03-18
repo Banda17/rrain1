@@ -236,6 +236,12 @@ create_pulsing_refresh_animation(refresh_placeholder, "Fetching monitoring data 
 st.info("Fetching monitoring data...")
 monitor_raw_data, monitor_success = fetch_sheet_data(MONITOR_DATA_URL)
 
+# Remove the first row if the data was successfully fetched
+if monitor_success and not monitor_raw_data.empty and len(monitor_raw_data) > 1:
+    # Skip the first row which is typically a header/summary row
+    monitor_raw_data = monitor_raw_data.iloc[1:].reset_index(drop=True)
+    st.info(f"Removed the first line from the data, now showing {len(monitor_raw_data)} entries")
+
 # Clear the refresh animation when done
 st.session_state['is_refreshing'] = False
 refresh_placeholder.empty()
