@@ -380,9 +380,12 @@ if monitor_success and not monitor_raw_data.empty:
                             pass
                     
                     # Check for LT (Late Time) values
-                    if 'LT' in value and re.search(r'\d+', value):
-                        lt_value = re.search(r'\d+', value).group()
-                        train_data['lt_value'] = lt_value
+                    if 'LT' in value:
+                        # Safely extract number from LT value
+                        match = re.search(r'\d+', value)
+                        if match:
+                            lt_value = match.group()
+                            train_data['lt_value'] = lt_value
             
             # If we found train data, add it to our list
             if train_data and 'train_number' in train_data:
