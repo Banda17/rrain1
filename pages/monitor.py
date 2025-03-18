@@ -57,11 +57,13 @@ st.markdown("""
 }
 
 .monitor-table th {
-    background-color: #1e88e5;
+    background-color: #1E3A8A;
     color: white;
     text-align: center;
-    padding: 8px;
+    padding: 10px;
     border: 1px solid black;
+    font-weight: bold;
+    text-transform: uppercase;
 }
 
 .monitor-table td {
@@ -273,13 +275,23 @@ if monitor_success and not monitor_raw_data.empty:
     # Convert DataFrame to HTML table with styling
     html_table = '<table class="monitor-table">'
     
-    # Add header row with special styling
-    html_table += '<tr>'
-    for col in monitor_raw_data.columns:
-        html_table += f'<th>{col}</th>'
-    html_table += '</tr>'
+    # Add custom header row with the specified column names inside thead
+    html_table += '<thead><tr>'
+    html_table += '<th>STN</th>'
+    html_table += '<th>Time Sch - Act</th>'
+    html_table += '<th>Delay(Mins.)</th>'
     
-    # Add data rows
+    # Add any remaining columns if needed
+    remaining_cols = len(monitor_raw_data.columns) - 3
+    if remaining_cols > 0:
+        for i in range(remaining_cols):
+            col_name = monitor_raw_data.columns[i+3] if i+3 < len(monitor_raw_data.columns) else f"Column {i+4}"
+            html_table += f'<th>{col_name}</th>'
+    
+    html_table += '</tr></thead>'
+    
+    # Add data rows inside tbody
+    html_table += '<tbody>'
     for _, row in monitor_raw_data.iterrows():
         html_table += '<tr>'
         for col in monitor_raw_data.columns:
@@ -300,7 +312,7 @@ if monitor_success and not monitor_raw_data.empty:
                 html_table += f'<td>{cell_value}</td>'
         html_table += '</tr>'
     
-    html_table += '</table>'
+    html_table += '</tbody></table>'
     
     # Display the HTML table
     st.markdown(html_table, unsafe_allow_html=True)
