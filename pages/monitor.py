@@ -138,6 +138,16 @@ st.markdown("""
     font-size: 14px;
 }
 
+.train-details-table th {
+    background-color: #1E3A8A;
+    color: white;
+    padding: 10px;
+    text-align: center;
+    border: 1px solid black;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
 .train-details-table td {
     text-align: center;
     padding: 8px;
@@ -473,6 +483,16 @@ if monitor_success and not monitor_raw_data.empty:
         # Create a 3x3 grid table for the train details
         html_table = '<table class="train-details-table">'
         
+        # Table Header Row
+        html_table += '<thead><tr>'
+        html_table += '<th>No.</th>'
+        html_table += '<th>Train Details</th>'
+        html_table += '<th>Status</th>'
+        html_table += '</tr></thead>'
+        
+        # Table Body
+        html_table += '<tbody>'
+        
         # First row
         html_table += '<tr>'
         
@@ -573,7 +593,7 @@ if monitor_success and not monitor_raw_data.empty:
         
         html_table += '</tr>'
         
-        html_table += '</table>'
+        html_table += '</tbody></table>'
         
         # Display the HTML table
         st.markdown(html_table, unsafe_allow_html=True)
