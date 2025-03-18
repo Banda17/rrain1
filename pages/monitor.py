@@ -466,161 +466,103 @@ if monitor_success and not monitor_raw_data.empty:
         
         return train_details
     
-    # Extract train details from the monitor data
-    train_details = extract_train_details(monitor_raw_data)
+    # We're not using the old train details extraction anymore
+    # Using a new approach to extract and display ALL trains in the monitor data
     
-    # If we couldn't extract any train details, check if there's any raw data we can use
-    if not train_details and not monitor_raw_data.empty:
-        # Try to extract information from specific columns
-        st.warning("Couldn't automatically extract train details from the data format")
-        
-        # Create a sample structure based on the image provided
-        train_details = [
-            {
-                'serial_number': '1',
-                'train_number': '12706 SUF',
-                'station_info': 'SC 07:45\nGNT 14:35 18-Mar-2025',
-                'lt_value': 'LT 15'
-            },
-            {
-                'station_code': 'KI',
-                'times': ['13:05', '14:29:20'],
-                'delay': 84
-            },
-            {
-                'station_code': 'KCC',
-                'times': ['13:50', '15:29:27'],
-                'delay': 99
-            }
-        ]
+    # Display all trains from the monitor data
+    st.markdown('<div class="train-details-container"><div class="train-details-title">Train Details</div>', unsafe_allow_html=True)
     
-    # Display the train details in a formatted table
-    if train_details:
-        st.markdown('<div class="train-details-container"><div class="train-details-title">Train Details</div>', unsafe_allow_html=True)
+    # Create a simple function to extract train numbers from the data
+    def extract_train_numbers(df):
+        train_numbers = []
+        train_column = 'Train No.' if 'Train No.' in df.columns else None
         
-        # Create a 3x3 grid table for the train details
+        if train_column:
+            # We have a Train No. column, use it directly
+            for idx, row in df.iterrows():
+                train_no = row[train_column]
+                if train_no and str(train_no).strip():
+                    train_numbers.append({
+                        'train_number': str(train_no).strip(),
+                        'from_to': row['FROM-TO'] if 'FROM-TO' in df.columns else '',
+                        'delay': row['Delay'] if 'Delay' in df.columns else '',
+                        'row_index': idx
+                    })
+        else:
+            # No direct train column, try to find train numbers in any cell
+            for idx, row in df.iterrows():
+                for col in df.columns:
+                    cell_value = str(row[col]).strip()
+                    # Look for 5 digit numbers which are likely train numbers
+                    if re.search(r'\b\d{5}\b', cell_value):
+                        train_match = re.search(r'\b(\d{5})\b', cell_value)
+                        if train_match:
+                            train_no = train_match.group(1)
+                            train_numbers.append({
+                                'train_number': train_no,
+                                'cell_value': cell_value,
+                                'row_index': idx
+                            })
+                            break  # Only get one train number per row
+        
+        return train_numbers
+    
+    # Extract train numbers from the data
+    train_list = extract_train_numbers(monitor_raw_data)
+    
+    if train_list:
+        st.success(f"Found {len(train_list)} trains in the monitoring data")
+        
+        # Create a table to display all trains
         html_table = '<table class="train-details-table">'
         
         # Table Header Row
         html_table += '<thead><tr>'
         html_table += '<th>No.</th>'
-        html_table += '<th>Train Details</th>'
-        html_table += '<th>Status</th>'
+        html_table += '<th>Train Number</th>'
+        html_table += '<th>From-To</th>'
+        html_table += '<th>Delay</th>'
         html_table += '</tr></thead>'
         
         # Table Body
         html_table += '<tbody>'
         
-        # First row
-        html_table += '<tr>'
-        
-        # Cell 1,1 (Serial Number)
-        serial_cell = '<td class="highlight-cell">1</td>' if any('serial_number' in td for td in train_details) else '<td></td>'
-        html_table += serial_cell
-        
-        # Cell 1,2 (Train Number and Station Info)
-        train_cell = ''
-        for td in train_details:
-            if 'train_number' in td:
-                train_info = f'<div class="train-number">{td["train_number"]}</div>'
-                if 'station_info' in td:
-                    # Handle newlines separately to avoid f-string issues
-                    station_info = td["station_info"].replace('\n', '<br>')
-                    train_info += f'<div>{station_info}</div>'
-                train_cell = f'<td class="highlight-cell">{train_info}</td>'
-                break
-        if not train_cell:
-            train_cell = '<td></td>'
-        html_table += train_cell
-        
-        # Cell 1,3 (LT Value)
-        lt_cell = ''
-        for td in train_details:
-            if 'lt_value' in td:
-                lt_cell = f'<td class="highlight-cell">LT {td["lt_value"]}</td>'
-                break
-        if not lt_cell:
-            lt_cell = '<td></td>'
-        html_table += lt_cell
-        
-        html_table += '</tr>'
-        
-        # Second row
-        html_table += '<tr>'
-        
-        # Cell 2,1 (First Station Code)
-        station1_cell = ''
-        if len(train_details) > 1 and 'station_code' in train_details[1]:
-            station1_cell = f'<td class="highlight-cell station-code">{train_details[1]["station_code"]}</td>'
-        else:
-            station1_cell = '<td></td>'
-        html_table += station1_cell
-        
-        # Cell 2,2 (First Station Times)
-        times1_cell = ''
-        if len(train_details) > 1 and 'times' in train_details[1] and len(train_details[1]['times']) > 0:
-            times = train_details[1]['times']
-            if len(times) == 1:
-                times1_cell = f'<td class="time-value">{times[0]}</td>'
+        # Add a row for each train
+        for i, train in enumerate(train_list):
+            html_table += '<tr>'
+            
+            # Serial Number
+            html_table += f'<td>{i+1}</td>'
+            
+            # Train Number (styled with color)
+            train_num = train['train_number']
+            html_table += f'<td class="train-number">{train_num}</td>'
+            
+            # From-To
+            from_to = train.get('from_to', '')
+            html_table += f'<td>{from_to}</td>'
+            
+            # Delay 
+            delay = train.get('delay', '')
+            if delay:
+                html_table += f'<td class="highlight-cell delay-value">{delay}</td>'
             else:
-                times1_cell = f'<td class="time-value">{times[0]}-{times[1]}</td>'
-        else:
-            times1_cell = '<td></td>'
-        html_table += times1_cell
-        
-        # Cell 2,3 (First Delay)
-        delay1_cell = ''
-        if len(train_details) > 1 and 'delay' in train_details[1]:
-            delay1_cell = f'<td class="highlight-cell delay-value">{train_details[1]["delay"]}</td>'
-        else:
-            delay1_cell = '<td></td>'
-        html_table += delay1_cell
-        
-        html_table += '</tr>'
-        
-        # Third row
-        html_table += '<tr>'
-        
-        # Cell 3,1 (Second Station Code)
-        station2_cell = ''
-        if len(train_details) > 2 and 'station_code' in train_details[2]:
-            station2_cell = f'<td class="highlight-cell station-code">{train_details[2]["station_code"]}</td>'
-        else:
-            station2_cell = '<td></td>'
-        html_table += station2_cell
-        
-        # Cell 3,2 (Second Station Times)
-        times2_cell = ''
-        if len(train_details) > 2 and 'times' in train_details[2] and len(train_details[2]['times']) > 0:
-            times = train_details[2]['times']
-            if len(times) == 1:
-                times2_cell = f'<td class="time-value">{times[0]}</td>'
-            else:
-                times2_cell = f'<td class="time-value">{times[0]}-{times[1]}</td>'
-        else:
-            times2_cell = '<td></td>'
-        html_table += times2_cell
-        
-        # Cell 3,3 (Second Delay)
-        delay2_cell = ''
-        if len(train_details) > 2 and 'delay' in train_details[2]:
-            delay2_cell = f'<td class="highlight-cell delay-value">{train_details[2]["delay"]}</td>'
-        else:
-            delay2_cell = '<td></td>'
-        html_table += delay2_cell
-        
-        html_table += '</tr>'
+                html_table += f'<td></td>'
+            
+            html_table += '</tr>'
         
         html_table += '</tbody></table>'
         
         # Display the HTML table
         st.markdown(html_table, unsafe_allow_html=True)
         
-        # Provide a JSON representation for debugging
-        with st.expander("View Train Details JSON"):
-            st.json(train_details)
-        
-        st.markdown('</div>', unsafe_allow_html=True)
+        # Provide a data representation for debugging
+        with st.expander("View Train List Data"):
+            st.write(train_list)
+    else:
+        st.warning("No train numbers could be extracted from the monitor data")
+    
+    st.markdown('</div>', unsafe_allow_html=True)
     
     # Set up auto-refresh after 5 minutes (300 seconds)
     st.markdown("""
