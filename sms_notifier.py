@@ -17,7 +17,7 @@ class SMSNotifier:
         self.api_token = st.secrets.get("SMS_COUNTRY_API_TOKEN", os.environ.get("SMS_COUNTRY_API_TOKEN"))
         
         # SMS Country API endpoint
-        self.api_url = "https://api.smscountry.com/v1/SMSes"
+        self.api_url = f"https://restapi.smscountry.com/v0.1/Accounts/{self.api_key}/SMSes"
         
         # Get notification recipients from environment or secrets
         self.recipients = []
@@ -139,8 +139,12 @@ class SMSNotifier:
                     'Content-Type': 'application/json',
                 }
                 
-                # Basic auth with API key and token
-                auth = (self.api_key, self.api_token)
+                # Headers with authentication token
+                headers = {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'Authorization': f'Basic {self.api_token}'
+                }
                 
                 # Create the JSON payload for SMS Country
                 payload = {
@@ -155,8 +159,7 @@ class SMSNotifier:
                 response = requests.post(
                     self.api_url,
                     headers=headers,
-                    json=payload,
-                    auth=auth
+                    json=payload
                 )
                 
                 # Check if the request was successful

@@ -343,14 +343,15 @@ if monitor_success and not monitor_raw_data.empty:
                         try:
                             headers = {
                                 'Accept': 'application/json',
+                                'Content-Type': 'application/json',
+                                'Authorization': f'Basic {sms_notifier.api_token}'
                             }
-                            auth = (sms_notifier.api_key, sms_notifier.api_token)
                             
-                            # Use the API ping endpoint
+                            # Use an API endpoint to check connectivity
+                            api_url = f"https://restapi.smscountry.com/v0.1/Accounts/{sms_notifier.api_key}"
                             response = requests.get(
-                                "https://api.smscountry.com/v1/ping",
-                                headers=headers,
-                                auth=auth
+                                api_url,
+                                headers=headers
                             )
                             
                             if response.status_code == 200:
