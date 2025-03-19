@@ -454,11 +454,11 @@ if monitor_success and not monitor_raw_data.empty:
         
         # Check if we have SMS Country secrets already
         if not (sms_notifier.api_key and sms_notifier.api_token):
-            st.warning("SMS Country credentials not found. Please add them to your secrets.toml file.")
+            st.warning("SMS Country credentials not found. Please add them to Replit Secrets.")
+            st.info("Go to 'Tools > Secrets' in the Replit sidebar to add the following secrets:")
             st.code("""
-# In .streamlit/secrets.toml:
-SMS_COUNTRY_API_KEY = "your_api_key"
-SMS_COUNTRY_API_TOKEN = "your_api_token"
+SMS_COUNTRY_API_KEY = your_api_key
+SMS_COUNTRY_API_TOKEN = your_api_token
 NOTIFICATION_RECIPIENTS = ["recipient_phone_number1", "recipient_phone_number2"]
             """)
         else:
@@ -468,7 +468,7 @@ NOTIFICATION_RECIPIENTS = ["recipient_phone_number1", "recipient_phone_number2"]
             if sms_notifier.recipients:
                 st.write(f"Currently notifying {len(sms_notifier.recipients)} recipients: {', '.join(sms_notifier.recipients)}")
             else:
-                st.warning("No notification recipients configured. Add them to your secrets.toml file.")
+                st.warning("No notification recipients configured. Add them to Replit Secrets.")
         
         # Show format examples
         st.markdown("#### SMS Format Examples:")
