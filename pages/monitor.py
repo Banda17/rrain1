@@ -353,7 +353,36 @@ if monitor_success and not monitor_raw_data.empty:
         new_trains = push_notifier.notify_new_trains(train_numbers, train_details)
         if new_trains:
             st.success(f"Detected {len(new_trains)} new trains: {', '.join(new_trains)}")
-            st.info("Push notifications will be sent to subscribed browsers!")
+            
+            # Add JavaScript to trigger notifications for new trains
+            js_code = """
+            <script>
+            // Wait for notification system to initialize
+            setTimeout(function() {
+                if (window.showTrainNotification) {
+            """
+            
+            # Add code for each notification
+            for train in new_trains:
+                train_detail = train_details.get(train, "New train detected")
+                js_code += f"""
+                    window.showTrainNotification(
+                        'New Train {train} Detected',
+                        '{train_detail}',
+                        'delay'
+                    );
+                """
+            
+            js_code += """
+                }
+            }, 1000);
+            </script>
+            """
+            
+            # Output JavaScript
+            st.markdown(js_code, unsafe_allow_html=True)
+            
+            st.info("Browser notifications sent for new trains!")
         else:
             st.info("No new trains detected, no notifications sent.")
     

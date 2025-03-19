@@ -8,16 +8,26 @@ from datetime import datetime
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Add this flag to enable/disable debug messages
+DEBUG = True
+
 class PushNotifier:
     def __init__(self):
         """Initialize the push notification manager"""
-        # Set up storage for subscription info
+        # Create necessary directories
         os.makedirs('temp', exist_ok=True)
-        self.subscription_file = 'temp/push_subscriptions.json'
         
         # Track known trains to avoid duplicate notifications
         if 'known_trains' not in st.session_state:
             self.load_known_trains()
+            
+        # Initialize notification settings in session state
+        if 'notifications_enabled' not in st.session_state:
+            st.session_state.notifications_enabled = False
+            
+        # Keep track of notifications to display
+        if 'notifications' not in st.session_state:
+            st.session_state.notifications = []
     
     def load_known_trains(self):
         """Load the list of known trains from the persistent store"""
@@ -52,41 +62,6 @@ class PushNotifier:
         except Exception as e:
             logger.error(f"Error saving known trains: {str(e)}")
     
-    def load_subscriptions(self):
-        """Load push notification subscriptions from file"""
-        try:
-            if os.path.exists(self.subscription_file):
-                with open(self.subscription_file, 'r') as f:
-                    return json.load(f)
-            return []
-        except Exception as e:
-            logger.error(f"Error loading subscriptions: {str(e)}")
-            return []
-    
-    def save_subscription(self, subscription_info):
-        """Save a new push notification subscription"""
-        try:
-            subscriptions = self.load_subscriptions()
-            
-            # Check if this subscription already exists
-            for sub in subscriptions:
-                if sub.get('endpoint') == subscription_info.get('endpoint'):
-                    # Subscription already exists
-                    return True
-            
-            # Add the new subscription
-            subscriptions.append(subscription_info)
-            
-            # Save to file
-            with open(self.subscription_file, 'w') as f:
-                json.dump(subscriptions, f)
-            
-            logger.info(f"Saved new push subscription, total subscribers: {len(subscriptions)}")
-            return True
-        except Exception as e:
-            logger.error(f"Error saving subscription: {str(e)}")
-            return False
-    
     def check_for_new_trains(self, current_trains):
         """
         Check for new trains that haven't been seen before
@@ -102,7 +77,8 @@ class PushNotifier:
         
         # Log current trains for debugging
         logger.info(f"Current trains in data: {len(current_trains_set)}")
-        logger.debug(f"Train numbers: {sorted(list(current_trains_set))}")
+        if DEBUG:
+            logger.info(f"Train numbers: {sorted(list(current_trains_set))}")
         
         # Find new trains
         new_trains = current_trains_set - known_trains
@@ -117,176 +93,337 @@ class PushNotifier:
         
         return list(new_trains)
     
-    def get_push_notification_js(self):
-        """Get the JavaScript code for push notifications"""
+    def get_browser_notification_js(self):
+        """Get the JavaScript code for browser notifications"""
         return """
         <script>
-        // Util function for base64 URL encoding
-        function urlBase64ToUint8Array(base64String) {
-            const padding = '='.repeat((4 - base64String.length % 4) % 4);
-            const base64 = (base64String + padding)
-                .replace(/-/g, '+')
-                .replace(/_/g, '/');
-            
-            const rawData = window.atob(base64);
-            const outputArray = new Uint8Array(rawData.length);
-            
-            for (let i = 0; i < rawData.length; ++i) {
-                outputArray[i] = rawData.charCodeAt(i);
-            }
-            return outputArray;
-        }
-
-        // Check if service workers are supported
-        if ('serviceWorker' in navigator) {
-            // When the window is loaded, register service worker
-            window.addEventListener('load', async () => {
-                try {
-                    const registration = await navigator.serviceWorker.register('/service-worker.js');
-                    console.log('ServiceWorker registration successful with scope: ', registration.scope);
-                    
-                    // Wait for the service worker to be ready
-                    const ready = await navigator.serviceWorker.ready;
-                    console.log('Service worker ready');
-                    
-                    // Set up UI controls after service worker is ready
-                    setupPushControls(ready);
-                } catch (error) {
-                    console.error('ServiceWorker registration failed: ', error);
-                    document.getElementById('notification-status').textContent = 
-                        'Push notification setup failed: ' + error.message;
-                }
-            });
-        } else {
-            console.warn('Service workers not supported');
-            document.getElementById('notification-status').textContent = 
-                'Sorry, push notifications are not supported in your browser.';
-        }
+        // Check if browser notifications are supported
+        let notificationsEnabled = false;
         
-        // Handle the subscribe button
-        async function subscribeUser(swRegistration) {
-            try {
-                // Application Server Public Key from your server
-                const applicationServerPublicKey = 'BLBx85QoKM1QhvmOKzBJr5m2V0o5D9m0-F50xgOVl3YoqDRZ5mitgLLm2QUcDQl3dJlZOEpPpNE3hPnCok9nbY0';
-                
-                const applicationServerKey = urlBase64ToUint8Array(applicationServerPublicKey);
-                
-                const subscription = await swRegistration.pushManager.subscribe({
-                    userVisibleOnly: true,
-                    applicationServerKey: applicationServerKey
-                });
-                
-                console.log('User is subscribed:', subscription);
-                
-                // Send subscription to server
-                await saveSubscription(subscription);
-                
+        // Function to check notification permission
+        function checkNotificationPermission() {
+            if (!('Notification' in window)) {
+                // Browser doesn't support notifications
                 document.getElementById('notification-status').textContent = 
-                    'You are now subscribed to push notifications for new trains!';
-                    
-                document.getElementById('push-subscribe-button').style.display = 'none';
-                document.getElementById('push-unsubscribe-button').style.display = 'inline-block';
-                document.getElementById('test-push-button').style.display = 'inline-block';
-                
-                return subscription;
-            } catch (error) {
-                console.error('Failed to subscribe the user: ', error);
+                    'Browser notifications are not supported in your browser.';
+                return false;
+            }
+            
+            if (Notification.permission === 'granted') {
                 document.getElementById('notification-status').textContent = 
-                    'Failed to subscribe. ' + error.message;
+                    'Notifications are enabled! You will be notified when new trains are detected.';
+                document.getElementById('enable-notifications-btn').style.display = 'none';
+                document.getElementById('test-notification-btn').style.display = 'inline-block';
+                return true;
+            } else if (Notification.permission === 'denied') {
+                document.getElementById('notification-status').textContent = 
+                    'Notification permission was denied. Please enable notifications in your browser settings.';
+                document.getElementById('enable-notifications-btn').style.display = 'inline-block';
+                document.getElementById('test-notification-btn').style.display = 'none';
+                return false;
+            } else {
+                document.getElementById('notification-status').textContent = 
+                    'Click the button below to enable train notifications.';
+                document.getElementById('enable-notifications-btn').style.display = 'inline-block';
+                document.getElementById('test-notification-btn').style.display = 'none';
+                return false;
             }
         }
         
-        // Save subscription info to your server
-        async function saveSubscription(subscription) {
-            const response = await fetch('/save-subscription/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(subscription)
-            });
-            
-            return response.json();
-        }
-        
-        // Handle unsubscribe action
-        async function unsubscribeUser(swRegistration) {
-            try {
-                const subscription = await swRegistration.pushManager.getSubscription();
-                
-                if (subscription) {
-                    await subscription.unsubscribe();
-                    console.log('User is unsubscribed');
-                    
-                    document.getElementById('notification-status').textContent = 
-                        'You are now unsubscribed from push notifications.';
-                    
-                    document.getElementById('push-subscribe-button').style.display = 'inline-block';
-                    document.getElementById('push-unsubscribe-button').style.display = 'none';
-                    document.getElementById('test-push-button').style.display = 'none';
-                }
-            } catch (error) {
-                console.error('Error unsubscribing', error);
-                document.getElementById('notification-status').textContent = 
-                    'Error unsubscribing: ' + error.message;
+        // Function to request notification permission
+        async function requestNotificationPermission() {
+            if (!('Notification' in window)) {
+                alert('This browser does not support desktop notifications');
+                return;
             }
-        }
-        
-        // Send a test notification
-        async function sendTestNotification() {
+            
             try {
-                const response = await fetch('/test-push-notification/', {
-                    method: 'POST'
-                });
-                
-                if (response.ok) {
+                const permission = await Notification.requestPermission();
+                if (permission === 'granted') {
                     document.getElementById('notification-status').textContent = 
-                        'Test notification sent!';
+                        'Notifications are now enabled! You will be notified when new trains are detected.';
+                    document.getElementById('enable-notifications-btn').style.display = 'none';
+                    document.getElementById('test-notification-btn').style.display = 'inline-block';
+                    
+                    // Send status to Streamlit
+                    notificationsEnabled = true;
+                    
+                    // Show a welcome notification
+                    showNotification(
+                        'Train Notifications Enabled',
+                        'You will now receive notifications when new trains are detected.',
+                        'success'
+                    );
+                    
+                    return true;
                 } else {
                     document.getElementById('notification-status').textContent = 
-                        'Failed to send test notification. Check server logs.';
+                        'Notification permission was not granted.';
+                    return false;
                 }
             } catch (error) {
-                console.error('Error sending test notification', error);
+                console.error('Error requesting notification permission:', error);
                 document.getElementById('notification-status').textContent = 
-                    'Error sending test notification: ' + error.message;
+                    'Error requesting notification permission: ' + error.message;
+                return false;
             }
         }
         
-        // Set up the subscription status and controls
-        async function setupPushControls(swRegistration) {
-            try {
-                const subscription = await swRegistration.pushManager.getSubscription();
+        // Function to show a browser notification
+        function showNotification(title, body, type = 'info') {
+            if (!('Notification' in window)) {
+                console.warn('This browser does not support desktop notifications');
+                return;
+            }
+            
+            if (Notification.permission === 'granted') {
+                // Get icon based on type
+                let icon = '';
+                switch(type) {
+                    case 'success':
+                        icon = 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/Eo_circle_green_checkmark.svg/1200px-Eo_circle_green_checkmark.svg.png';
+                        break;
+                    case 'warning':
+                        icon = 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/58/Eo_circle_orange_exclamation-point.svg/1200px-Eo_circle_orange_exclamation-point.svg.png';
+                        break;
+                    case 'error':
+                        icon = 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Eo_circle_red_letter-x.svg/1200px-Eo_circle_red_letter-x.svg.png';
+                        break;
+                    case 'delay':
+                        icon = 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/Flat_cross_icon.svg/1200px-Flat_cross_icon.svg.png';
+                        break;
+                    default:
+                        icon = 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Eo_circle_blue_letter-i.svg/1200px-Eo_circle_blue_letter-i.svg.png';
+                }
                 
-                document.getElementById('notification-status').textContent = subscription ? 
-                    'You are subscribed to push notifications for new trains.' :
-                    'You are not subscribed to push notifications.';
-                
-                document.getElementById('push-subscribe-button').style.display = 
-                    subscription ? 'none' : 'inline-block';
-                    
-                document.getElementById('push-unsubscribe-button').style.display = 
-                    subscription ? 'inline-block' : 'none';
-                    
-                document.getElementById('test-push-button').style.display = 
-                    subscription ? 'inline-block' : 'none';
-                
-                // Set up click handlers
-                document.getElementById('push-subscribe-button').onclick = () => {
-                    subscribeUser(swRegistration);
+                // Create and show the notification
+                const options = {
+                    body: body,
+                    icon: icon,
+                    silent: false
                 };
                 
-                document.getElementById('push-unsubscribe-button').onclick = () => {
-                    unsubscribeUser(swRegistration);
+                const notification = new Notification(title, options);
+                
+                // Close the notification after 5 seconds
+                setTimeout(() => notification.close(), 5000);
+                
+                // Focus the window when clicked
+                notification.onclick = function() {
+                    window.focus();
+                    notification.close();
                 };
                 
-                document.getElementById('test-push-button').onclick = () => {
-                    sendTestNotification();
-                };
-            } catch (error) {
-                console.error('Error setting up push controls', error);
+                // Also show in-app notification
+                showAppNotification(title, body, type);
+                
+                return true;
+            } else {
+                console.warn('Notification permission not granted');
+                
+                // Still show in-app notification
+                showAppNotification(title, body, type);
+                
+                return false;
             }
         }
+        
+        // Function to show in-app notification
+        function showAppNotification(title, message, type = 'info') {
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.className = 'app-notification app-notification-' + type;
+            
+            // Add icon based on type
+            let iconHtml = '';
+            switch(type) {
+                case 'success':
+                    iconHtml = '<span class="notification-icon">✅</span>';
+                    break;
+                case 'warning':
+                    iconHtml = '<span class="notification-icon">⚠️</span>';
+                    break;
+                case 'error':
+                    iconHtml = '<span class="notification-icon">❌</span>';
+                    break;
+                case 'delay':
+                    iconHtml = '<span class="notification-icon">🔴</span>';
+                    break;
+                default:
+                    iconHtml = '<span class="notification-icon">ℹ️</span>';
+            }
+            
+            // Create content
+            notification.innerHTML = `
+                ${iconHtml}
+                <div class="notification-content">
+                    <h4>${title}</h4>
+                    <p>${message}</p>
+                </div>
+                <button class="notification-close">&times;</button>
+            `;
+            
+            // Get or create notification container
+            let container = document.getElementById('app-notification-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'app-notification-container';
+                document.body.appendChild(container);
+            }
+            
+            // Add notification to container
+            container.appendChild(notification);
+            
+            // Add close button functionality
+            const closeBtn = notification.querySelector('.notification-close');
+            closeBtn.addEventListener('click', function() {
+                notification.classList.add('closing');
+                setTimeout(function() {
+                    notification.remove();
+                }, 300);
+            });
+            
+            // Auto-remove after 5 seconds
+            setTimeout(function() {
+                notification.classList.add('closing');
+                setTimeout(function() {
+                    if (notification.parentNode) {
+                        notification.remove();
+                    }
+                }, 300);
+            }, 5000);
+        }
+        
+        // Function to send test notification
+        function sendTestNotification() {
+            showNotification(
+                'Test Train Notification',
+                'This is a test train notification. Notifications are working correctly!',
+                'success'
+            );
+            
+            showNotification(
+                'Train 12760 Delayed',
+                'Train 12760 (HYB-TBM) is currently running 45 minutes late at GDR.',
+                'delay'
+            );
+        }
+        
+        // Initialize notification system
+        document.addEventListener('DOMContentLoaded', function() {
+            // Create notification container styles
+            const style = document.createElement('style');
+            style.textContent = `
+                #app-notification-container {
+                    position: fixed;
+                    bottom: 20px;
+                    right: 20px;
+                    z-index: 9999;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 10px;
+                    max-width: 350px;
+                }
+                
+                .app-notification {
+                    display: flex;
+                    align-items: flex-start;
+                    background-color: white;
+                    border-left: 4px solid #1E88E5;
+                    border-radius: 4px;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                    padding: 12px;
+                    margin-bottom: 10px;
+                    animation: slide-in 0.3s ease;
+                    max-width: 350px;
+                    overflow: hidden;
+                }
+                
+                .app-notification-info {
+                    border-left-color: #1E88E5;
+                }
+                
+                .app-notification-success {
+                    border-left-color: #43A047;
+                }
+                
+                .app-notification-warning {
+                    border-left-color: #FB8C00;
+                }
+                
+                .app-notification-error, .app-notification-delay {
+                    border-left-color: #E53935;
+                }
+                
+                .app-notification.closing {
+                    animation: slide-out 0.3s ease forwards;
+                }
+                
+                .notification-icon {
+                    margin-right: 12px;
+                    font-size: 20px;
+                }
+                
+                .notification-content {
+                    flex: 1;
+                }
+                
+                .notification-content h4 {
+                    margin: 0 0 4px 0;
+                    font-size: 16px;
+                    font-weight: 600;
+                }
+                
+                .notification-content p {
+                    margin: 0;
+                    font-size: 14px;
+                    color: #666;
+                }
+                
+                .notification-close {
+                    background: none;
+                    border: none;
+                    color: #999;
+                    cursor: pointer;
+                    font-size: 18px;
+                    padding: 0;
+                    margin-left: 8px;
+                }
+                
+                @keyframes slide-in {
+                    from { transform: translateX(100%); opacity: 0; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+                
+                @keyframes slide-out {
+                    from { transform: translateX(0); opacity: 1; }
+                    to { transform: translateX(100%); opacity: 0; }
+                }
+            `;
+            document.head.appendChild(style);
+            
+            // Create notification container
+            const container = document.createElement('div');
+            container.id = 'app-notification-container';
+            document.body.appendChild(container);
+            
+            // Check notification permission
+            checkNotificationPermission();
+            
+            // Set up event handlers
+            const enableBtn = document.getElementById('enable-notifications-btn');
+            if (enableBtn) {
+                enableBtn.addEventListener('click', requestNotificationPermission);
+            }
+            
+            const testBtn = document.getElementById('test-notification-btn');
+            if (testBtn) {
+                testBtn.addEventListener('click', sendTestNotification);
+            }
+        });
+        
+        // Expose function to global scope
+        window.showTrainNotification = showNotification;
         </script>
         """
     
@@ -294,40 +431,42 @@ class PushNotifier:
         """Render the notification UI component in Streamlit"""
         st.markdown("### Push Notifications")
         
-        col1, col2 = st.columns(2)
+        notification_container = st.container()
         
-        with col1:
-            st.info("Get instant browser notifications when new trains are detected.")
+        with notification_container:
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.info("Get instant browser notifications when new trains are detected.")
+            
+            with col2:
+                # Add a test notification button in Streamlit
+                if st.button("Send Test Notification", help="Send a test browser notification"):
+                    # This will trigger the JavaScript notification
+                    st.session_state.show_test_notification = True
+                    st.success("Test notification sent! Check the bottom-right corner of your screen.")
         
-        with col2:
-            # Add a test notification button in Streamlit
-            if st.button("Send Test Push Notification", help="Send a test browser notification"):
-                st.success("Test notification sent! Check your browser.")
-        
-        # Add the HTML/JS for push notification functionality
+        # Add the HTML/JS for browser notification functionality
         notification_html = """
-        <div class="push-notification-container">
+        <div class="browser-notification-container">
             <p id="notification-status">Checking notification status...</p>
-            <button id="push-subscribe-button" style="display:none;">
-                Enable Push Notifications
+            <button id="enable-notifications-btn" style="display:none;">
+                Enable Notifications
             </button>
-            <button id="push-unsubscribe-button" style="display:none;">
-                Disable Push Notifications
-            </button>
-            <button id="test-push-button" style="display:none;">
+            <button id="test-notification-btn" style="display:none;">
                 Send Test Notification
             </button>
         </div>
         
         <style>
-        .push-notification-container {
+        .browser-notification-container {
             margin: 1rem 0;
             padding: 1rem;
             border-radius: 0.5rem;
             background-color: #f8f9fa;
         }
         
-        #push-subscribe-button, #push-unsubscribe-button, #test-push-button {
+        #enable-notifications-btn, #test-notification-btn {
             margin-top: 0.5rem;
             padding: 0.5rem 1rem;
             border: none;
@@ -336,30 +475,53 @@ class PushNotifier:
             font-weight: 500;
         }
         
-        #push-subscribe-button {
+        #enable-notifications-btn {
             background-color: #4CAF50;
             color: white;
         }
         
-        #push-unsubscribe-button {
-            background-color: #f44336;
-            color: white;
-        }
-        
-        #test-push-button {
+        #test-notification-btn {
             background-color: #2196F3;
             color: white;
-            margin-left: 0.5rem;
         }
         </style>
         """
         
+        # Add JavaScript to trigger test notification if button was clicked
+        trigger_js = ""
+        if st.session_state.get('show_test_notification', False):
+            trigger_js = """
+            <script>
+                // Wait for notification functions to be loaded
+                setTimeout(function() {
+                    if (window.showTrainNotification) {
+                        window.showTrainNotification(
+                            'Test Train Notification',
+                            'This is a test train notification. Notifications are working correctly!',
+                            'success'
+                        );
+                        
+                        // Show a delay notification example
+                        setTimeout(function() {
+                            window.showTrainNotification(
+                                'Train 12760 Delayed',
+                                'Train 12760 (HYB-TBM) is currently running 45 minutes late at GDR.',
+                                'delay'
+                            );
+                        }, 1000);
+                    }
+                }, 1000);
+            </script>
+            """
+            # Reset the flag
+            st.session_state.show_test_notification = False
+        
         # Combine HTML and JavaScript
-        st.markdown(notification_html + self.get_push_notification_js(), unsafe_allow_html=True)
+        st.markdown(notification_html + self.get_browser_notification_js() + trigger_js, unsafe_allow_html=True)
     
     def notify_new_trains(self, current_trains, train_details=None):
         """
-        Check for new trains and send push notifications if any are found
+        Check for new trains and send browser notifications if any are found
         
         Args:
             current_trains: List of current train IDs
@@ -375,8 +537,8 @@ class PushNotifier:
             timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             logger.info(f"New trains detected: {new_trains}")
             
-            # In a real implementation, you would send the push notification here
-            # For now, we'll just log that we would send a notification
+            # Store notifications to be shown
+            notifications = []
             
             for train in new_trains:
                 # Construct message with details if available
@@ -387,6 +549,16 @@ class PushNotifier:
                     message = f"New train {train} detected\nTime: {timestamp}"
                 
                 logger.info(f"Would send push notification: {message}")
+                
+                # Add to notifications list (will be shown via JavaScript)
+                notifications.append({
+                    'title': f'New Train {train} Detected',
+                    'message': details if (train_details and train in train_details) else f"New train at {timestamp}",
+                    'type': 'info'
+                })
+            
+            # Store in session state to be shown
+            st.session_state.new_train_notifications = notifications
         else:
             logger.info("No new trains detected, no push notifications sent")
         
