@@ -443,56 +443,106 @@ if monitor_success and not monitor_raw_data.empty:
     # Display the data in a styled HTML table
     st.markdown('<div class="monitor-container"><div class="monitor-title">Monitoring Data</div>', unsafe_allow_html=True)
     
+    # Debug output right before building table
+    st.write(f"**DEBUG BEFORE TABLE BUILD:** DataFrame has {len(monitor_raw_data)} rows and {len(monitor_raw_data.columns)} columns")
+    
     # Convert DataFrame to HTML table with styling
     html_table = '<table class="monitor-table">'
     
     # Add custom header row with the specified column names inside thead
     html_table += '<thead><tr>'
     html_table += '<th>S.No</th>'  # Add serial number column
-    html_table += '<th>STN</th>'
-    html_table += '<th>Time Sch - Act</th>'
-    html_table += '<th>Delay(Mins.)</th>'
+    html_table += '<th>Train No.</th>'
+    html_table += '<th>FROM-TO</th>'
+    html_table += '<th>Delay</th>'
     
-    # Add any remaining columns if needed
-    remaining_cols = len(monitor_raw_data.columns) - 3
-    if remaining_cols > 0:
-        for i in range(remaining_cols):
-            col_name = monitor_raw_data.columns[i+3] if i+3 < len(monitor_raw_data.columns) else f"Column {i+4}"
-            html_table += f'<th>{col_name}</th>'
+    # Debug output of actual column names
+    st.write(f"**DEBUG COLUMNS:** {', '.join(monitor_raw_data.columns)}")
+    
+    # Dynamically add remaining important columns
+    important_cols = ['Event', 'CRD', 'Sch. Date', 'Act. Date']
+    for col in important_cols:
+        if col in monitor_raw_data.columns:
+            html_table += f'<th>{col}</th>'
     
     html_table += '</tr></thead>'
     
     # Add data rows inside tbody
     html_table += '<tbody>'
+    
+    # Debug the row enumeration
+    st.write(f"**DEBUG ITERROWS:** Starting to iterate over {len(list(monitor_raw_data.iterrows()))} rows")
+    
+    # Display a maximum of 30 rows (in case there's a lot of data)
     for index, (_, row) in enumerate(monitor_raw_data.iterrows(), 1):
         html_table += '<tr>'
         
         # Add serial number cell
         html_table += f'<td style="font-weight: bold; text-align: center;">{index}</td>'
         
-        # Add rest of the cells
-        for col in monitor_raw_data.columns:
-            cell_value = row[col]
-            
-            # Replace any 'undefined' values with a dash at cell level
-            if 'undefined' in str(cell_value).lower():
-                cell_value = str(cell_value).replace('undefined', '-').replace('Undefined', '-')
+        # Add train number cell
+        train_no = str(row['Train No.']) if 'Train No.' in row and row['Train No.'] else "-"
+        html_table += f'<td style="font-weight: bold; color: #1E3A8A;">{train_no}</td>'
+        
+        # Add FROM-TO cell
+        from_to = str(row['FROM-TO']) if 'FROM-TO' in row and row['FROM-TO'] else "-"
+        html_table += f'<td>{from_to}</td>'
+        
+        # Add delay cell
+        delay = str(row['Delay']) if 'Delay' in row and row['Delay'] else "-"
+        if delay != "-":
+            # Add color based on delay
+            if delay and any(char.isdigit() for char in delay):
+                try:
+                    # Extract numeric portion if mixed with text
+                    import re
+                    num_part = re.search(r'-?\d+', delay)
+                    if num_part:
+                        delay_value = int(num_part.group())
+                        if delay_value < 0:
+                            # Negative delay means early
+                            html_table += f'<td style="color: green; font-weight: bold;">{delay}</td>'
+                        elif delay_value > 10:
+                            # High delay
+                            html_table += f'<td style="color: red; font-weight: bold;">{delay}</td>'
+                        else:
+                            # Normal delay
+                            html_table += f'<td style="color: orange;">{delay}</td>'
+                    else:
+                        html_table += f'<td>{delay}</td>'
+                except (ValueError, TypeError):
+                    html_table += f'<td>{delay}</td>'
+            else:
+                html_table += f'<td>{delay}</td>'
+        else:
+            html_table += f'<td>{delay}</td>'
+        
+        # Add important columns
+        for col in important_cols:
+            if col in row:
+                cell_value = str(row[col]) if not pd.isna(row[col]) else "-"
                 
-            # Apply status styling if the column contains status-related information
-            # This is a heuristic based on column name and cell value
-            if 'status' in col.lower() or 'state' in col.lower():
-                if cell_value.lower() in ['normal', 'ok', 'good', 'active']:
-                    html_table += f'<td class="status-normal">{cell_value}</td>'
-                elif cell_value.lower() in ['warning', 'alert', 'caution']:
-                    html_table += f'<td class="status-warning">{cell_value}</td>'
-                elif cell_value.lower() in ['critical', 'error', 'down', 'inactive']:
-                    html_table += f'<td class="status-critical">{cell_value}</td>'
+                # Replace undefined values
+                if 'undefined' in cell_value.lower():
+                    cell_value = cell_value.replace('undefined', '-').replace('Undefined', '-')
+                
+                # Style based on column type
+                if col == 'Event':
+                    html_table += f'<td style="font-weight: bold;">{cell_value}</td>'
+                elif col == 'CRD':
+                    html_table += f'<td>{cell_value}</td>'
+                elif 'Date' in col:
+                    html_table += f'<td>{cell_value}</td>'
                 else:
                     html_table += f'<td>{cell_value}</td>'
-            else:
-                html_table += f'<td>{cell_value}</td>'
+                
         html_table += '</tr>'
-    
+        
+        # Limit to 30 rows for performance if needed
+        if index >= 30:
+            html_table += f'<tr><td colspan="{4 + len(important_cols)}" style="text-align: center; font-style: italic;">Showing first 30 rows of {len(monitor_raw_data)} total rows</td></tr>'
+            break
+            
     html_table += '</tbody></table>'
     
     # Display the HTML table
