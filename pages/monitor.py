@@ -7,7 +7,7 @@ import os
 import re
 import json
 from animation_utils import create_pulsing_refresh_animation, show_countdown_progress, show_refresh_timestamp
-from whatsapp_notifier import WhatsAppNotifier
+from sms_notifier import SMSNotifier
 
 # Page configuration - MUST be the first Streamlit command
 st.set_page_config(
@@ -238,10 +238,6 @@ create_pulsing_refresh_animation(refresh_placeholder, "Fetching monitoring data 
 st.info("Fetching monitoring data...")
 monitor_raw_data, monitor_success = fetch_sheet_data(MONITOR_DATA_URL)
 
-# Debug information about the raw data
-if monitor_success and not monitor_raw_data.empty:
-    st.write(f"**DEBUG:** Raw data has {len(monitor_raw_data)} rows and {len(monitor_raw_data.columns)} columns")
-
 # Remove the first row if the data was successfully fetched
 if monitor_success and not monitor_raw_data.empty and len(monitor_raw_data) > 1:
     # Skip the first row which is typically a header/summary row
@@ -279,34 +275,7 @@ def safe_convert(value):
 
 # Process and display monitor data
 if monitor_success and not monitor_raw_data.empty:
-    # Log original count
-    original_row_count = len(monitor_raw_data)
-    
-    # Try to find the train number column
-    train_column = None
-    possible_train_columns = ['Train No.', 'Train No', 'Train Number', 'TrainNo', 'Train']
-    for col in possible_train_columns:
-        if col in monitor_raw_data.columns:
-            train_column = col
-            break
-    
-    if train_column:
-        # Remove duplicates based on train number column
-        monitor_raw_data = monitor_raw_data.drop_duplicates(subset=[train_column], keep='first')
-        
-        # Report the duplicate removal result
-        removed_count = original_row_count - len(monitor_raw_data)
-        if removed_count > 0:
-            st.success(f"Successfully loaded monitoring data: Removed {removed_count} duplicate trains (from {original_row_count} to {len(monitor_raw_data)} rows)")
-        else:
-            st.success(f"Successfully loaded monitoring data with {len(monitor_raw_data)} rows (no duplicates found)")
-            
-        # Add debug to show all train numbers
-        if len(monitor_raw_data) > 0:
-            train_numbers_list = monitor_raw_data[train_column].tolist()
-            st.write(f"**DEBUG:** Found {len(train_numbers_list)} trains: {train_numbers_list}")
-    else:
-        st.success(f"Successfully loaded monitoring data with {len(monitor_raw_data)} rows")
+    st.success(f"Successfully loaded monitoring data with {len(monitor_raw_data)} rows")
     
     # Apply safe conversion to all elements
     for col in monitor_raw_data.columns:
@@ -316,8 +285,8 @@ if monitor_success and not monitor_raw_data.empty:
     monitor_raw_data = monitor_raw_data.replace('undefined', '-')
     monitor_raw_data = monitor_raw_data.replace('Undefined', '-')
     
-    # Show a section for WhatsApp notification settings
-    with st.expander("WhatsApp Notification Settings", expanded=False):
+    # Show a section for SMS notification settings
+    with st.expander("SMS Notification Settings", expanded=False):
         col1, col2 = st.columns(2)
         
         with col1:
@@ -352,70 +321,24 @@ if monitor_success and not monitor_raw_data.empty:
             st.session_state.use_new_format = use_new_format
             
             if use_new_format:
-                st.success("Using compact WhatsApp format")
+                st.success("Using compact SMS format")
             else:
-                st.info("Using standard WhatsApp format")
-        
-        # Add testing section
-        st.markdown("---")
-        st.subheader("Test WhatsApp Notification")
-        
-        test_col1, test_col2 = st.columns(2)
-        
-        with test_col1:
-            # Add a test input field for train number
-            test_train_number = st.text_input("Test Train Number", value="12760", help="Enter a train number to test the notification")
-            test_from_to = st.text_input("Test From-To", value="HYB-TBM", help="Enter a From-To station pair")
-            test_event = st.selectbox("Test Event", ["T/O", "H/O", "Arrived"], help="Select an event type")
-            test_station = st.text_input("Test Station", value="KI", help="Enter a station code")
-            test_delay = st.number_input("Test Delay (mins)", value=-6, help="Enter a delay value in minutes")
-            
-        with test_col2:
-            # Add some explanation text
-            st.markdown("""
-            This section allows you to test the WhatsApp notification system without waiting for new trains.
-            
-            Simply enter the test data and click the button below to send a test notification.
-            
-            Note: This will not affect the known trains tracking.
-            """)
-            
-            # Add a test button
-            if st.button("Send Test WhatsApp Notification", type="primary"):
-                # Create a mock train detail for testing
-                test_details = {
-                    "FROM-TO": test_from_to,
-                    "Event": test_event,
-                    "Station": test_station,
-                    "Delay": f"{test_delay} mins",
-                }
-                
-                # Initialize the notifier
-                test_notifier = WhatsAppNotifier()
-                
-                # Create a message with the details
-                if st.session_state.get('use_new_format', True):
-                    test_message = f"{test_train_number} {test_from_to}, {test_event} - {test_station} ({test_delay} mins)"
-                else:
-                    test_message = f"{test_train_number}\nStation Pair: {test_from_to}, Events: {test_event} - {test_station} ({test_delay} mins)"
-                
-                # Attempt to send the test message
-                success = test_notifier.send_notification(test_message)
-                
-                if success:
-                    st.success(f"Test notification prepared successfully!")
-                    st.code(test_message, language="text")
-                    st.info("Check the application logs for the WhatsApp Web URL to manually send the message.")
-                else:
-                    st.error("Failed to prepare test notification. Check the application logs for more details.")
-                    st.info("This might be due to missing WhatsApp configuration.")
+                st.info("Using standard SMS format")
     
-    # Initialize WhatsApp notifier
-    whatsapp_notifier = WhatsAppNotifier()
+    # Initialize SMS notifier
+    sms_notifier = SMSNotifier()
     
-    # Extract train numbers for WhatsApp notifications
+    # Extract train numbers for SMS notifications
     train_numbers = []
     train_details = {}
+    train_column = None
+    
+    # Try to find the train number column
+    possible_train_columns = ['Train No.', 'Train No', 'Train Number', 'TrainNo', 'Train']
+    for col in possible_train_columns:
+        if col in monitor_raw_data.columns:
+            train_column = col
+            break
     
     # Extract train numbers if column found
     if train_column:
@@ -433,18 +356,15 @@ if monitor_success and not monitor_raw_data.empty:
     
     # Check for new trains and send notifications
     if train_numbers:
-        new_trains = whatsapp_notifier.notify_new_trains(train_numbers, train_details)
+        new_trains = sms_notifier.notify_new_trains(train_numbers, train_details)
         if new_trains:
             st.success(f"Detected {len(new_trains)} new trains: {', '.join(new_trains)}")
-            st.info("WhatsApp notifications prepared for new trains only!")
+            st.info("SMS notifications sent for new trains only!")
         else:
             st.info("No new trains detected, no notifications sent.")
     
     # Display the data in a styled HTML table
     st.markdown('<div class="monitor-container"><div class="monitor-title">Monitoring Data</div>', unsafe_allow_html=True)
-    
-    # Debug output right before building table
-    st.write(f"**DEBUG BEFORE TABLE BUILD:** DataFrame has {len(monitor_raw_data)} rows and {len(monitor_raw_data.columns)} columns")
     
     # Convert DataFrame to HTML table with styling
     html_table = '<table class="monitor-table">'
@@ -452,97 +372,50 @@ if monitor_success and not monitor_raw_data.empty:
     # Add custom header row with the specified column names inside thead
     html_table += '<thead><tr>'
     html_table += '<th>S.No</th>'  # Add serial number column
-    html_table += '<th>Train No.</th>'
-    html_table += '<th>FROM-TO</th>'
-    html_table += '<th>Delay</th>'
+    html_table += '<th>STN</th>'
+    html_table += '<th>Time Sch - Act</th>'
+    html_table += '<th>Delay(Mins.)</th>'
     
-    # Debug output of actual column names
-    st.write(f"**DEBUG COLUMNS:** {', '.join(monitor_raw_data.columns)}")
-    
-    # Dynamically add remaining important columns
-    important_cols = ['Event', 'CRD', 'Sch. Date', 'Act. Date']
-    for col in important_cols:
-        if col in monitor_raw_data.columns:
-            html_table += f'<th>{col}</th>'
+    # Add any remaining columns if needed
+    remaining_cols = len(monitor_raw_data.columns) - 3
+    if remaining_cols > 0:
+        for i in range(remaining_cols):
+            col_name = monitor_raw_data.columns[i+3] if i+3 < len(monitor_raw_data.columns) else f"Column {i+4}"
+            html_table += f'<th>{col_name}</th>'
     
     html_table += '</tr></thead>'
     
     # Add data rows inside tbody
     html_table += '<tbody>'
-    
-    # Debug the row enumeration
-    st.write(f"**DEBUG ITERROWS:** Starting to iterate over {len(list(monitor_raw_data.iterrows()))} rows")
-    
-    # Display a maximum of 30 rows (in case there's a lot of data)
     for index, (_, row) in enumerate(monitor_raw_data.iterrows(), 1):
         html_table += '<tr>'
         
         # Add serial number cell
         html_table += f'<td style="font-weight: bold; text-align: center;">{index}</td>'
         
-        # Add train number cell
-        train_no = str(row['Train No.']) if 'Train No.' in row and row['Train No.'] else "-"
-        html_table += f'<td style="font-weight: bold; color: #1E3A8A;">{train_no}</td>'
-        
-        # Add FROM-TO cell
-        from_to = str(row['FROM-TO']) if 'FROM-TO' in row and row['FROM-TO'] else "-"
-        html_table += f'<td>{from_to}</td>'
-        
-        # Add delay cell
-        delay = str(row['Delay']) if 'Delay' in row and row['Delay'] else "-"
-        if delay != "-":
-            # Add color based on delay
-            if delay and any(char.isdigit() for char in delay):
-                try:
-                    # Extract numeric portion if mixed with text
-                    import re
-                    num_part = re.search(r'-?\d+', delay)
-                    if num_part:
-                        delay_value = int(num_part.group())
-                        if delay_value < 0:
-                            # Negative delay means early
-                            html_table += f'<td style="color: green; font-weight: bold;">{delay}</td>'
-                        elif delay_value > 10:
-                            # High delay
-                            html_table += f'<td style="color: red; font-weight: bold;">{delay}</td>'
-                        else:
-                            # Normal delay
-                            html_table += f'<td style="color: orange;">{delay}</td>'
-                    else:
-                        html_table += f'<td>{delay}</td>'
-                except (ValueError, TypeError):
-                    html_table += f'<td>{delay}</td>'
-            else:
-                html_table += f'<td>{delay}</td>'
-        else:
-            html_table += f'<td>{delay}</td>'
-        
-        # Add important columns
-        for col in important_cols:
-            if col in row:
-                cell_value = str(row[col]) if not pd.isna(row[col]) else "-"
+        # Add rest of the cells
+        for col in monitor_raw_data.columns:
+            cell_value = row[col]
+            
+            # Replace any 'undefined' values with a dash at cell level
+            if 'undefined' in str(cell_value).lower():
+                cell_value = str(cell_value).replace('undefined', '-').replace('Undefined', '-')
                 
-                # Replace undefined values
-                if 'undefined' in cell_value.lower():
-                    cell_value = cell_value.replace('undefined', '-').replace('Undefined', '-')
-                
-                # Style based on column type
-                if col == 'Event':
-                    html_table += f'<td style="font-weight: bold;">{cell_value}</td>'
-                elif col == 'CRD':
-                    html_table += f'<td>{cell_value}</td>'
-                elif 'Date' in col:
-                    html_table += f'<td>{cell_value}</td>'
+            # Apply status styling if the column contains status-related information
+            # This is a heuristic based on column name and cell value
+            if 'status' in col.lower() or 'state' in col.lower():
+                if cell_value.lower() in ['normal', 'ok', 'good', 'active']:
+                    html_table += f'<td class="status-normal">{cell_value}</td>'
+                elif cell_value.lower() in ['warning', 'alert', 'caution']:
+                    html_table += f'<td class="status-warning">{cell_value}</td>'
+                elif cell_value.lower() in ['critical', 'error', 'down', 'inactive']:
+                    html_table += f'<td class="status-critical">{cell_value}</td>'
                 else:
                     html_table += f'<td>{cell_value}</td>'
-                
+            else:
+                html_table += f'<td>{cell_value}</td>'
         html_table += '</tr>'
-        
-        # Limit to 30 rows for performance if needed
-        if index >= 30:
-            html_table += f'<tr><td colspan="{4 + len(important_cols)}" style="text-align: center; font-style: italic;">Showing first 30 rows of {len(monitor_raw_data)} total rows</td></tr>'
-            break
-            
+    
     html_table += '</tbody></table>'
     
     # Display the HTML table
@@ -560,28 +433,29 @@ if monitor_success and not monitor_raw_data.empty:
     
     # Extra information section
     with st.expander("Additional Information"):
-        st.write("This page monitors train data and sends WhatsApp notifications for new trains only.")
+        st.write("This page monitors train data and sends SMS notifications for new trains only.")
         
-        # Check if we have WhatsApp API key and number
-        if not whatsapp_notifier.whatsapp_api_key:
-            st.warning("WhatsApp credentials not found. Please add them to your secrets.toml file.")
+        # Check if we have Twilio secrets already
+        if not (sms_notifier.account_sid and sms_notifier.auth_token and sms_notifier.from_number):
+            st.warning("Twilio credentials not found. Please add them to your secrets.toml file.")
             st.code("""
 # In .streamlit/secrets.toml:
-WHATSAPP_API_KEY = "your_whatsapp_api_key"  # If you're using personal WhatsApp, you can use 'personal' as the key
-WHATSAPP_NUMBER = "your_whatsapp_number"  # Your personal WhatsApp number with country code
-NOTIFICATION_RECIPIENTS = ["recipient_phone_number1", "recipient_phone_number2"]  # Must be WhatsApp numbers with country code
+TWILIO_ACCOUNT_SID = "your_account_sid"
+TWILIO_AUTH_TOKEN = "your_auth_token"
+TWILIO_PHONE_NUMBER = "+1234567890"
+NOTIFICATION_RECIPIENTS = ["recipient_phone_number1", "recipient_phone_number2"]
             """)
         else:
-            st.success("WhatsApp configuration found. WhatsApp notifications are enabled.")
+            st.success("Twilio credentials found. SMS notifications are enabled.")
             
             # Show current notification recipients
-            if whatsapp_notifier.recipients:
-                st.write(f"Currently notifying {len(whatsapp_notifier.recipients)} WhatsApp recipients: {', '.join(whatsapp_notifier.recipients)}")
+            if sms_notifier.recipients:
+                st.write(f"Currently notifying {len(sms_notifier.recipients)} recipients: {', '.join(sms_notifier.recipients)}")
             else:
                 st.warning("No notification recipients configured. Add them to your secrets.toml file.")
         
         # Show format examples
-        st.markdown("#### WhatsApp Message Format Examples:")
+        st.markdown("#### SMS Format Examples:")
         st.markdown("**Compact Format:**")
         st.code("12760 HYB-TBM, T/O - KI (-6 mins), H/O - GDR (9 mins), DELAYED BY LT 9")
         
