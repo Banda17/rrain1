@@ -285,6 +285,46 @@ if monitor_success and not monitor_raw_data.empty:
     monitor_raw_data = monitor_raw_data.replace('undefined', '-')
     monitor_raw_data = monitor_raw_data.replace('Undefined', '-')
     
+    # Show a section for SMS notification settings
+    with st.expander("SMS Notification Settings", expanded=False):
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            # Add option to reset known trains
+            if st.button("Reset Known Trains", type="primary", help="Clear the list of known trains to receive notifications for all trains again"):
+                # Clear the session state and file
+                if "known_trains" in st.session_state:
+                    st.session_state.known_trains = set()
+                try:
+                    if os.path.exists('temp/known_trains.json'):
+                        os.remove('temp/known_trains.json')
+                    st.success("Known trains list has been reset. You will receive notifications for all trains again.")
+                except Exception as e:
+                    st.error(f"Error resetting known trains: {str(e)}")
+            
+            # Display current known trains count
+            try:
+                known_trains = set()
+                if os.path.exists('temp/known_trains.json'):
+                    with open('temp/known_trains.json', 'r') as f:
+                        known_trains = set(json.load(f))
+                st.info(f"Currently tracking {len(known_trains)} known trains")
+            except Exception as e:
+                st.warning(f"Could not read known trains: {str(e)}")
+                
+        with col2:
+            # Add option to toggle message format
+            st.write("Notification Format:")
+            use_new_format = st.checkbox("Use compact format", 
+                                        value=st.session_state.get('use_new_format', True),
+                                        help="Example: '12760 HYB-TBM, T/O - KI (-6 mins)'")
+            st.session_state.use_new_format = use_new_format
+            
+            if use_new_format:
+                st.success("Using compact SMS format")
+            else:
+                st.info("Using standard SMS format")
+    
     # Initialize SMS notifier
     sms_notifier = SMSNotifier()
     
@@ -319,7 +359,9 @@ if monitor_success and not monitor_raw_data.empty:
         new_trains = sms_notifier.notify_new_trains(train_numbers, train_details)
         if new_trains:
             st.success(f"Detected {len(new_trains)} new trains: {', '.join(new_trains)}")
-            st.info("SMS notifications sent!")
+            st.info("SMS notifications sent for new trains only!")
+        else:
+            st.info("No new trains detected, no notifications sent.")
     
     # Display the data in a styled HTML table
     st.markdown('<div class="monitor-container"><div class="monitor-title">Monitoring Data</div>', unsafe_allow_html=True)
@@ -389,9 +431,9 @@ if monitor_success and not monitor_raw_data.empty:
     
     st.markdown('</div>', unsafe_allow_html=True)
     
-    # Notification settings
-    with st.expander("SMS Notification Settings"):
-        st.write("Configure SMS notifications for new trains")
+    # Extra information section
+    with st.expander("Additional Information"):
+        st.write("This page monitors train data and sends SMS notifications for new trains only.")
         
         # Check if we have Twilio secrets already
         if not (sms_notifier.account_sid and sms_notifier.auth_token and sms_notifier.from_number):
@@ -412,38 +454,13 @@ NOTIFICATION_RECIPIENTS = ["recipient_phone_number1", "recipient_phone_number2"]
             else:
                 st.warning("No notification recipients configured. Add them to your secrets.toml file.")
         
-        # Initialize session state variables if they don't exist
-        if 'use_new_format' not in st.session_state:
-            st.session_state.use_new_format = True
+        # Show format examples
+        st.markdown("#### SMS Format Examples:")
+        st.markdown("**Compact Format:**")
+        st.code("12760 HYB-TBM, T/O - KI (-6 mins), H/O - GDR (9 mins), DELAYED BY LT 9")
         
-        # Add a checkbox for selecting notification format
-        use_new_format = st.checkbox(
-            "Use compact notification format",
-            value=st.session_state.use_new_format,
-            help="When enabled, SMS notifications will use a compact format like: '12760 HYB-TBM, T/O - KI (-6 mins), H/O - GDR (9 mins), DELAYED BY LT 9'"
-        )
-        
-        # Update session state when the checkbox changes
-        if use_new_format != st.session_state.use_new_format:
-            st.session_state.use_new_format = use_new_format
-            st.success(f"SMS notification format updated to: {'Compact' if use_new_format else 'Standard'}")
-        
-        # Format example
-        st.markdown("#### Sample Format:")
-        if st.session_state.use_new_format:
-            st.code("12760 HYB-TBM, T/O - KI (-6 mins), H/O - GDR (9 mins), DELAYED BY LT 9, Start Date: 18-Mar-2025\nTime: 2025-03-19 07:18:48")
-        else:
-            st.code("New train detected: 12760\nStation Pair: HYB 18:00-- TBM 08:00, Intermediate Stations: KI (-6 mins), GDR (9 mins), Delays: LT 9, Start Date: 18-Mar-2025\nTime: 2025-03-19 07:18:48")
-                
-        # Show status of train tracking
-        known_trains = sms_notifier.load_known_trains()
-        st.write(f"Currently tracking {len(known_trains)} known trains")
-        
-        # Add a button to reset known trains
-        if st.button("Reset Train Tracking"):
-            sms_notifier.save_known_trains(set())
-            st.success("Train tracking reset. All trains will be treated as new.")
-            st.experimental_rerun()
+        st.markdown("**Standard Format:**")
+        st.code("New train detected: 12760\nStation Pair: HYB 18:00-- TBM 08:00, Intermediate Stations: KI (-6 mins), GDR (9 mins), Delays: LT 9")
     
     # Set up auto-refresh after 5 minutes (300 seconds)
     st.markdown("""

@@ -101,6 +101,10 @@ class SMSNotifier:
         known_trains = self.load_known_trains()
         current_trains_set = set(current_trains)
         
+        # Log current trains for debugging
+        logger.info(f"Current trains in data: {len(current_trains_set)}")
+        logger.debug(f"Train numbers: {sorted(list(current_trains_set))}")
+        
         # Find new trains
         new_trains = current_trains_set - known_trains
         
@@ -109,6 +113,8 @@ class SMSNotifier:
             known_trains.update(new_trains)
             self.save_known_trains(known_trains)
             logger.info(f"Detected {len(new_trains)} new trains: {new_trains}")
+        else:
+            logger.info(f"No new trains detected. Already tracking {len(known_trains)} trains.")
         
         return list(new_trains)
     
@@ -152,53 +158,64 @@ class SMSNotifier:
         Returns:
             List of new train IDs
         """
+        # Only check for trains that we haven't seen before
         new_trains = self.check_for_new_trains(current_trains)
         
         if new_trains:
             timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            logger.info(f"Sending notifications for {len(new_trains)} new trains: {new_trains}")
             
             for train in new_trains:
-                # Construct message with details if available
-                if train_details and train in train_details:
-                    details = train_details[train]
-                    # Format message according to the requested format
-                    message = f"New train detected: {train}\n{details}\nTime: {timestamp}"
+                # Only send notifications for newly detected trains
+                try:
+                    # Construct message with details if available
+                    if train_details and train in train_details:
+                        details = train_details[train]
+                        
+                        # Check if we should use the compact format
+                        if st.session_state.get('use_new_format', False):
+                            try:
+                                # Extract train details for the compact format
+                                from_to = details.split('[')[1].split(']')[0].strip() if '[' in details and ']' in details else ""
+                                intermediate = ""
+                                delays = ""
+                                start_date = ""
+                                
+                                # Extract intermediate stations and delays
+                                if '(' in details and ')' in details:
+                                    stations_part = details.split(']')[1] if ']' in details else details
+                                    stations = [s.strip() for s in stations_part.split(',')]
+                                    
+                                    for station in stations:
+                                        if "T/O" in station or "H/O" in station or "(-" in station or "(+" in station:
+                                            intermediate += station + ","
+                                        elif "DELAYED" in station.upper() or "LT" in station or "BT" in station:
+                                            delays = station.strip()
+                                        elif "Start Date" in station:
+                                            start_date = station.strip()
+                                    
+                                    # Remove trailing comma
+                                    if intermediate.endswith(','):
+                                        intermediate = intermediate[:-1]
+                                
+                                # Format the compact message
+                                message = f"{train} {from_to}, {intermediate} {delays}, {start_date}\nTime: {timestamp}"
+                            except Exception as e:
+                                logger.error(f"Error formatting message: {str(e)}")
+                                # Fallback to standard format if parsing fails
+                                message = f"New train detected: {train}\n{details}\nTime: {timestamp}"
+                        else:
+                            # Standard format
+                            message = f"New train detected: {train}\n{details}\nTime: {timestamp}"
+                    else:
+                        # Basic message if no details available
+                        message = f"New train detected: {train}\nTime: {timestamp}"
                     
-                    # Check if we should use the new format
-                    if st.session_state.get('use_new_format', False):
-                        try:
-                            # Extract train details for the new format
-                            from_to = details.split('[')[1].split(']')[0].strip() if '[' in details and ']' in details else ""
-                            intermediate = ""
-                            delays = ""
-                            start_date = ""
-                            
-                            # Extract intermediate stations and delays
-                            if '(' in details and ')' in details:
-                                stations_part = details.split(']')[1] if ']' in details else details
-                                stations = [s.strip() for s in stations_part.split(',')]
-                                
-                                for station in stations:
-                                    if "T/O" in station or "H/O" in station or "(-" in station or "(+" in station:
-                                        intermediate += station + ","
-                                    elif "DELAYED" in station.upper() or "LT" in station or "BT" in station:
-                                        delays = station.strip()
-                                    elif "Start Date" in station:
-                                        start_date = station.strip()
-                                
-                                # Remove trailing comma
-                                if intermediate.endswith(','):
-                                    intermediate = intermediate[:-1]
-                            
-                            # Format the new message
-                            message = f"{train} {from_to}, {intermediate} {delays}, {start_date}\nTime: {timestamp}"
-                        except Exception as e:
-                            logger.error(f"Error formatting message: {str(e)}")
-                            # Fallback to original format if parsing fails
-                else:
-                    message = f"New train detected: {train}\nTime: {timestamp}"
-                
-                # Send notification
-                self.send_notification(message)
+                    # Send notification
+                    self.send_notification(message)
+                except Exception as e:
+                    logger.error(f"Error sending notification for train {train}: {str(e)}")
+        else:
+            logger.info("No new trains detected, no notifications sent")
         
         return new_trains
