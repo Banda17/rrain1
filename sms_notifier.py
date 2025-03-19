@@ -17,7 +17,7 @@ class SMSNotifier:
         self.api_token = st.secrets.get("SMS_COUNTRY_API_TOKEN", os.environ.get("SMS_COUNTRY_API_TOKEN"))
         
         # SMS Country API endpoint
-        self.api_url = "https://restapi.smscountry.com/v1/Messages"
+        self.api_url = "https://api.smscountry.com/v1/SMSes"
         
         # Get notification recipients from environment or secrets
         self.recipients = []
@@ -144,11 +144,11 @@ class SMSNotifier:
                 
                 # Create the JSON payload for SMS Country
                 payload = {
-                    'Text': message,
-                    'Number': recipient,
-                    'SenderId': 'SMSCTRY',  # Default sender ID, can be customized
-                    'DRNotify': 'true',
-                    'Tool': 'API'
+                    'Message': message,
+                    'MobileNumbers': [recipient],
+                    'SenderId': 'SCRVJW',  # Custom sender ID for your application
+                    'Is_Unicode': False,
+                    'Is_Flash': False
                 }
                 
                 # Make the API request
@@ -161,11 +161,18 @@ class SMSNotifier:
                 
                 # Check if the request was successful
                 if response.status_code == 200 or response.status_code == 201:
-                    response_data = response.json()
-                    if response_data.get('Status') == 'Success':
-                        logger.info(f"SMS sent to {recipient} (Message ID: {response_data.get('MessageUUID', 'unknown')})")
-                    else:
-                        logger.error(f"SMS Country API error: {response_data.get('Message', 'Unknown error')}")
+                    try:
+                        response_data = response.json()
+                        if 'MessageId' in response_data:
+                            logger.info(f"SMS sent to {recipient} (Message ID: {response_data.get('MessageId', 'unknown')})")
+                        elif 'Message' in response_data:
+                            logger.info(f"SMS Country response: {response_data.get('Message')}")
+                        else:
+                            logger.info(f"SMS sent successfully to {recipient}")
+                    except Exception as e:
+                        logger.error(f"Error parsing API response: {str(e)}")
+                        if response.text:
+                            logger.info(f"Raw response: {response.text}")
                         success = False
                 else:
                     logger.error(f"SMS Country API request failed with status code: {response.status_code}")

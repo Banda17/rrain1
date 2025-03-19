@@ -325,22 +325,58 @@ if monitor_success and not monitor_raw_data.empty:
             else:
                 st.info("Using standard SMS format")
             
-            # Add test SMS button
-            if st.button("Send Test SMS", help="Send a test SMS to verify the notification system"):
-                # Create a test message
-                test_message = "TEST: SCR Vijayawada Division Train Tracker - SMS notification system test"
-                
-                # Get the SMS notifier instance
-                from sms_notifier import SMSNotifier
-                sms_notifier = SMSNotifier()
-                
-                # Send the test message
-                success = sms_notifier.send_notification(test_message)
-                
-                if success:
-                    st.success("Test SMS sent successfully! You should receive it shortly.")
-                else:
-                    st.error("Failed to send test SMS. Check logs for details.")
+            # Add test SMS and API check buttons
+            test_col1, test_col2 = st.columns(2)
+            
+            with test_col1:
+                if st.button("Check API Connection", help="Verify SMS Country API connection before sending"):
+                    # Get the SMS notifier instance
+                    from sms_notifier import SMSNotifier
+                    import requests
+                    
+                    sms_notifier = SMSNotifier()
+                    
+                    if not sms_notifier.api_key or not sms_notifier.api_token:
+                        st.error("SMS Country API credentials not found. Please add them to Replit Secrets.")
+                    else:
+                        # Try a simple API request to check connectivity
+                        try:
+                            headers = {
+                                'Accept': 'application/json',
+                            }
+                            auth = (sms_notifier.api_key, sms_notifier.api_token)
+                            
+                            # Use the API ping endpoint
+                            response = requests.get(
+                                "https://api.smscountry.com/v1/ping",
+                                headers=headers,
+                                auth=auth
+                            )
+                            
+                            if response.status_code == 200:
+                                st.success("API connection successful! Your credentials are working.")
+                            else:
+                                st.error(f"API connection failed with status code: {response.status_code}")
+                                st.code(response.text)
+                        except Exception as e:
+                            st.error(f"API connection error: {str(e)}")
+            
+            with test_col2:
+                if st.button("Send Test SMS", help="Send a test SMS to verify the notification system"):
+                    # Create a test message
+                    test_message = "TEST: SCR Vijayawada Division Train Tracker - SMS notification system test"
+                    
+                    # Get the SMS notifier instance
+                    from sms_notifier import SMSNotifier
+                    sms_notifier = SMSNotifier()
+                    
+                    # Send the test message
+                    success = sms_notifier.send_notification(test_message)
+                    
+                    if success:
+                        st.success("Test SMS sent successfully! You should receive it shortly.")
+                    else:
+                        st.error("Failed to send test SMS. Check logs for details.")
     
     # Initialize SMS notifier
     sms_notifier = SMSNotifier()
