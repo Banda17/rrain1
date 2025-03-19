@@ -249,13 +249,13 @@ refresh_placeholder.empty()
 # Function to safely convert values
 def safe_convert(value):
     """
-    Safely convert values to strings handling NaN, None, and empty values consistently.
+    Safely convert values to strings handling NaN, None, undefined, and empty values consistently.
     
     Args:
         value: The value to convert
         
     Returns:
-        String representation or empty string for null values
+        String representation, dash for undefined, or empty string for null values
     """
     if pd.isna(value) or pd.isnull(value) or str(value).lower() == 'nan' or value is None:
         return ""
@@ -264,6 +264,10 @@ def safe_convert(value):
     string_val = str(value).strip()
     if not string_val:
         return ""
+    
+    # Replace undefined values with dash
+    if string_val.lower() == 'undefined':
+        return "-"
         
     return string_val
 
@@ -274,6 +278,10 @@ if monitor_success and not monitor_raw_data.empty:
     # Apply safe conversion to all elements
     for col in monitor_raw_data.columns:
         monitor_raw_data[col] = monitor_raw_data[col].map(safe_convert)
+        
+    # Replace any 'undefined' values with a dash
+    monitor_raw_data = monitor_raw_data.replace('undefined', '-')
+    monitor_raw_data = monitor_raw_data.replace('Undefined', '-')
     
     # Display the data in a styled HTML table
     st.markdown('<div class="monitor-container"><div class="monitor-title">Monitoring Data</div>', unsafe_allow_html=True)
@@ -303,6 +311,10 @@ if monitor_success and not monitor_raw_data.empty:
         for col in monitor_raw_data.columns:
             cell_value = row[col]
             
+            # Replace any 'undefined' values with a dash at cell level
+            if cell_value.lower() == 'undefined' or cell_value == 'Undefined':
+                cell_value = '-'
+                
             # Apply status styling if the column contains status-related information
             # This is a heuristic based on column name and cell value
             if 'status' in col.lower() or 'state' in col.lower():
