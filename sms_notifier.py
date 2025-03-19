@@ -146,13 +146,12 @@ class SMSNotifier:
                     'Authorization': f'Basic {self.api_token}'
                 }
                 
-                # Create the JSON payload for SMS Country
+                # Create the JSON payload for SMS Country in the required format
                 payload = {
-                    'Message': message,
-                    'MobileNumbers': [recipient],
+                    'Text': message,
+                    'Number': recipient,
                     'SenderId': 'SCRVJW',  # Custom sender ID for your application
-                    'Is_Unicode': False,
-                    'Is_Flash': False
+                    'Tool': 'API'
                 }
                 
                 # Make the API request

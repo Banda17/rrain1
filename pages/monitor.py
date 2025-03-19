@@ -371,13 +371,17 @@ if monitor_success and not monitor_raw_data.empty:
                     from sms_notifier import SMSNotifier
                     sms_notifier = SMSNotifier()
                     
-                    # Send the test message
-                    success = sms_notifier.send_notification(test_message)
-                    
-                    if success:
-                        st.success("Test SMS sent successfully! You should receive it shortly.")
+                    if not sms_notifier.recipients:
+                        st.error("No recipients configured. Please add NOTIFICATION_RECIPIENTS to Replit Secrets.")
+                        st.info("Example format: ['91XXXXXXXXXX', '91XXXXXXXXXX']")
                     else:
-                        st.error("Failed to send test SMS. Check logs for details.")
+                        # Send the test message
+                        success = sms_notifier.send_notification(test_message)
+                        
+                        if success:
+                            st.success("Test SMS sent successfully! You should receive it shortly.")
+                        else:
+                            st.error("Failed to send test SMS. Check logs for details.")
     
     # Initialize SMS notifier
     sms_notifier = SMSNotifier()
@@ -496,7 +500,7 @@ if monitor_success and not monitor_raw_data.empty:
             st.code("""
 SMS_COUNTRY_API_KEY = your_api_key
 SMS_COUNTRY_API_TOKEN = your_api_token
-NOTIFICATION_RECIPIENTS = ["recipient_phone_number1", "recipient_phone_number2"]
+NOTIFICATION_RECIPIENTS = ["91XXXXXXXXXX", "91YYYYYYYYYY"]  # Include country code (91 for India)
             """)
         else:
             st.success("SMS Country credentials found. SMS notifications are enabled.")
