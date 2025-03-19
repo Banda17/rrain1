@@ -18,11 +18,29 @@ class SMSNotifier:
         self.from_number = st.secrets.get("TWILIO_PHONE_NUMBER", os.environ.get("TWILIO_PHONE_NUMBER"))
         
         # Get notification recipients from environment or secrets
-        recipients_str = st.secrets.get("NOTIFICATION_RECIPIENTS", os.environ.get("NOTIFICATION_RECIPIENTS", "[]"))
+        self.recipients = []
         try:
-            self.recipients = json.loads(recipients_str)
-        except json.JSONDecodeError:
-            logger.error(f"Invalid JSON format for NOTIFICATION_RECIPIENTS: {recipients_str}")
+            recipients_value = st.secrets.get("NOTIFICATION_RECIPIENTS", os.environ.get("NOTIFICATION_RECIPIENTS"))
+            
+            # Handle different types of input
+            if isinstance(recipients_value, str):
+                # If it's a string, try to parse it as JSON
+                try:
+                    self.recipients = json.loads(recipients_value)
+                except json.JSONDecodeError:
+                    # If it's a single number in string format
+                    if recipients_value.strip():
+                        self.recipients = [recipients_value.strip()]
+            elif isinstance(recipients_value, list):
+                # If it's already a list
+                self.recipients = recipients_value
+            elif recipients_value is not None:
+                # If it's a single value that's not None
+                self.recipients = [str(recipients_value)]
+                
+            logger.info(f"Successfully configured {len(self.recipients)} notification recipients")
+        except Exception as e:
+            logger.error(f"Error processing NOTIFICATION_RECIPIENTS: {str(e)}")
             self.recipients = []
         
         # Initialize client if credentials are available
