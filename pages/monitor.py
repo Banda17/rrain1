@@ -7,7 +7,7 @@ import os
 import re
 import json
 from animation_utils import create_pulsing_refresh_animation, show_countdown_progress, show_refresh_timestamp
-from sms_notifier import SMSNotifier
+from push_notification import PushNotifier
 
 # Page configuration - MUST be the first Streamlit command
 st.set_page_config(
@@ -242,7 +242,6 @@ monitor_raw_data, monitor_success = fetch_sheet_data(MONITOR_DATA_URL)
 if monitor_success and not monitor_raw_data.empty and len(monitor_raw_data) > 1:
     # Skip the first row which is typically a header/summary row
     monitor_raw_data = monitor_raw_data.iloc[1:].reset_index(drop=True)
-    st.info(f"Removed the first line from the data, now showing {len(monitor_raw_data)} entries")
 
 # Clear the refresh animation when done
 st.session_state['is_refreshing'] = False
@@ -285,8 +284,12 @@ if monitor_success and not monitor_raw_data.empty:
     monitor_raw_data = monitor_raw_data.replace('undefined', '-')
     monitor_raw_data = monitor_raw_data.replace('Undefined', '-')
     
-    # Show a section for SMS notification settings
-    with st.expander("SMS Notification Settings", expanded=False):
+    # Push notification section
+    with st.expander("Push Notification Settings", expanded=True):
+        # Initialize push notifier
+        push_notifier = PushNotifier()
+        
+        # Create columns for notification controls
         col1, col2 = st.columns(2)
         
         with col1:
@@ -311,88 +314,11 @@ if monitor_success and not monitor_raw_data.empty:
                 st.info(f"Currently tracking {len(known_trains)} known trains")
             except Exception as e:
                 st.warning(f"Could not read known trains: {str(e)}")
-                
-        with col2:
-            # Add option to toggle message format
-            st.write("Notification Format:")
-            use_new_format = st.checkbox("Use compact format", 
-                                        value=st.session_state.get('use_new_format', True),
-                                        help="Example: '12760 HYB-TBM, T/O - KI (-6 mins)'")
-            st.session_state.use_new_format = use_new_format
-            
-            if use_new_format:
-                st.success("Using compact SMS format")
-            else:
-                st.info("Using standard SMS format")
-            
-            # Add test SMS and API check buttons
-            test_col1, test_col2 = st.columns(2)
-            
-            with test_col1:
-                if st.button("Check API Connection", help="Verify SMS Country API connection before sending"):
-                    # Get the SMS notifier instance
-                    from sms_notifier import SMSNotifier
-                    import requests
-                    
-                    sms_notifier = SMSNotifier()
-                    
-                    if not sms_notifier.api_key or not sms_notifier.api_token:
-                        st.error("SMS Country API credentials not found. Please add them to Replit Secrets.")
-                    else:
-                        # Try a simple API request to check connectivity
-                        try:
-                            # Prepare proper HTTP Basic Authentication
-                            import base64
-                            credentials = f"{sms_notifier.api_key}:{sms_notifier.api_token}"
-                            encoded_credentials = base64.b64encode(credentials.encode('utf-8')).decode('utf-8')
-                            
-                            # Headers with authorization
-                            headers = {
-                                'Accept': 'application/json',
-                                'Content-Type': 'application/json',
-                                'Authorization': f'Basic {encoded_credentials}'
-                            }
-                            
-                            # Use an API endpoint to check connectivity
-                            api_url = f"https://restapi.smscountry.com/v0.1/Accounts/{sms_notifier.api_key}"
-                            response = requests.get(
-                                api_url,
-                                headers=headers
-                            )
-                            
-                            if response.status_code == 200:
-                                st.success("API connection successful! Your credentials are working.")
-                            else:
-                                st.error(f"API connection failed with status code: {response.status_code}")
-                                st.code(response.text)
-                        except Exception as e:
-                            st.error(f"API connection error: {str(e)}")
-            
-            with test_col2:
-                if st.button("Send Test SMS", help="Send a test SMS to verify the notification system"):
-                    # Create a test message
-                    test_message = "TEST: SCR Vijayawada Division Train Tracker - SMS notification system test"
-                    
-                    # Get the SMS notifier instance
-                    from sms_notifier import SMSNotifier
-                    sms_notifier = SMSNotifier()
-                    
-                    if not sms_notifier.recipients:
-                        st.error("No recipients configured. Please add NOTIFICATION_RECIPIENTS to Replit Secrets.")
-                        st.info("Example format: ['91XXXXXXXXXX', '91XXXXXXXXXX']")
-                    else:
-                        # Send the test message
-                        success = sms_notifier.send_notification(test_message)
-                        
-                        if success:
-                            st.success("Test SMS sent successfully! You should receive it shortly.")
-                        else:
-                            st.error("Failed to send test SMS. Check logs for details.")
+        
+        # Render the push notification UI
+        push_notifier.render_notification_ui()
     
-    # Initialize SMS notifier
-    sms_notifier = SMSNotifier()
-    
-    # Extract train numbers for SMS notifications
+    # Extract train numbers for push notifications
     train_numbers = []
     train_details = {}
     train_column = None
@@ -418,12 +344,16 @@ if monitor_success and not monitor_raw_data.empty:
                         details[col] = row[col]
                 train_details[train_no] = ", ".join([f"{k}: {v}" for k, v in details.items() if v])
     
-    # Check for new trains and send notifications
+    # Check for new trains and send push notifications
     if train_numbers:
-        new_trains = sms_notifier.notify_new_trains(train_numbers, train_details)
+        # Initialize push notifier
+        push_notifier = PushNotifier()
+        
+        # Check for new trains
+        new_trains = push_notifier.notify_new_trains(train_numbers, train_details)
         if new_trains:
             st.success(f"Detected {len(new_trains)} new trains: {', '.join(new_trains)}")
-            st.info("SMS notifications sent for new trains only!")
+            st.info("Push notifications will be sent to subscribed browsers!")
         else:
             st.info("No new trains detected, no notifications sent.")
     
@@ -497,33 +427,36 @@ if monitor_success and not monitor_raw_data.empty:
     
     # Extra information section
     with st.expander("Additional Information"):
-        st.write("This page monitors train data and sends SMS notifications for new trains only.")
+        st.write("This page monitors train data and sends push notifications for new trains only.")
         
-        # Check if we have SMS Country secrets already
-        if not (sms_notifier.api_key and sms_notifier.api_token):
-            st.warning("SMS Country credentials not found. Please add them to Replit Secrets.")
-            st.info("Go to 'Tools > Secrets' in the Replit sidebar to add the following secrets:")
-            st.code("""
-SMS_COUNTRY_API_KEY = your_api_key
-SMS_COUNTRY_API_TOKEN = your_api_token
-NOTIFICATION_RECIPIENTS = ["91XXXXXXXXXX", "91YYYYYYYYYY"]  # Include country code (91 for India)
-            """)
-        else:
-            st.success("SMS Country credentials found. SMS notifications are enabled.")
-            
-            # Show current notification recipients
-            if sms_notifier.recipients:
-                st.write(f"Currently notifying {len(sms_notifier.recipients)} recipients: {', '.join(sms_notifier.recipients)}")
-            else:
-                st.warning("No notification recipients configured. Add them to Replit Secrets.")
+        # Push notification information
+        st.markdown("#### Push Notification Features")
+        st.markdown("""
+        - Receive real-time browser notifications when new trains are detected
+        - No app installation required - works in modern browsers
+        - Notifications work even when the browser is in the background
+        - Click on notifications to open the monitor page directly
+        """)
         
-        # Show format examples
-        st.markdown("#### SMS Format Examples:")
-        st.markdown("**Compact Format:**")
-        st.code("12760 HYB-TBM, T/O - KI (-6 mins), H/O - GDR (9 mins), DELAYED BY LT 9")
+        # Show usage instructions
+        st.markdown("#### How to Enable Push Notifications")
+        st.markdown("""
+        1. Click on the 'Enable Push Notifications' button in the notification settings section
+        2. Allow notifications when prompted by your browser
+        3. You will now receive notifications when new trains are detected
+        """)
         
-        st.markdown("**Standard Format:**")
-        st.code("12760\nStation Pair: HYB 18:00-- TBM 08:00, Intermediate Stations: KI (-6 mins), GDR (9 mins), Delays: LT 9")
+        # Technical details
+        st.markdown("#### Technical Details")
+        st.markdown("""
+        Push notifications use the Web Push API and Service Workers to deliver messages 
+        directly to your browser. Your subscription is stored securely and no personal 
+        information is collected.
+        """)
+        
+        # Note about notification format
+        st.markdown("#### Notification Format Example")
+        st.code("New train 12760 detected\nFROM-TO: HYB-TBM, Station: KI, Delay: -6 mins\nTime: 2023-06-15 14:30:45")
     
     # Set up auto-refresh after 5 minutes (300 seconds)
     st.markdown("""
