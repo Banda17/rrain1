@@ -265,9 +265,9 @@ def safe_convert(value):
     if not string_val:
         return ""
     
-    # Replace undefined values with dash
-    if string_val.lower() == 'undefined':
-        return "-"
+    # Replace undefined values with dash wherever they appear in the string
+    if 'undefined' in string_val.lower():
+        return string_val.replace('undefined', '-').replace('Undefined', '-')
         
     return string_val
 
@@ -312,8 +312,8 @@ if monitor_success and not monitor_raw_data.empty:
             cell_value = row[col]
             
             # Replace any 'undefined' values with a dash at cell level
-            if cell_value.lower() == 'undefined' or cell_value == 'Undefined':
-                cell_value = '-'
+            if 'undefined' in str(cell_value).lower():
+                cell_value = str(cell_value).replace('undefined', '-').replace('Undefined', '-')
                 
             # Apply status styling if the column contains status-related information
             # This is a heuristic based on column name and cell value
