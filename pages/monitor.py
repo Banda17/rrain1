@@ -460,7 +460,7 @@ NOTIFICATION_RECIPIENTS = ["recipient_phone_number1", "recipient_phone_number2"]
         st.code("12760 HYB-TBM, T/O - KI (-6 mins), H/O - GDR (9 mins), DELAYED BY LT 9")
         
         st.markdown("**Standard Format:**")
-        st.code("New train detected: 12760\nStation Pair: HYB 18:00-- TBM 08:00, Intermediate Stations: KI (-6 mins), GDR (9 mins), Delays: LT 9")
+        st.code("12760\nStation Pair: HYB 18:00-- TBM 08:00, Intermediate Stations: KI (-6 mins), GDR (9 mins), Delays: LT 9")
     
     # Set up auto-refresh after 5 minutes (300 seconds)
     st.markdown("""

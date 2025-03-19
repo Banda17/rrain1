@@ -203,13 +203,13 @@ class SMSNotifier:
                             except Exception as e:
                                 logger.error(f"Error formatting message: {str(e)}")
                                 # Fallback to standard format if parsing fails
-                                message = f"New train detected: {train}\n{details}\nTime: {timestamp}"
+                                message = f"{train}\n{details}\nTime: {timestamp}"
                         else:
                             # Standard format
-                            message = f"New train detected: {train}\n{details}\nTime: {timestamp}"
+                            message = f"{train}\n{details}\nTime: {timestamp}"
                     else:
                         # Basic message if no details available
-                        message = f"New train detected: {train}\nTime: {timestamp}"
+                        message = f"{train}\nTime: {timestamp}"
                     
                     # Send notification
                     self.send_notification(message)
