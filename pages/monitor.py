@@ -5,7 +5,9 @@ from datetime import datetime
 import io
 import os
 import re
+import json
 from animation_utils import create_pulsing_refresh_animation, show_countdown_progress, show_refresh_timestamp
+from sms_notifier import SMSNotifier
 
 # Page configuration - MUST be the first Streamlit command
 st.set_page_config(
@@ -283,6 +285,42 @@ if monitor_success and not monitor_raw_data.empty:
     monitor_raw_data = monitor_raw_data.replace('undefined', '-')
     monitor_raw_data = monitor_raw_data.replace('Undefined', '-')
     
+    # Initialize SMS notifier
+    sms_notifier = SMSNotifier()
+    
+    # Extract train numbers for SMS notifications
+    train_numbers = []
+    train_details = {}
+    train_column = None
+    
+    # Try to find the train number column
+    possible_train_columns = ['Train No.', 'Train No', 'Train Number', 'TrainNo', 'Train']
+    for col in possible_train_columns:
+        if col in monitor_raw_data.columns:
+            train_column = col
+            break
+    
+    # Extract train numbers if column found
+    if train_column:
+        train_numbers = [str(train_no).strip() for train_no in monitor_raw_data[train_column] if str(train_no).strip()]
+        
+        # Create train details dictionary
+        for _, row in monitor_raw_data.iterrows():
+            train_no = str(row[train_column]).strip()
+            if train_no:
+                details = {}
+                for col in monitor_raw_data.columns:
+                    if col != train_column and not pd.isna(row[col]):
+                        details[col] = row[col]
+                train_details[train_no] = ", ".join([f"{k}: {v}" for k, v in details.items() if v])
+    
+    # Check for new trains and send notifications
+    if train_numbers:
+        new_trains = sms_notifier.notify_new_trains(train_numbers, train_details)
+        if new_trains:
+            st.success(f"Detected {len(new_trains)} new trains: {', '.join(new_trains)}")
+            st.info("SMS notifications sent!")
+    
     # Display the data in a styled HTML table
     st.markdown('<div class="monitor-container"><div class="monitor-title">Monitoring Data</div>', unsafe_allow_html=True)
     
@@ -291,6 +329,7 @@ if monitor_success and not monitor_raw_data.empty:
     
     # Add custom header row with the specified column names inside thead
     html_table += '<thead><tr>'
+    html_table += '<th>S.No</th>'  # Add serial number column
     html_table += '<th>STN</th>'
     html_table += '<th>Time Sch - Act</th>'
     html_table += '<th>Delay(Mins.)</th>'
@@ -306,8 +345,13 @@ if monitor_success and not monitor_raw_data.empty:
     
     # Add data rows inside tbody
     html_table += '<tbody>'
-    for _, row in monitor_raw_data.iterrows():
+    for index, (_, row) in enumerate(monitor_raw_data.iterrows(), 1):
         html_table += '<tr>'
+        
+        # Add serial number cell
+        html_table += f'<td style="font-weight: bold; text-align: center;">{index}</td>'
+        
+        # Add rest of the cells
         for col in monitor_raw_data.columns:
             cell_value = row[col]
             
@@ -345,10 +389,38 @@ if monitor_success and not monitor_raw_data.empty:
     
     st.markdown('</div>', unsafe_allow_html=True)
     
-    # No custom train extraction function needed anymore
-    
-    # We're not displaying a separate train details table anymore
-    # All required information should be in the monitor data table above
+    # Notification settings (if Twilio credentials are not set)
+    with st.expander("SMS Notification Settings"):
+        st.write("Configure SMS notifications for new trains")
+        
+        # Check if we have Twilio secrets already
+        if not (sms_notifier.account_sid and sms_notifier.auth_token and sms_notifier.from_number):
+            st.warning("Twilio credentials not found. Please add them to your secrets.toml file.")
+            st.code("""
+# In .streamlit/secrets.toml:
+TWILIO_ACCOUNT_SID = "your_account_sid"
+TWILIO_AUTH_TOKEN = "your_auth_token"
+TWILIO_PHONE_NUMBER = "+1234567890"
+NOTIFICATION_RECIPIENTS = ["recipient_phone_number1", "recipient_phone_number2"]
+            """)
+        else:
+            st.success("Twilio credentials found. SMS notifications are enabled.")
+            
+            # Show current notification recipients
+            if sms_notifier.recipients:
+                st.write(f"Currently notifying {len(sms_notifier.recipients)} recipients")
+            else:
+                st.warning("No notification recipients configured. Add them to your secrets.toml file.")
+                
+        # Show status of train tracking
+        known_trains = sms_notifier.load_known_trains()
+        st.write(f"Currently tracking {len(known_trains)} known trains")
+        
+        # Add a button to reset known trains
+        if st.button("Reset Train Tracking"):
+            sms_notifier.save_known_trains(set())
+            st.success("Train tracking reset. All trains will be treated as new.")
+            st.experimental_rerun()
     
     # Set up auto-refresh after 5 minutes (300 seconds)
     st.markdown("""
