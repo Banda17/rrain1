@@ -1,24 +1,58 @@
 Train Number,Station Pair,Intermediate Stations,Delays,Start Date
+12788,NSL 12:50-undefined NS 08:35,"KI (42 mins), BZA (38 mins), NS (54 mins)","LT
+12",18-Mar-2025
+12760,HYB 18:00-undefined TBM 08:00,"KI (-6 mins), GDR (9 mins)","LT
+9",18-Mar-2025
+12740,SC 20:30-undefined VSKP 07:50,"KI (77 mins), BZA (75 mins), DVD (82 mins)","LT
+5",18-Mar-2025
+12734,LPI 17:30-undefined TPTY 05:55,"TEL (-4 mins), GDR (39 mins)","LT
+39",18-Mar-2025
+12764,SC 18:40-undefined TPTY 06:55,"KI (37 mins), GDR (64 mins)","LT
+27",18-Mar-2025
 12711,BZA 06:10-undefined MAS 13:05,"BZA (0 mins), GDR (14 mins)","LT
 14",19-Mar-2025
+12604,CHZ 17:25-undefined MAS 05:40,"TEL (-33 mins), GDR (55 mins)","LT
+55",18-Mar-2025
 20810,NED 16:30-undefined SBP 18:45,"KI (58 mins), DVD (105 mins)","LT
 47",18-Mar-2025
-13433,SMVB 13:50-undefined MLDT 11:00,"GDR (-21 mins), DVD (3 mins)","LT
-3",18-Mar-2025
+12839,HWH 23:45-undefined MAS 03:20,"DVD (101 mins), GDR (137 mins), Data last updated on: ( mins)","LT
+36",17-Mar-2025
+17210,CCT 17:25-undefined SMVB 12:25,"CCT (0 mins), GDR (90 mins)","LT
+90",18-Mar-2025
+12788,NSL 12:50-undefined NS 08:35,"KI (42 mins), BZA (38 mins), NS (54 mins)","LT
+12",18-Mar-2025
 12788,NSL 12:50-undefined NS 08:35,"KI (42 mins), BZA (38 mins), NS (54 mins)","LT
 12",18-Mar-2025
 12740,SC 20:30-undefined VSKP 07:50,"KI (77 mins), BZA (75 mins), DVD (82 mins)","LT
 5",18-Mar-2025
+12734,LPI 17:30-undefined TPTY 05:55,"TEL (-4 mins), GDR (39 mins)","LT
+39",18-Mar-2025
+12740,SC 20:30-undefined VSKP 07:50,"KI (77 mins), BZA (75 mins), DVD (82 mins)","LT
+5",18-Mar-2025
+12604,CHZ 17:25-undefined MAS 05:40,"TEL (-33 mins), GDR (55 mins)","LT
+55",18-Mar-2025
 12764,SC 18:40-undefined TPTY 06:55,"KI (37 mins), GDR (64 mins)","LT
 27",18-Mar-2025
+12839,HWH 23:45-undefined MAS 03:20,"DVD (101 mins), GDR (137 mins), Data last updated on: ( mins)","LT
+36",17-Mar-2025
 22504,DBRG 19:35-undefined CAPE 21:55,"DVD (44 mins), GDR (222 mins)","LT
 178",16-Mar-2025
+17210,CCT 17:25-undefined SMVB 12:25,"CCT (0 mins), GDR (90 mins)","LT
+90",18-Mar-2025
 17210,CCT 17:25-undefined SMVB 12:25,"CCT (0 mins), GDR (90 mins)","LT
 90",18-Mar-2025
 12760,HYB 18:00-undefined TBM 08:00,"KI (-6 mins), GDR (9 mins)","LT
 9",18-Mar-2025
 12734,LPI 17:30-undefined TPTY 05:55,"TEL (-4 mins), GDR (39 mins)","LT
 39",18-Mar-2025
+12760,HYB 18:00-undefined TBM 08:00,"KI (-6 mins), GDR (9 mins)","LT
+9",18-Mar-2025
+12604,CHZ 17:25-undefined MAS 05:40,"TEL (-33 mins), GDR (55 mins)","LT
+55",18-Mar-2025
+12734,LPI 17:30-undefined TPTY 05:55,"TEL (-4 mins), GDR (39 mins)","LT
+39",18-Mar-2025
+12839,HWH 23:45-undefined MAS 03:20,"DVD (101 mins), GDR (137 mins), Data last updated on: ( mins)","LT
+36",17-Mar-2025
 12604,CHZ 17:25-undefined MAS 05:40,"TEL (-33 mins), GDR (55 mins)","LT
 55",18-Mar-2025
 12839,HWH 23:45-undefined MAS 03:20,"DVD (101 mins), GDR (137 mins), Data last updated on: ( mins)","LT

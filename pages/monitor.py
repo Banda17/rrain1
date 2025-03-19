@@ -389,7 +389,7 @@ if monitor_success and not monitor_raw_data.empty:
     
     st.markdown('</div>', unsafe_allow_html=True)
     
-    # Notification settings (if Twilio credentials are not set)
+    # Notification settings
     with st.expander("SMS Notification Settings"):
         st.write("Configure SMS notifications for new trains")
         
@@ -408,9 +408,32 @@ NOTIFICATION_RECIPIENTS = ["recipient_phone_number1", "recipient_phone_number2"]
             
             # Show current notification recipients
             if sms_notifier.recipients:
-                st.write(f"Currently notifying {len(sms_notifier.recipients)} recipients")
+                st.write(f"Currently notifying {len(sms_notifier.recipients)} recipients: {', '.join(sms_notifier.recipients)}")
             else:
                 st.warning("No notification recipients configured. Add them to your secrets.toml file.")
+        
+        # Initialize session state variables if they don't exist
+        if 'use_new_format' not in st.session_state:
+            st.session_state.use_new_format = True
+        
+        # Add a checkbox for selecting notification format
+        use_new_format = st.checkbox(
+            "Use compact notification format",
+            value=st.session_state.use_new_format,
+            help="When enabled, SMS notifications will use a compact format like: '12760 HYB-TBM, T/O - KI (-6 mins), H/O - GDR (9 mins), DELAYED BY LT 9'"
+        )
+        
+        # Update session state when the checkbox changes
+        if use_new_format != st.session_state.use_new_format:
+            st.session_state.use_new_format = use_new_format
+            st.success(f"SMS notification format updated to: {'Compact' if use_new_format else 'Standard'}")
+        
+        # Format example
+        st.markdown("#### Sample Format:")
+        if st.session_state.use_new_format:
+            st.code("12760 HYB-TBM, T/O - KI (-6 mins), H/O - GDR (9 mins), DELAYED BY LT 9, Start Date: 18-Mar-2025\nTime: 2025-03-19 07:18:48")
+        else:
+            st.code("New train detected: 12760\nStation Pair: HYB 18:00-- TBM 08:00, Intermediate Stations: KI (-6 mins), GDR (9 mins), Delays: LT 9, Start Date: 18-Mar-2025\nTime: 2025-03-19 07:18:48")
                 
         # Show status of train tracking
         known_trains = sms_notifier.load_known_trains()
