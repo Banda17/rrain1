@@ -15,6 +15,8 @@ import folium
 from folium.plugins import Draw
 from streamlit_folium import folium_static, st_folium
 from map_viewer import MapViewer  # Import MapViewer for offline map handling
+# Import WhatsApp notifier
+from whatsapp_notifier import WhatsAppNotifier
 
 # Import the custom formatter for train number styling
 try:
@@ -521,6 +523,10 @@ def initialize_session_state():
         'train_schedule': {
             'default': TrainSchedule(),
             'type': TrainSchedule
+        },
+        'whatsapp_notifier': {
+            'default': WhatsAppNotifier(),
+            'type': WhatsAppNotifier
         },
         'last_update': {
             'default': None,
