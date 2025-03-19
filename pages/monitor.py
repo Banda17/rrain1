@@ -324,6 +324,23 @@ if monitor_success and not monitor_raw_data.empty:
                 st.success("Using compact SMS format")
             else:
                 st.info("Using standard SMS format")
+            
+            # Add test SMS button
+            if st.button("Send Test SMS", help="Send a test SMS to verify the notification system"):
+                # Create a test message
+                test_message = "TEST: SCR Vijayawada Division Train Tracker - SMS notification system test"
+                
+                # Get the SMS notifier instance
+                from sms_notifier import SMSNotifier
+                sms_notifier = SMSNotifier()
+                
+                # Send the test message
+                success = sms_notifier.send_notification(test_message)
+                
+                if success:
+                    st.success("Test SMS sent successfully! You should receive it shortly.")
+                else:
+                    st.error("Failed to send test SMS. Check logs for details.")
     
     # Initialize SMS notifier
     sms_notifier = SMSNotifier()
