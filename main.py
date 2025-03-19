@@ -128,97 +128,11 @@ st.markdown("""
             background-color: rgba(0,0,0,.075) !important;
             transition: background-color 0.3s ease !important;
         }
-    </style>
-    
-    /* Red delay notification card styles */
-    #app-notification-container {
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        z-index: 9999;
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        max-width: 350px;
-    }
-    
-    .app-notification {
-        display: flex;
-        align-items: flex-start;
-        background-color: white;
-        border-left: 4px solid #1E88E5;
-        border-radius: 4px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        padding: 12px;
-        margin-bottom: 10px;
-        animation: slide-in 0.3s ease;
-        max-width: 350px;
-        overflow: hidden;
-    }
-    
-    .app-notification-info {
-        border-left-color: #1E88E5;
-    }
-    
-    .app-notification-success {
-        border-left-color: #43A047;
-    }
-    
-    .app-notification-warning {
-        border-left-color: #FB8C00;
-    }
-    
-    .app-notification-error, .app-notification-delay {
-        border-left-color: #E53935;
-        background-color: #ffebee;
-    }
-    
-    .app-notification.closing {
-        animation: slide-out 0.3s ease forwards;
-    }
-    
-    .notification-icon {
-        margin-right: 12px;
-        font-size: 20px;
-    }
-    
-    .notification-content {
-        flex: 1;
-    }
-    
-    .notification-content h4 {
-        margin: 0 0 4px 0;
-        font-size: 16px;
-        font-weight: 600;
-    }
-    
-    .notification-content p {
-        margin: 0;
-        font-size: 14px;
-        color: #666;
-    }
-    
-    .notification-close {
-        background: none;
-        border: none;
-        color: #999;
-        cursor: pointer;
-        font-size: 18px;
-        padding: 0;
-        margin-left: 8px;
-    }
-    
-    @keyframes slide-in {
-        from { transform: translateX(100%); opacity: 0; }
-        to { transform: translateX(0); opacity: 1; }
-    }
-    
-    @keyframes slide-out {
-        from { transform: translateX(0); opacity: 1; }
-        to { transform: translateX(100%); opacity: 0; }
-    }
-""",
-            unsafe_allow_html=True)
+    </style>""", unsafe_allow_html=True)
+
+# Add notification styles from the CSS file we created
+with open('notification_styles.css', 'r') as f:
+    st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
 
 
 def parse_time(time_str: str) -> Optional[datetime]:
