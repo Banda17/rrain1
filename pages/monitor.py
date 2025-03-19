@@ -238,6 +238,10 @@ create_pulsing_refresh_animation(refresh_placeholder, "Fetching monitoring data 
 st.info("Fetching monitoring data...")
 monitor_raw_data, monitor_success = fetch_sheet_data(MONITOR_DATA_URL)
 
+# Debug information about the raw data
+if monitor_success and not monitor_raw_data.empty:
+    st.write(f"**DEBUG:** Raw data has {len(monitor_raw_data)} rows and {len(monitor_raw_data.columns)} columns")
+
 # Remove the first row if the data was successfully fetched
 if monitor_success and not monitor_raw_data.empty and len(monitor_raw_data) > 1:
     # Skip the first row which is typically a header/summary row
@@ -296,6 +300,11 @@ if monitor_success and not monitor_raw_data.empty:
             st.success(f"Successfully loaded monitoring data: Removed {removed_count} duplicate trains (from {original_row_count} to {len(monitor_raw_data)} rows)")
         else:
             st.success(f"Successfully loaded monitoring data with {len(monitor_raw_data)} rows (no duplicates found)")
+            
+        # Add debug to show all train numbers
+        if len(monitor_raw_data) > 0:
+            train_numbers_list = monitor_raw_data[train_column].tolist()
+            st.write(f"**DEBUG:** Found {len(train_numbers_list)} trains: {train_numbers_list}")
     else:
         st.success(f"Successfully loaded monitoring data with {len(monitor_raw_data)} rows")
     
