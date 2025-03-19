@@ -285,8 +285,8 @@ if monitor_success and not monitor_raw_data.empty:
     monitor_raw_data = monitor_raw_data.replace('undefined', '-')
     monitor_raw_data = monitor_raw_data.replace('Undefined', '-')
     
-    # Show a section for SMS notification settings
-    with st.expander("SMS Notification Settings", expanded=False):
+    # Show a section for WhatsApp notification settings
+    with st.expander("WhatsApp Notification Settings", expanded=False):
         col1, col2 = st.columns(2)
         
         with col1:
@@ -321,9 +321,9 @@ if monitor_success and not monitor_raw_data.empty:
             st.session_state.use_new_format = use_new_format
             
             if use_new_format:
-                st.success("Using compact SMS format")
+                st.success("Using compact WhatsApp format")
             else:
-                st.info("Using standard SMS format")
+                st.info("Using standard WhatsApp format")
     
     # Initialize SMS notifier
     sms_notifier = SMSNotifier()
@@ -359,7 +359,7 @@ if monitor_success and not monitor_raw_data.empty:
         new_trains = sms_notifier.notify_new_trains(train_numbers, train_details)
         if new_trains:
             st.success(f"Detected {len(new_trains)} new trains: {', '.join(new_trains)}")
-            st.info("SMS notifications sent for new trains only!")
+            st.info("WhatsApp notifications sent for new trains only!")
         else:
             st.info("No new trains detected, no notifications sent.")
     
@@ -433,7 +433,7 @@ if monitor_success and not monitor_raw_data.empty:
     
     # Extra information section
     with st.expander("Additional Information"):
-        st.write("This page monitors train data and sends SMS notifications for new trains only.")
+        st.write("This page monitors train data and sends WhatsApp notifications for new trains only.")
         
         # Check if we have Twilio secrets already
         if not (sms_notifier.account_sid and sms_notifier.auth_token and sms_notifier.from_number):
@@ -442,20 +442,20 @@ if monitor_success and not monitor_raw_data.empty:
 # In .streamlit/secrets.toml:
 TWILIO_ACCOUNT_SID = "your_account_sid"
 TWILIO_AUTH_TOKEN = "your_auth_token"
-TWILIO_PHONE_NUMBER = "+1234567890"
-NOTIFICATION_RECIPIENTS = ["recipient_phone_number1", "recipient_phone_number2"]
+TWILIO_PHONE_NUMBER = "+1234567890"  # This number must be WhatsApp-enabled in Twilio
+NOTIFICATION_RECIPIENTS = ["recipient_phone_number1", "recipient_phone_number2"]  # Must be WhatsApp-enabled numbers with country code
             """)
         else:
-            st.success("Twilio credentials found. SMS notifications are enabled.")
+            st.success("Twilio credentials found. WhatsApp notifications are enabled.")
             
             # Show current notification recipients
             if sms_notifier.recipients:
-                st.write(f"Currently notifying {len(sms_notifier.recipients)} recipients: {', '.join(sms_notifier.recipients)}")
+                st.write(f"Currently notifying {len(sms_notifier.recipients)} WhatsApp recipients: {', '.join(sms_notifier.recipients)}")
             else:
                 st.warning("No notification recipients configured. Add them to your secrets.toml file.")
         
         # Show format examples
-        st.markdown("#### SMS Format Examples:")
+        st.markdown("#### WhatsApp Message Format Examples:")
         st.markdown("**Compact Format:**")
         st.code("12760 HYB-TBM, T/O - KI (-6 mins), H/O - GDR (9 mins), DELAYED BY LT 9")
         

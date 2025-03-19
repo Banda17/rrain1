@@ -120,7 +120,7 @@ class SMSNotifier:
     
     def send_notification(self, message):
         """
-        Send SMS notification
+        Send notification via WhatsApp
         
         Args:
             message: The message to send
@@ -129,20 +129,25 @@ class SMSNotifier:
             True if successful, False otherwise
         """
         if not self.client or not self.recipients:
-            logger.warning("SMS notification not sent: Client not initialized or no recipients")
+            logger.warning("WhatsApp notification not sent: Client not initialized or no recipients")
             return False
         
         success = True
         for recipient in self.recipients:
             try:
+                # Format for WhatsApp - recipient needs 'whatsapp:' prefix
+                whatsapp_recipient = f"whatsapp:{recipient}"
+                # Format for WhatsApp - sender needs 'whatsapp:' prefix
+                whatsapp_sender = f"whatsapp:{self.from_number}"
+                
                 self.client.messages.create(
                     body=message,
-                    from_=self.from_number,
-                    to=recipient
+                    from_=whatsapp_sender,
+                    to=whatsapp_recipient
                 )
-                logger.info(f"SMS sent to {recipient}")
+                logger.info(f"WhatsApp message sent to {recipient}")
             except Exception as e:
-                logger.error(f"Failed to send SMS to {recipient}: {str(e)}")
+                logger.error(f"Failed to send WhatsApp message to {recipient}: {str(e)}")
                 success = False
         
         return success
