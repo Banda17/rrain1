@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import time
+import json
 from datetime import datetime, timedelta
 from data_handler import DataHandler
 from visualizer import Visualizer
@@ -2431,6 +2432,56 @@ except Exception as e:
 # Note: is_positive_or_plus function is now defined at the top of the file with enhanced NaN handling
 
 # Note: Custom formatter is already imported at the top of the file
+
+# WhatsApp Configuration Section
+st.markdown("---")
+with st.expander("🔔 WhatsApp Notification Settings", expanded=False):
+    st.markdown("### WhatsApp Notification Configuration")
+    st.markdown("""
+    This system will automatically send WhatsApp notifications when new trains are detected.
+    Current configuration:
+    """)
+    
+    # Show if WhatsApp is configured
+    whatsapp_api_key = st.secrets.get("WHATSAPP_API_KEY")
+    whatsapp_number = st.secrets.get("WHATSAPP_NUMBER")
+    
+    if whatsapp_api_key and whatsapp_number:
+        st.success("✅ WhatsApp is properly configured")
+        
+        # Show recipient information
+        recipients = []
+        recipients_value = st.secrets.get("NOTIFICATION_RECIPIENTS")
+        if isinstance(recipients_value, str):
+            try:
+                recipients = json.loads(recipients_value)
+            except:
+                if recipients_value.strip():
+                    recipients = [recipients_value.strip()]
+        elif isinstance(recipients_value, list):
+            recipients = recipients_value
+            
+        st.markdown(f"**Number of recipients:** {len(recipients)}")
+        
+        # Test notification button
+        if st.button("Send Test WhatsApp Notification"):
+            try:
+                notifier = st.session_state.whatsapp_notifier
+                test_message = f"Test notification from SCR Train Tracking System\nSent at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                
+                success = notifier.send_notification(test_message)
+                
+                if success:
+                    st.success("✅ Test notification sent successfully!")
+                    st.info("Check your WhatsApp app for the notification. You might need to manually open the URL on your phone.")
+                    st.markdown("**Note:** The WhatsApp Web URL is logged in the application logs.")
+                else:
+                    st.error("❌ Failed to send test notification. Check the logs for details.")
+            except Exception as e:
+                st.error(f"❌ Error sending test notification: {str(e)}")
+    else:
+        st.warning("⚠️ WhatsApp is not fully configured. Make sure you have set the required secrets.")
+        st.info("Required secrets: WHATSAPP_API_KEY, WHATSAPP_NUMBER, and NOTIFICATION_RECIPIENTS")
 
 # Footer
 st.markdown("---")
