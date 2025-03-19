@@ -341,10 +341,16 @@ if monitor_success and not monitor_raw_data.empty:
                     else:
                         # Try a simple API request to check connectivity
                         try:
+                            # Prepare proper HTTP Basic Authentication
+                            import base64
+                            credentials = f"{sms_notifier.api_key}:{sms_notifier.api_token}"
+                            encoded_credentials = base64.b64encode(credentials.encode('utf-8')).decode('utf-8')
+                            
+                            # Headers with authorization
                             headers = {
                                 'Accept': 'application/json',
                                 'Content-Type': 'application/json',
-                                'Authorization': f'Basic {sms_notifier.api_token}'
+                                'Authorization': f'Basic {encoded_credentials}'
                             }
                             
                             # Use an API endpoint to check connectivity

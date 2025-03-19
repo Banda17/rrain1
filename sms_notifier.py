@@ -139,11 +139,16 @@ class SMSNotifier:
                     'Content-Type': 'application/json',
                 }
                 
-                # Headers with authentication token
+                # Prepare proper HTTP Basic Authentication
+                import base64
+                credentials = f"{self.api_key}:{self.api_token}"
+                encoded_credentials = base64.b64encode(credentials.encode('utf-8')).decode('utf-8')
+                
+                # Headers with authorization
                 headers = {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',
-                    'Authorization': f'Basic {self.api_token}'
+                    'Authorization': f'Basic {encoded_credentials}'
                 }
                 
                 # Create the JSON payload for SMS Country in the required format
