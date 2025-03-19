@@ -435,18 +435,17 @@ if monitor_success and not monitor_raw_data.empty:
     with st.expander("Additional Information"):
         st.write("This page monitors train data and sends SMS notifications for new trains only.")
         
-        # Check if we have Twilio secrets already
-        if not (sms_notifier.account_sid and sms_notifier.auth_token and sms_notifier.from_number):
-            st.warning("Twilio credentials not found. Please add them to your secrets.toml file.")
+        # Check if we have SMS Country secrets already
+        if not (sms_notifier.api_key and sms_notifier.api_token):
+            st.warning("SMS Country credentials not found. Please add them to your secrets.toml file.")
             st.code("""
 # In .streamlit/secrets.toml:
-TWILIO_ACCOUNT_SID = "your_account_sid"
-TWILIO_AUTH_TOKEN = "your_auth_token"
-TWILIO_PHONE_NUMBER = "+1234567890"
+SMS_COUNTRY_API_KEY = "your_api_key"
+SMS_COUNTRY_API_TOKEN = "your_api_token"
 NOTIFICATION_RECIPIENTS = ["recipient_phone_number1", "recipient_phone_number2"]
             """)
         else:
-            st.success("Twilio credentials found. SMS notifications are enabled.")
+            st.success("SMS Country credentials found. SMS notifications are enabled.")
             
             # Show current notification recipients
             if sms_notifier.recipients:

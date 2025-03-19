@@ -1,6 +1,6 @@
 import os
 import streamlit as st
-from twilio.rest import Client
+import requests
 from datetime import datetime
 import json
 import logging
@@ -11,11 +11,13 @@ logger = logging.getLogger(__name__)
 
 class SMSNotifier:
     def __init__(self):
-        """Initialize the SMS notifier with Twilio credentials"""
+        """Initialize the SMS notifier with SMS Country credentials"""
         # Get credentials from environment variables or secrets
-        self.account_sid = st.secrets.get("TWILIO_ACCOUNT_SID", os.environ.get("TWILIO_ACCOUNT_SID"))
-        self.auth_token = st.secrets.get("TWILIO_AUTH_TOKEN", os.environ.get("TWILIO_AUTH_TOKEN"))
-        self.from_number = st.secrets.get("TWILIO_PHONE_NUMBER", os.environ.get("TWILIO_PHONE_NUMBER"))
+        self.api_key = st.secrets.get("SMS_COUNTRY_API_KEY", os.environ.get("SMS_COUNTRY_API_KEY"))
+        self.api_token = st.secrets.get("SMS_COUNTRY_API_TOKEN", os.environ.get("SMS_COUNTRY_API_TOKEN"))
+        
+        # SMS Country API endpoint
+        self.api_url = "https://restapi.smscountry.com/v1/Messages"
         
         # Get notification recipients from environment or secrets
         self.recipients = []
@@ -43,16 +45,11 @@ class SMSNotifier:
             logger.error(f"Error processing NOTIFICATION_RECIPIENTS: {str(e)}")
             self.recipients = []
         
-        # Initialize client if credentials are available
-        self.client = None
-        if self.account_sid and self.auth_token and self.from_number:
-            try:
-                self.client = Client(self.account_sid, self.auth_token)
-                logger.info("SMS notifier initialized successfully")
-            except Exception as e:
-                logger.error(f"Failed to initialize Twilio client: {str(e)}")
+        # Check if credentials are available
+        if self.api_key and self.api_token:
+            logger.info("SMS Country credentials found, SMS notifier initialized successfully")
         else:
-            logger.warning("SMS notifications disabled: Missing Twilio credentials")
+            logger.warning("SMS notifications disabled: Missing SMS Country credentials")
     
     def load_known_trains(self):
         """Load the list of known trains from the persistent store"""
@@ -120,7 +117,7 @@ class SMSNotifier:
     
     def send_notification(self, message):
         """
-        Send SMS notification
+        Send SMS notification using SMS Country API
         
         Args:
             message: The message to send
@@ -128,19 +125,53 @@ class SMSNotifier:
         Returns:
             True if successful, False otherwise
         """
-        if not self.client or not self.recipients:
-            logger.warning("SMS notification not sent: Client not initialized or no recipients")
+        if not self.api_key or not self.api_token or not self.recipients:
+            logger.warning("SMS notification not sent: Missing API credentials or no recipients")
             return False
         
+        # Use SMS Country API
         success = True
         for recipient in self.recipients:
             try:
-                self.client.messages.create(
-                    body=message,
-                    from_=self.from_number,
-                    to=recipient
+                # Prepare the SMS Country API request
+                headers = {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                }
+                
+                # Basic auth with API key and token
+                auth = (self.api_key, self.api_token)
+                
+                # Create the JSON payload for SMS Country
+                payload = {
+                    'Text': message,
+                    'Number': recipient,
+                    'SenderId': 'SMSCTRY',  # Default sender ID, can be customized
+                    'DRNotify': 'true',
+                    'Tool': 'API'
+                }
+                
+                # Make the API request
+                response = requests.post(
+                    self.api_url,
+                    headers=headers,
+                    json=payload,
+                    auth=auth
                 )
-                logger.info(f"SMS sent to {recipient}")
+                
+                # Check if the request was successful
+                if response.status_code == 200 or response.status_code == 201:
+                    response_data = response.json()
+                    if response_data.get('Status') == 'Success':
+                        logger.info(f"SMS sent to {recipient} (Message ID: {response_data.get('MessageUUID', 'unknown')})")
+                    else:
+                        logger.error(f"SMS Country API error: {response_data.get('Message', 'Unknown error')}")
+                        success = False
+                else:
+                    logger.error(f"SMS Country API request failed with status code: {response.status_code}")
+                    logger.error(f"Response: {response.text}")
+                    success = False
+                    
             except Exception as e:
                 logger.error(f"Failed to send SMS to {recipient}: {str(e)}")
                 success = False
