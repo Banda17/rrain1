@@ -7,7 +7,7 @@ import os
 import re
 import json
 from animation_utils import create_pulsing_refresh_animation, show_countdown_progress, show_refresh_timestamp
-from sms_notifier import SMSNotifier
+from whatsapp_notifier import WhatsAppNotifier
 
 # Page configuration - MUST be the first Streamlit command
 st.set_page_config(
@@ -382,7 +382,7 @@ if monitor_success and not monitor_raw_data.empty:
                 }
                 
                 # Initialize the notifier
-                test_notifier = SMSNotifier()
+                test_notifier = WhatsAppNotifier()
                 
                 # Create a message with the details
                 if st.session_state.get('use_new_format', True):
@@ -394,14 +394,15 @@ if monitor_success and not monitor_raw_data.empty:
                 success = test_notifier.send_notification(test_message)
                 
                 if success:
-                    st.success(f"Test notification sent successfully!")
+                    st.success(f"Test notification prepared successfully!")
                     st.code(test_message, language="text")
+                    st.info("Check the application logs for the WhatsApp Web URL to manually send the message.")
                 else:
-                    st.error("Failed to send test notification. Check the application logs for more details.")
-                    st.info("This might be due to Twilio API limits or configuration issues.")
+                    st.error("Failed to prepare test notification. Check the application logs for more details.")
+                    st.info("This might be due to missing WhatsApp configuration.")
     
-    # Initialize SMS notifier
-    sms_notifier = SMSNotifier()
+    # Initialize WhatsApp notifier
+    whatsapp_notifier = WhatsAppNotifier()
     
     # Extract train numbers for WhatsApp notifications
     train_numbers = []
@@ -423,10 +424,10 @@ if monitor_success and not monitor_raw_data.empty:
     
     # Check for new trains and send notifications
     if train_numbers:
-        new_trains = sms_notifier.notify_new_trains(train_numbers, train_details)
+        new_trains = whatsapp_notifier.notify_new_trains(train_numbers, train_details)
         if new_trains:
             st.success(f"Detected {len(new_trains)} new trains: {', '.join(new_trains)}")
-            st.info("WhatsApp notifications sent for new trains only!")
+            st.info("WhatsApp notifications prepared for new trains only!")
         else:
             st.info("No new trains detected, no notifications sent.")
     
@@ -502,22 +503,21 @@ if monitor_success and not monitor_raw_data.empty:
     with st.expander("Additional Information"):
         st.write("This page monitors train data and sends WhatsApp notifications for new trains only.")
         
-        # Check if we have Twilio secrets already
-        if not (sms_notifier.account_sid and sms_notifier.auth_token and sms_notifier.from_number):
-            st.warning("Twilio credentials not found. Please add them to your secrets.toml file.")
+        # Check if we have WhatsApp API key and number
+        if not whatsapp_notifier.whatsapp_api_key:
+            st.warning("WhatsApp credentials not found. Please add them to your secrets.toml file.")
             st.code("""
 # In .streamlit/secrets.toml:
-TWILIO_ACCOUNT_SID = "your_account_sid"
-TWILIO_AUTH_TOKEN = "your_auth_token"
-TWILIO_PHONE_NUMBER = "+1234567890"  # This number must be WhatsApp-enabled in Twilio
-NOTIFICATION_RECIPIENTS = ["recipient_phone_number1", "recipient_phone_number2"]  # Must be WhatsApp-enabled numbers with country code
+WHATSAPP_API_KEY = "your_whatsapp_api_key"  # If you're using personal WhatsApp, you can use 'personal' as the key
+WHATSAPP_NUMBER = "your_whatsapp_number"  # Your personal WhatsApp number with country code
+NOTIFICATION_RECIPIENTS = ["recipient_phone_number1", "recipient_phone_number2"]  # Must be WhatsApp numbers with country code
             """)
         else:
-            st.success("Twilio credentials found. WhatsApp notifications are enabled.")
+            st.success("WhatsApp configuration found. WhatsApp notifications are enabled.")
             
             # Show current notification recipients
-            if sms_notifier.recipients:
-                st.write(f"Currently notifying {len(sms_notifier.recipients)} WhatsApp recipients: {', '.join(sms_notifier.recipients)}")
+            if whatsapp_notifier.recipients:
+                st.write(f"Currently notifying {len(whatsapp_notifier.recipients)} WhatsApp recipients: {', '.join(whatsapp_notifier.recipients)}")
             else:
                 st.warning("No notification recipients configured. Add them to your secrets.toml file.")
         
