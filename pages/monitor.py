@@ -346,6 +346,59 @@ if monitor_success and not monitor_raw_data.empty:
                 st.success("Using compact WhatsApp format")
             else:
                 st.info("Using standard WhatsApp format")
+        
+        # Add testing section
+        st.markdown("---")
+        st.subheader("Test WhatsApp Notification")
+        
+        test_col1, test_col2 = st.columns(2)
+        
+        with test_col1:
+            # Add a test input field for train number
+            test_train_number = st.text_input("Test Train Number", value="12760", help="Enter a train number to test the notification")
+            test_from_to = st.text_input("Test From-To", value="HYB-TBM", help="Enter a From-To station pair")
+            test_event = st.selectbox("Test Event", ["T/O", "H/O", "Arrived"], help="Select an event type")
+            test_station = st.text_input("Test Station", value="KI", help="Enter a station code")
+            test_delay = st.number_input("Test Delay (mins)", value=-6, help="Enter a delay value in minutes")
+            
+        with test_col2:
+            # Add some explanation text
+            st.markdown("""
+            This section allows you to test the WhatsApp notification system without waiting for new trains.
+            
+            Simply enter the test data and click the button below to send a test notification.
+            
+            Note: This will not affect the known trains tracking.
+            """)
+            
+            # Add a test button
+            if st.button("Send Test WhatsApp Notification", type="primary"):
+                # Create a mock train detail for testing
+                test_details = {
+                    "FROM-TO": test_from_to,
+                    "Event": test_event,
+                    "Station": test_station,
+                    "Delay": f"{test_delay} mins",
+                }
+                
+                # Initialize the notifier
+                test_notifier = SMSNotifier()
+                
+                # Create a message with the details
+                if st.session_state.get('use_new_format', True):
+                    test_message = f"{test_train_number} {test_from_to}, {test_event} - {test_station} ({test_delay} mins)"
+                else:
+                    test_message = f"{test_train_number}\nStation Pair: {test_from_to}, Events: {test_event} - {test_station} ({test_delay} mins)"
+                
+                # Attempt to send the test message
+                success = test_notifier.send_notification(test_message)
+                
+                if success:
+                    st.success(f"Test notification sent successfully!")
+                    st.code(test_message, language="text")
+                else:
+                    st.error("Failed to send test notification. Check the application logs for more details.")
+                    st.info("This might be due to Twilio API limits or configuration issues.")
     
     # Initialize SMS notifier
     sms_notifier = SMSNotifier()
