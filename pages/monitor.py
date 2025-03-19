@@ -275,7 +275,29 @@ def safe_convert(value):
 
 # Process and display monitor data
 if monitor_success and not monitor_raw_data.empty:
-    st.success(f"Successfully loaded monitoring data with {len(monitor_raw_data)} rows")
+    # Log original count
+    original_row_count = len(monitor_raw_data)
+    
+    # Try to find the train number column
+    train_column = None
+    possible_train_columns = ['Train No.', 'Train No', 'Train Number', 'TrainNo', 'Train']
+    for col in possible_train_columns:
+        if col in monitor_raw_data.columns:
+            train_column = col
+            break
+    
+    if train_column:
+        # Remove duplicates based on train number column
+        monitor_raw_data = monitor_raw_data.drop_duplicates(subset=[train_column], keep='first')
+        
+        # Report the duplicate removal result
+        removed_count = original_row_count - len(monitor_raw_data)
+        if removed_count > 0:
+            st.success(f"Successfully loaded monitoring data: Removed {removed_count} duplicate trains (from {original_row_count} to {len(monitor_raw_data)} rows)")
+        else:
+            st.success(f"Successfully loaded monitoring data with {len(monitor_raw_data)} rows (no duplicates found)")
+    else:
+        st.success(f"Successfully loaded monitoring data with {len(monitor_raw_data)} rows")
     
     # Apply safe conversion to all elements
     for col in monitor_raw_data.columns:
@@ -328,17 +350,9 @@ if monitor_success and not monitor_raw_data.empty:
     # Initialize SMS notifier
     sms_notifier = SMSNotifier()
     
-    # Extract train numbers for SMS notifications
+    # Extract train numbers for WhatsApp notifications
     train_numbers = []
     train_details = {}
-    train_column = None
-    
-    # Try to find the train number column
-    possible_train_columns = ['Train No.', 'Train No', 'Train Number', 'TrainNo', 'Train']
-    for col in possible_train_columns:
-        if col in monitor_raw_data.columns:
-            train_column = col
-            break
     
     # Extract train numbers if column found
     if train_column:
