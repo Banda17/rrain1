@@ -403,6 +403,69 @@ if monitor_success and not monitor_raw_data.empty:
             except Exception as e:
                 st.warning(f"Could not read known trains: {str(e)}")
         
+        with col2:
+            # Add test notification button
+            if st.button("Test Red Delay Card", type="secondary", help="Show a sample train delay notification card"):
+                st.session_state.show_test_delay_card = True
+                st.success("Test notification sent! Check for red delay card in the bottom-right corner.")
+            
+            # JavaScript to show test notification when button is clicked
+            if st.session_state.get('show_test_delay_card', False):
+                st.markdown("""
+                <script>
+                    // Wait for DOM to be ready
+                    document.addEventListener('DOMContentLoaded', function() {
+                        // Create notification container if it doesn't exist
+                        if (!document.getElementById('app-notification-container')) {
+                            const container = document.createElement('div');
+                            container.id = 'app-notification-container';
+                            document.body.appendChild(container);
+                        }
+                        
+                        // Create and show a delay notification
+                        setTimeout(function() {
+                            // Create notification element
+                            const notification = document.createElement('div');
+                            notification.className = 'app-notification app-notification-delay';
+                            
+                            // Add content
+                            notification.innerHTML = `
+                                <span class="notification-icon">🔴</span>
+                                <div class="notification-content">
+                                    <h4>Train 12760 Delayed</h4>
+                                    <p>Train 12760 (HYB-TBM) is currently running 45 minutes late at GDR.</p>
+                                </div>
+                                <button class="notification-close">&times;</button>
+                            `;
+                            
+                            // Add to container
+                            const container = document.getElementById('app-notification-container');
+                            container.appendChild(notification);
+                            
+                            // Add close button functionality
+                            const closeBtn = notification.querySelector('.notification-close');
+                            closeBtn.addEventListener('click', function() {
+                                notification.classList.add('closing');
+                                setTimeout(function() {
+                                    notification.remove();
+                                }, 300);
+                            });
+                            
+                            // Auto-remove after 10 seconds
+                            setTimeout(function() {
+                                notification.classList.add('closing');
+                                setTimeout(function() {
+                                    notification.remove();
+                                }, 300);
+                            }, 10000);
+                        }, 1000);
+                    });
+                </script>
+                """, unsafe_allow_html=True)
+                
+                # Reset the flag
+                st.session_state.show_test_delay_card = False
+        
         # Render the push notification UI
         push_notifier.render_notification_ui()
     

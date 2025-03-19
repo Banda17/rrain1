@@ -502,71 +502,8 @@ with col2:
                 unsafe_allow_html=True)
 
 with col3:
-    # Add notification test button
-    # Initialize the notifier
-    push_notifier = PushNotifier()
-    
-    # Add a direct test notification button
-    if st.button("Test Notifications", key="direct_test_notification"):
-        st.session_state.show_test_notification = True
-        st.success("Test notification sent! Check for red delay card in the bottom-right corner.")
-        
-    # Add JavaScript to trigger test notification
-    if st.session_state.get('show_test_notification', False):
-        st.markdown("""
-        <script>
-            // Wait for DOM to be ready
-            document.addEventListener('DOMContentLoaded', function() {
-                // Create notification container if it doesn't exist
-                if (!document.getElementById('app-notification-container')) {
-                    const container = document.createElement('div');
-                    container.id = 'app-notification-container';
-                    document.body.appendChild(container);
-                }
-                
-                // Create and show a delay notification
-                setTimeout(function() {
-                    // Create notification element
-                    const notification = document.createElement('div');
-                    notification.className = 'app-notification app-notification-delay';
-                    
-                    // Add content
-                    notification.innerHTML = `
-                        <span class="notification-icon">🔴</span>
-                        <div class="notification-content">
-                            <h4>Train 12760 Delayed</h4>
-                            <p>Train 12760 (HYB-TBM) is currently running 45 minutes late at GDR.</p>
-                        </div>
-                        <button class="notification-close">&times;</button>
-                    `;
-                    
-                    // Add to container
-                    const container = document.getElementById('app-notification-container');
-                    container.appendChild(notification);
-                    
-                    // Add close button functionality
-                    const closeBtn = notification.querySelector('.notification-close');
-                    closeBtn.addEventListener('click', function() {
-                        notification.classList.add('closing');
-                        setTimeout(function() {
-                            notification.remove();
-                        }, 300);
-                    });
-                    
-                    // Auto-remove after 10 seconds
-                    setTimeout(function() {
-                        notification.classList.add('closing');
-                        setTimeout(function() {
-                            notification.remove();
-                        }, 300);
-                    }, 10000);
-                }, 1000);
-            });
-        </script>
-        """, unsafe_allow_html=True)
-        
-        # Reset the flag
-        st.session_state.show_test_notification = False
+    # Empty column for balance
+    pass
 
 # Add a horizontal line to separate the header from content
 st.markdown("<hr style='margin-top: 0; margin-bottom: 15px;'>",
