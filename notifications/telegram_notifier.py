@@ -26,6 +26,9 @@ class TelegramNotifier:
         if 'telegram_chat_ids' not in st.session_state:
             chat_ids_str = os.environ.get('TELEGRAM_CHAT_IDS', '')
             st.session_state.telegram_chat_ids = [id.strip() for id in chat_ids_str.split(',')] if chat_ids_str else []
+            
+        if 'telegram_channel_id' not in st.session_state:
+            st.session_state.telegram_channel_id = os.environ.get('TELEGRAM_CHANNEL_ID', '')
         
         # Initialize notification preferences with defaults
         if 'telegram_notify_preferences' not in st.session_state:
@@ -73,9 +76,11 @@ class TelegramNotifier:
     @property
     def is_configured(self) -> bool:
         """Check if the Telegram bot is properly configured"""
+        # Bot must have a valid token, and either chat IDs or a channel ID must be set
         return (self._bot is not None and 
                 st.session_state.telegram_bot_token and 
-                len(st.session_state.telegram_chat_ids) > 0)
+                (len(st.session_state.telegram_chat_ids) > 0 or 
+                 st.session_state.telegram_channel_id))
     
     async def _send_message_async(self, chat_id: str, message: str) -> bool:
         """
@@ -246,8 +251,12 @@ class TelegramNotifier:
             
         chat_ids = [chat_id] if chat_id else st.session_state.telegram_chat_ids
         
-        if not chat_ids:
-            logger.warning("No chat IDs configured for Telegram notifications")
+        # Check for chat IDs and channel ID
+        have_chat_ids = len(chat_ids) > 0
+        have_channel_id = bool(st.session_state.telegram_channel_id)
+        
+        if not have_chat_ids and not have_channel_id:
+            logger.warning("No chat IDs or channel ID configured for Telegram notifications")
             return False
         
         # Remove any HTML span tags that might cause issues in Telegram messages
@@ -267,6 +276,8 @@ class TelegramNotifier:
         try:
             async def send_all_messages():
                 results = []
+                
+                # First send to all individual chat IDs
                 for cid in chat_ids:
                     try:
                         # Check if bot is initialized
@@ -290,6 +301,34 @@ class TelegramNotifier:
                         except Exception as e2:
                             logger.error(f"Second attempt also failed: {str(e2)}")
                             results.append(False)
+                
+                # Then send to the channel if configured
+                if have_channel_id and st.session_state.telegram_channel_id:
+                    channel_id = st.session_state.telegram_channel_id
+                    try:
+                        # Check if bot is initialized
+                        if self._bot is None:
+                            logger.error(f"Cannot send message to channel {channel_id}: Telegram bot not initialized")
+                            results.append(False)
+                        else:
+                            # Use the cleaned message for the channel
+                            await self._bot.send_message(chat_id=channel_id, text=cleaned_message, parse_mode='HTML')
+                            results.append(True)
+                            logger.info(f"Successfully sent message to channel {channel_id}")
+                    except Exception as e:
+                        logger.error(f"Failed to send Telegram message to channel {channel_id}: {str(e)}")
+                        # If failed with HTML parsing, try without parse_mode
+                        try:
+                            logger.info(f"Retrying channel message without HTML parsing")
+                            # Remove all HTML tags for plain text fallback
+                            plain_message = re.sub(r'<[^>]*>', '', cleaned_message)
+                            await self._bot.send_message(chat_id=channel_id, text=plain_message)
+                            results.append(True)
+                            logger.info(f"Successfully sent plain text message to channel {channel_id}")
+                        except Exception as e2:
+                            logger.error(f"Second attempt to channel also failed: {str(e2)}")
+                            results.append(False)
+                
                 return results
             
             # Check if there's a running event loop we can use
