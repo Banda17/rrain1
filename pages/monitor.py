@@ -487,6 +487,24 @@ if monitor_success and not monitor_raw_data.empty:
         # Render WhatsApp notification settings UI
         whatsapp_notifier.render_whatsapp_settings_ui()
         
+        # Add delay threshold configuration
+        st.subheader("Notification Settings")
+        
+        # Add a slider to adjust delay threshold
+        delay_threshold = st.slider(
+            "WhatsApp Delay Notification Threshold (minutes)",
+            min_value=5,
+            max_value=120,
+            value=st.session_state.get('whatsapp_delay_threshold', 30),
+            step=5,
+            help="Minimum delay (in minutes) required to trigger a WhatsApp notification"
+        )
+        
+        # Save the threshold to session state
+        st.session_state.whatsapp_delay_threshold = delay_threshold
+        
+        st.info(f"WhatsApp notifications will be sent for trains delayed {delay_threshold} minutes or more.")
+        
         # Add a button to test WhatsApp delay notification
         col1, col2 = st.columns(2)
         with col1:
@@ -494,16 +512,17 @@ if monitor_success and not monitor_raw_data.empty:
                 if whatsapp_notifier.is_configured:
                     # Use sample data for test
                     test_train = "12760"
-                    test_delay = 45
+                    # Use the configured threshold from the slider
+                    test_delay = st.session_state.get('whatsapp_delay_threshold', 30)
                     test_station = "VJA"
                     test_route = "HYB-TBM"
                     
                     # Send test notification
-                    logger.info(f"Sending test WhatsApp delay notification for train {test_train}")
+                    logger.info(f"Sending test WhatsApp delay notification for train {test_train} with delay {test_delay} minutes")
                     success = send_whatsapp_delay_notification(test_train, test_delay, test_station, test_route)
                     
                     if success:
-                        st.success("Test WhatsApp delay alert sent! Check your WhatsApp.")
+                        st.success(f"Test WhatsApp delay alert sent for a {test_delay} minute delay! Check your WhatsApp.")
                     else:
                         st.error("Failed to send test WhatsApp alert. Check configuration.")
                 else:
@@ -633,8 +652,12 @@ if monitor_success and not monitor_raw_data.empty:
                 if notification_methods:
                     st.info(f"Notifications sent via {' and '.join(notification_methods)}!")
             
-            # Check for delay notifications
-            delay_threshold = 30  # Minutes of delay to trigger notification
+            # Check for delay notifications using configured threshold
+            # Get delay threshold from session state or use default
+            if 'whatsapp_delay_threshold' not in st.session_state:
+                st.session_state.whatsapp_delay_threshold = 30  # Default 30 minutes
+            
+            delay_threshold = st.session_state.whatsapp_delay_threshold
             
             # Find 'Delay' column if it exists
             delay_column = None
