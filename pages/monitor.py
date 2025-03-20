@@ -589,9 +589,37 @@ if monitor_success and not monitor_raw_data.empty:
                 
                 # Specifically look for DELAY(MINS.) column separately
                 for col in monitor_raw_data.columns:
-                    if col == "DELAY(MINS.)" or col == "Delay(Mins.)" or "delay" in col.lower() and "mins" in col.lower():
-                        details['DELAY(MINS.)'] = str(row[col]).strip()
+                    if col == "DELAY(MINS.)" or col == "Delay(Mins.)" or ("delay" in col.lower() and "mins" in col.lower()):
+                        delay_mins_value = str(row[col]).strip()
+                        if delay_mins_value:
+                            details['DELAY(MINS.)'] = delay_mins_value
+                        else:
+                            # If no direct delay mins value, try to extract from Delay field
+                            if 'Delay' in details:
+                                delay_value = details['Delay']
+                                import re
+                                match = re.search(r'(-?\d+)', str(delay_value))
+                                if match:
+                                    details['DELAY(MINS.)'] = match.group()
+                                else:
+                                    details['DELAY(MINS.)'] = delay_value
+                            else:
+                                details['DELAY(MINS.)'] = "0"
                         break
+                
+                # If still no DELAY(MINS.) value, set a default
+                if 'DELAY(MINS.)' not in details:
+                    # Try to extract from Delays field if it exists
+                    if 'Delays' in details:
+                        import re
+                        match = re.search(r'(-?\d+)', str(details['Delays']))
+                        if match:
+                            details['DELAY(MINS.)'] = match.group()
+                        else:
+                            details['DELAY(MINS.)'] = details['Delays']
+                    else:
+                        # Use a fallback value
+                        details['DELAY(MINS.)'] = "0"
                 
                 if 'Start date' not in details:
                     for col in monitor_raw_data.columns:

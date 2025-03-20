@@ -1,87 +1,46 @@
-/* Red delay notification card styles */
-#app-notification-container {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    z-index: 9999;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    max-width: 350px;
+/* Notification styling for train tracking app */
+
+/* Train emoji styling */
+.train-emoji {
+    opacity: 0.7;
+    filter: brightness(0.9);
+    color: #555;
 }
 
-.app-notification {
-    display: flex;
-    align-items: flex-start;
-    background-color: white;
-    border-left: 4px solid #1E88E5;
-    border-radius: 4px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-    padding: 12px;
-    margin-bottom: 10px;
-    animation: slide-in 0.3s ease;
-    max-width: 350px;
-    overflow: hidden;
+/* Status badges styling */
+.status-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 0.8em;
+    font-weight: bold;
 }
 
-.app-notification-info {
-    border-left-color: #1E88E5;
+.status-normal {
+    background-color: rgba(40, 167, 69, 0.2);
+    color: #28a745;
 }
 
-.app-notification-success {
-    border-left-color: #43A047;
+.status-warning {
+    background-color: rgba(255, 193, 7, 0.2);
+    color: #ffc107;
 }
 
-.app-notification-warning {
-    border-left-color: #FB8C00;
+.status-critical {
+    background-color: rgba(220, 53, 69, 0.2);
+    color: #dc3545;
 }
 
-.app-notification-error, .app-notification-delay {
-    border-left-color: #E53935;
-    background-color: #ffebee;
+/* Message container */
+.notification-message {
+    padding: 8px 12px;
+    border-left: 3px solid #0066cc;
+    background-color: #f8f9fa;
+    margin-bottom: 8px;
 }
 
-.app-notification.closing {
-    animation: slide-out 0.3s ease forwards;
-}
-
-.notification-icon {
-    margin-right: 12px;
-    font-size: 20px;
-}
-
-.notification-content {
-    flex: 1;
-}
-
-.notification-content h4 {
-    margin: 0 0 4px 0;
-    font-size: 16px;
-    font-weight: 600;
-}
-
-.notification-content p {
-    margin: 0;
-    font-size: 14px;
-    color: #666;
-}
-
-.notification-close {
-    background: none;
-    border: none;
-    color: #999;
-    cursor: pointer;
-    font-size: 18px;
-    padding: 0;
-    margin-left: 8px;
-}
-
-@keyframes slide-in {
-    from { transform: translateX(100%); opacity: 0; }
-    to { transform: translateX(0); opacity: 1; }
-}
-
-@keyframes slide-out {
-    from { transform: translateX(0); opacity: 1; }
-    to { transform: translateX(100%); opacity: 0; }
+/* Train number styling */
+.train-number {
+    font-weight: bold;
+    font-family: monospace;
 }

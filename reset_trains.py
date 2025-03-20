@@ -25,6 +25,22 @@ def reset_known_trains():
 st.title("Reset Train Notifications")
 st.write("Use this tool to reset the known trains list and trigger new notifications for testing purposes.")
 
+# Load notification CSS styles
+try:
+    with open("notification_styles.css", "r") as f:
+        css_content = f.read()
+    st.markdown(f"<style>{css_content}</style>", unsafe_allow_html=True)
+    
+    # Show example of notification format
+    st.subheader("Notification Format Example")
+    st.markdown("""
+    <div class="notification-message">
+        <span class="train-emoji">🚆</span> <span class="train-number">#12345</span> | GHY-SMVB | Delay: 25 mins late | DELAY(MINS.): 25 | Started: 20 Mar
+    </div>
+    """, unsafe_allow_html=True)
+except Exception as e:
+    logger.error(f"Error loading notification styles: {str(e)}")
+
 if st.button("Reset Known Trains"):
     success = reset_known_trains()
     if success:
