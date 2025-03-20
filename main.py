@@ -533,37 +533,70 @@ def initialize_session_state(force_recreate=False):
         force_recreate: If True, forces recreation of persistent components
                       like database connection and train schedule
     """
+    startup_timer = time.time()
+    logger.info("Starting application initialization...")
+    
     # Track if we need to initialize the database
     db_initialized = st.session_state.get('db_initialized', False)
     
-    # These are one-time initialization components (expensive to create)
-    # Only initialize if they don't exist or if force_recreate is True
+    # === PRIORITY COMPONENTS (Load immediately) ===
+    
+    # 1. Initialize database first - critical for all other components
     if not db_initialized or force_recreate:
-        # Initialize database once at startup
+        # Initialize database immediately at startup
+        logger.info("Initializing database (priority component)")
         init_db(force_recreate=force_recreate)
         st.session_state['db_initialized'] = True
-        logger.info("Database initialized")
+    
+    # 2. Initialize data handlers for Google Sheets (high priority)
+    if 'icms_data_handler' not in st.session_state or force_recreate:
+        logger.info("Initializing ICMS data handler (priority component)")
+        data_handler = DataHandler()
+        # Override the spreadsheet URL for ICMS data
+        data_handler.spreadsheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRO2ZV-BOcL11_5NhlrOnn5Keph3-cVp7Tyr1t6RxsoDvxZjdOyDsmRkdvesJLbSnZwY8v3CATt1Of9/pub?gid=155911658&single=true&output=csv"
+        
+        # Eagerly initialize database session 
+        data_handler.initialize_db_session()
+        
+        st.session_state['icms_data_handler'] = data_handler
+        
+        # Prefetch data on startup for immediate display
+        try:
+            logger.info("Pre-loading data from Google Sheets...")
+            success, message = data_handler.load_data_from_drive()
+            if success:
+                logger.info(f"Initial data load successful: {message}")
+            else:
+                logger.warning(f"Initial data load warning: {message}")
+        except Exception as e:
+            logger.error(f"Error during initial data load: {str(e)}")
+    
+    # 3. Initialize map-related components (high priority for visualization)
+    if 'map_viewer' not in st.session_state or force_recreate:
+        logger.info("Initializing map viewer (priority component)")
+        st.session_state['map_viewer'] = MapViewer()
+    
+    # === SECONDARY COMPONENTS (Can be loaded after critical paths) ===
     
     # Persistent components that should only be created once
     persistent_components = {
         'train_schedule': {
             'creator': lambda: TrainSchedule(),
-            'type': TrainSchedule
-        },
-        'map_viewer': {
-            'creator': lambda: MapViewer(),
-            'type': MapViewer  
+            'type': TrainSchedule,
+            'priority': 'medium'
         },
         'telegram_notifier': {
             'creator': lambda: TelegramNotifier(),
-            'type': TelegramNotifier
+            'type': TelegramNotifier,
+            'priority': 'low'  # Can be loaded later
         }
     }
     
     # Initialize persistent components only once unless forced
     for key, config in persistent_components.items():
         if key not in st.session_state or force_recreate:
-            logger.info(f"Initializing {key} component")
+            priority_level = config.get('priority', 'medium')
+            logger.info(f"Initializing {key} component (priority: {priority_level})")
             st.session_state[key] = config['creator']()
         else:
             logger.debug(f"Using existing {key} component")
@@ -660,13 +693,8 @@ def initialize_session_state(force_recreate=False):
     for key, config in state_configs.items():
         if key not in st.session_state:
             st.session_state[key] = config['default']
-
-    # Initialize ICMS data handler if not in session state or if forced recreate
-    if 'icms_data_handler' not in st.session_state or force_recreate:
-        data_handler = DataHandler()
-        # Override the spreadsheet URL for ICMS data
-        data_handler.spreadsheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRO2ZV-BOcL11_5NhlrOnn5Keph3-cVp7Tyr1t6RxsoDvxZjdOyDsmRkdvesJLbSnZwY8v3CATt1Of9/pub?gid=155911658&single=true&output=csv"
-        st.session_state['icms_data_handler'] = data_handler
+    
+    logger.info(f"Application initialization completed in {time.time() - startup_timer:.2f} seconds")
 
 
 def update_selected_train_details(selected):

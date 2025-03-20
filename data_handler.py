@@ -53,15 +53,26 @@ class DataHandler:
         self._db_session = None
         self.spreadsheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRO2ZV-BOcL11_5NhlrOnn5Keph3-cVp7Tyr1t6RxsoDvxZjdOyDsmRkdvesJLbSnZwY8v3CATt1Of9/pub?gid=0&single=true&output=csv"
     
+    def initialize_db_session(self, force=False):
+        """Eagerly initialize the database session for faster startup
+        
+        Args:
+            force: If True, force recreation of the session even if one exists
+        """
+        if self._db_session is None or force:
+            logger.info("Eagerly initializing database session")
+            self._db_session = get_database_connection()
+        return self._db_session
+
     @property
     def db_session(self):
-        """Lazy initialization of database session
+        """Get or create the database session
         
-        This ensures we only create a session when it's actually needed
-        and reuse the global connection established during init_db()
+        This property ensures we have a session when needed, either
+        from eager initialization or lazy loading
         """
         if self._db_session is None:
-            logger.debug("Creating new database session (lazy initialization)")
+            logger.debug("Creating new database session (lazy fallback)")
             self._db_session = get_database_connection()
         return self._db_session
 
