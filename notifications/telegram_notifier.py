@@ -707,7 +707,7 @@ class TelegramNotifier:
         chat_ids_str = st.text_input(
             "Telegram Chat IDs",
             value=",".join(st.session_state.telegram_chat_ids),
-            help="Enter comma-separated list of Telegram chat IDs"
+            help="Enter comma-separated list of Telegram chat IDs for direct user messages"
         )
         
         # Update chat IDs if changed
@@ -717,15 +717,41 @@ class TelegramNotifier:
             if new_chat_ids:
                 st.success(f"Updated {len(new_chat_ids)} Telegram chat IDs")
         
+        # Channel ID input
+        st.markdown("### Channel Notifications")
+        st.info("To send notifications to a Telegram channel, add your bot to the channel as an admin with 'Post Messages' permission, then enter the channel ID below.")
+        
+        channel_id = st.text_input(
+            "Telegram Channel ID",
+            value=st.session_state.telegram_channel_id,
+            help="Enter your Telegram channel ID in the format @channelname or -100xxxxxxxxx"
+        )
+        
+        # Update channel ID if changed
+        if channel_id != st.session_state.telegram_channel_id:
+            st.session_state.telegram_channel_id = channel_id
+            if channel_id:
+                st.success(f"Updated Telegram channel ID to {channel_id}")
+        
         # Configuration status
         if self.is_configured:
-            st.success(f"Telegram notifications are properly configured with {len(st.session_state.telegram_chat_ids)} recipients.")
+            # Format a success message based on what's configured
+            recipients_info = []
+            
+            if st.session_state.telegram_chat_ids:
+                recipients_info.append(f"{len(st.session_state.telegram_chat_ids)} direct recipient(s)")
+                
+            if st.session_state.telegram_channel_id:
+                recipients_info.append(f"channel '{st.session_state.telegram_channel_id}'")
+                
+            recipients_text = " and ".join(recipients_info)
+            st.success(f"Telegram notifications are properly configured with {recipients_text}.")
         else:
             missing = []
             if not st.session_state.telegram_bot_token:
                 missing.append("Bot Token")
-            if not st.session_state.telegram_chat_ids:
-                missing.append("Chat IDs")
+            if not st.session_state.telegram_chat_ids and not st.session_state.telegram_channel_id:
+                missing.append("Chat IDs or Channel ID")
             
             st.warning(f"Telegram notifications are not fully configured. Missing: {', '.join(missing)}")
         
@@ -867,7 +893,7 @@ class TelegramNotifier:
                     else:
                         st.error("Failed to send test message. Please check your configuration and preferences.")
                 else:
-                    st.error("Please configure both the bot token and at least one chat ID first.")
+                    st.error("Please configure bot token and at least one chat ID or channel ID first.")
                     
             if st.button("Send Test - Status Change"):
                 if self.is_configured:
@@ -881,7 +907,7 @@ class TelegramNotifier:
                     else:
                         st.error("Failed to send test message. Please check your configuration and preferences.")
                 else:
-                    st.error("Please configure both the bot token and at least one chat ID first.")
+                    st.error("Please configure bot token and at least one chat ID or channel ID first.")
         
         with col2:
             if st.button("Send Test - Delay"):
@@ -897,7 +923,7 @@ class TelegramNotifier:
                     else:
                         st.error("Failed to send test message. Please check your configuration and preferences.")
                 else:
-                    st.error("Please configure both the bot token and at least one chat ID first.")
+                    st.error("Please configure bot token and at least one chat ID or channel ID first.")
                     
             if st.button("Send Test - Early Arrival"):
                 if self.is_configured:
@@ -912,4 +938,4 @@ class TelegramNotifier:
                     else:
                         st.error("Failed to send test message. Please check your configuration and preferences.")
                 else:
-                    st.error("Please configure both the bot token and at least one chat ID first.")
+                    st.error("Please configure bot token and at least one chat ID or channel ID first.")
