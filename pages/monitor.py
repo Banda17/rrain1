@@ -589,10 +589,41 @@ if monitor_success and not monitor_raw_data.empty:
                 
                 # Specifically look for DELAY(MINS.) column separately
                 for col in monitor_raw_data.columns:
-                    if col == "DELAY(MINS.)" or col == "Delay(Mins.)" or ("delay" in col.lower() and "mins" in col.lower()):
+                    if col == "DELAY(MINS.)" or col == "Delay(Mins.)" or col == "DELAY(MINS)" or ("delay" in col.lower() and "mins" in col.lower()):
+                        # Get the raw value
                         delay_mins_value = str(row[col]).strip()
+                        
                         if delay_mins_value:
+                            # Extract the numeric delay value from complex strings like "KI (19 mins), COA (35 mins)"
+                            import re
+                            # Look for LT XX pattern (Late XX) in Delays column
+                            if 'Delays' in row and 'LT' in str(row['Delays']):
+                                lt_match = re.search(r'LT\s*(\d+)', str(row['Delays']))
+                                if lt_match:
+                                    details['DELAY(MINS.)'] = lt_match.group(1)
+                                    # Log the extracted value
+                                    logger.info(f"Extracted DELAY(MINS.) from LT pattern: {details['DELAY(MINS.)']} from {row['Delays']}")
+                                    continue
+                                    
+                            # Try to extract the first number followed by "mins" 
+                            mins_match = re.search(r'(\d+)\s*mins', delay_mins_value)
+                            if mins_match:
+                                details['DELAY(MINS.)'] = mins_match.group(1)
+                                # Log the extracted value
+                                logger.info(f"Extracted DELAY(MINS.) from mins pattern: {details['DELAY(MINS.)']} from {delay_mins_value}")
+                                continue
+                                
+                            # Try to extract the first number in parentheses
+                            parens_match = re.search(r'\((\d+)[^\)]*\)', delay_mins_value)
+                            if parens_match:
+                                details['DELAY(MINS.)'] = parens_match.group(1)
+                                # Log the extracted value
+                                logger.info(f"Extracted DELAY(MINS.) from parentheses: {details['DELAY(MINS.)']} from {delay_mins_value}")
+                                continue
+                                
+                            # If all else fails, use the raw value
                             details['DELAY(MINS.)'] = delay_mins_value
+                            logger.info(f"Using raw DELAY(MINS.) value: {delay_mins_value}")
                         else:
                             # If no direct delay mins value, try to extract from Delay field
                             if 'Delay' in details:
@@ -896,7 +927,7 @@ if monitor_success and not monitor_raw_data.empty:
     col1, col2 = st.columns(2)
     with col1:
         if st.button("Refresh Data Now"):
-            st.experimental_rerun()
+            st.rerun()
     
     with col2:
         # Import the reset function from reset_trains.py
@@ -937,4 +968,4 @@ else:
     
     # Add a retry button
     if st.button("Retry Connection"):
-        st.experimental_rerun()
+        st.rerun()
