@@ -354,6 +354,15 @@ if 'force_data_refresh' in st.session_state and st.session_state.force_data_refr
     # Reset the flag
     st.session_state.force_data_refresh = False
     logger.info("Forcing data refresh due to manual refresh request")
+    # Show a message to the user
+    st.success("Forcing refresh of data from Google Sheets...", icon="🔄")
+elif 'last_force_refresh' not in st.session_state:
+    # Log that this is the first time we're checking
+    logger.info("First page load - no force_refresh flag set")
+    st.session_state.last_force_refresh = datetime.now()
+else:
+    # Update the last check time
+    st.session_state.last_force_refresh = datetime.now()
 
 # Fetch monitor data
 st.info("Fetching monitoring data...")
