@@ -29,7 +29,7 @@ except ImportError:
 st.set_page_config(page_title="Late Train Tracking System",
                    page_icon="🚂",
                    layout="wide",
-                   initial_sidebar_state="collapsed")
+                   initial_sidebar_state="expanded")
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -422,6 +422,21 @@ with col3:
 # Add a horizontal line to separate the header from content
 st.markdown("<hr style='margin-top: 0; margin-bottom: 15px;'>",
             unsafe_allow_html=True)
+
+# Add sidebar navigation
+st.sidebar.title("Navigation")
+st.sidebar.markdown("""
+- [Main Dashboard](/)
+- [Monitor Page](/pages/monitor)
+- [Map View](/pages/map_view)
+- [Reset Notifications](/reset_trains)
+- [ICMS Data](/pages/icms)
+- [Data Status](/pages/data_status)
+- [Raw Data](/pages/raw_data)
+- [Station Preview](/pages/station_preview)
+- [Notification Settings](/pages/notification_settings)
+- [Tree View](/pages/tree_view)
+""")
 
 # Initialize train filter variables for later use
 
