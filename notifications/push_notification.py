@@ -493,7 +493,21 @@ class PushNotifier:
             # If Telegram notifier is available in session state, use it for notifications
             if 'telegram_notifier' in st.session_state and st.session_state.telegram_notifier.is_configured:
                 try:
-                    st.session_state.telegram_notifier.notify_multiple_new_trains(new_trains, train_details)
+                    # Format train details for Telegram if they're not already in the right format
+                    telegram_train_details = {}
+                    
+                    if train_details:
+                        for train_id in new_trains:
+                            if train_id in train_details:
+                                # Check if the details are already a dict or a string
+                                if isinstance(train_details[train_id], dict):
+                                    telegram_train_details[train_id] = train_details[train_id]
+                                else:
+                                    # Convert string details to a dict with a generic key
+                                    telegram_train_details[train_id] = {"info": train_details[train_id]}
+                    
+                    # Send Telegram notifications with properly formatted details
+                    st.session_state.telegram_notifier.notify_multiple_new_trains(new_trains, telegram_train_details)
                 except Exception as e:
                     logger.error(f"Error sending Telegram notifications: {str(e)}")
         

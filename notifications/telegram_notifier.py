@@ -485,9 +485,30 @@ class TelegramNotifier:
         message = f"🚆 <b>{len(filtered_train_ids)} New Trains Detected:</b>\n\n"
         
         for i, train_id in enumerate(filtered_train_ids, 1):
-            train_info = train_details.get(train_id, {}) if train_details else {}
-            train_name = train_info.get('Train Name', '')
-            from_to = train_info.get('FROM-TO', '')
+            # Handle different formats of train_details
+            if train_details and train_id in train_details:
+                train_info = train_details[train_id]
+                
+                # If train_info is a dictionary, extract specific fields
+                if isinstance(train_info, dict):
+                    train_name = train_info.get('Train Name', '')
+                    from_to = train_info.get('FROM-TO', '')
+                    
+                    # If there's an 'info' field with generic details, use it as a fallback
+                    if not (train_name or from_to) and 'info' in train_info:
+                        additional_info = train_info['info']
+                        message += f"{i}. <b>#{train_id}</b> - {additional_info}"
+                        continue
+                # If train_info is a string, use it directly
+                elif isinstance(train_info, str):
+                    message += f"{i}. <b>#{train_id}</b> - {train_info}"
+                    continue
+                else:
+                    train_name = ''
+                    from_to = ''
+            else:
+                train_name = ''
+                from_to = ''
             
             message += f"{i}. <b>#{train_id}</b>"
             
