@@ -250,16 +250,47 @@ class TelegramNotifier:
             logger.warning("No chat IDs configured for Telegram notifications")
             return False
         
-        # Create a new event loop for async operations
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
+        # Create a new event loop for async operations - using a more robust approach
+        # that handles multiple calls and prevents "Event loop is closed" errors
         try:
-            results = []
-            for cid in chat_ids:
-                result = loop.run_until_complete(self._send_message_async(cid, message))
-                results.append(result)
+            async def send_all_messages():
+                results = []
+                for cid in chat_ids:
+                    try:
+                        # Check if bot is initialized
+                        if self._bot is None:
+                            logger.error(f"Cannot send message to {cid}: Telegram bot not initialized")
+                            results.append(False)
+                            continue
+                            
+                        await self._bot.send_message(chat_id=cid, text=message, parse_mode='HTML')
+                        results.append(True)
+                    except Exception as e:
+                        logger.error(f"Failed to send Telegram message to {cid}: {str(e)}")
+                        results.append(False)
+                return results
             
+            # Check if there's a running event loop we can use
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_closed():
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                
+            # Run the async function
+            if loop.is_running():
+                # If loop is already running (in something like Streamlit)
+                # use run_coroutine_threadsafe
+                future = asyncio.run_coroutine_threadsafe(send_all_messages(), loop)
+                results = future.result(timeout=10)  # 10 second timeout
+            else:
+                # If not running, use run_until_complete
+                results = loop.run_until_complete(send_all_messages())
+            
+            # Process results
             success_count = sum(1 for r in results if r)
             if success_count > 0:
                 logger.info(f"Successfully sent Telegram message to {success_count}/{len(results)} recipients")
@@ -271,8 +302,6 @@ class TelegramNotifier:
         except Exception as e:
             logger.error(f"Error in send_message: {str(e)}")
             return False
-        finally:
-            loop.close()
     
     def notify_new_train(self, train_id: str, train_info: Optional[Dict[str, Any]] = None) -> bool:
         """
@@ -650,13 +679,68 @@ class TelegramNotifier:
         # Update preferences in session state
         st.session_state.telegram_notify_preferences = prefs
         
-        # Test notification button
-        if st.button("Send Test Telegram Message"):
-            if self.is_configured:
-                success = self.send_message("🔔 This is a test notification from your Train Tracking application!")
-                if success:
-                    st.success("Test message sent successfully!")
+        # Test notification buttons with different notification types
+        st.subheader("Test Notifications")
+        st.markdown("You can send test messages to verify your notification settings:")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            if st.button("Send Test - New Train"):
+                if self.is_configured:
+                    success = self.send_message(
+                        "🚆 <b>Test Notification:</b> New Train\n\nThis is a test for new train notifications!",
+                        message_type='new_train',
+                        train_type='SUF'  # Test with a Superfast train
+                    )
+                    if success:
+                        st.success("Test message sent successfully!")
+                    else:
+                        st.error("Failed to send test message. Please check your configuration and preferences.")
                 else:
-                    st.error("Failed to send test message. Please check your bot token and chat IDs.")
-            else:
-                st.error("Please configure both the bot token and at least one chat ID first.")
+                    st.error("Please configure both the bot token and at least one chat ID first.")
+                    
+            if st.button("Send Test - Status Change"):
+                if self.is_configured:
+                    success = self.send_message(
+                        "🚄 <b>Test Notification:</b> Status Change\n\nThis is a test for train status change notifications!",
+                        message_type='status_change',
+                        train_type='MEX'  # Test with an Express train
+                    )
+                    if success:
+                        st.success("Test message sent successfully!")
+                    else:
+                        st.error("Failed to send test message. Please check your configuration and preferences.")
+                else:
+                    st.error("Please configure both the bot token and at least one chat ID first.")
+        
+        with col2:
+            if st.button("Send Test - Delay"):
+                if self.is_configured:
+                    success = self.send_message(
+                        "⚠️ <b>Test Notification:</b> Train Delay\n\nThis is a test for train delay notifications!",
+                        message_type='delay',
+                        train_type='RAJ',  # Test with a Rajdhani train
+                        delay=15  # Test with a 15-minute delay
+                    )
+                    if success:
+                        st.success("Test message sent successfully!")
+                    else:
+                        st.error("Failed to send test message. Please check your configuration and preferences.")
+                else:
+                    st.error("Please configure both the bot token and at least one chat ID first.")
+                    
+            if st.button("Send Test - Early Arrival"):
+                if self.is_configured:
+                    success = self.send_message(
+                        "🕒 <b>Test Notification:</b> Early Arrival\n\nThis is a test for early arrival notifications!",
+                        message_type='early',
+                        train_type='VNDB',  # Test with a Vande Bharat train
+                        delay=-10  # Test with a 10-minute early arrival
+                    )
+                    if success:
+                        st.success("Test message sent successfully!")
+                    else:
+                        st.error("Failed to send test message. Please check your configuration and preferences.")
+                else:
+                    st.error("Please configure both the bot token and at least one chat ID first.")
