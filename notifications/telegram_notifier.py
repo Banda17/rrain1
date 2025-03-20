@@ -250,6 +250,18 @@ class TelegramNotifier:
             logger.warning("No chat IDs configured for Telegram notifications")
             return False
         
+        # Remove any HTML span tags that might cause issues in Telegram messages
+        import re
+        cleaned_message = message
+        # Remove <span> tags
+        cleaned_message = re.sub(r'<span[^>]*>(.*?)</span>', r'\1', cleaned_message)
+        # Remove other problematic HTML tags if needed but keep basic formatting
+        # Allow only <b>, <i>, <code>, <pre> tags that are supported by Telegram
+        
+        # Log the message cleaning
+        if cleaned_message != message:
+            logger.info(f"Cleaned message by removing HTML span tags")
+        
         # Create a new event loop for async operations - using a more robust approach
         # that handles multiple calls and prevents "Event loop is closed" errors
         try:
@@ -262,12 +274,22 @@ class TelegramNotifier:
                             logger.error(f"Cannot send message to {cid}: Telegram bot not initialized")
                             results.append(False)
                             continue
-                            
-                        await self._bot.send_message(chat_id=cid, text=message, parse_mode='HTML')
+                        
+                        # Use the cleaned message
+                        await self._bot.send_message(chat_id=cid, text=cleaned_message, parse_mode='HTML')
                         results.append(True)
                     except Exception as e:
                         logger.error(f"Failed to send Telegram message to {cid}: {str(e)}")
-                        results.append(False)
+                        # If failed with HTML parsing, try without parse_mode
+                        try:
+                            logger.info(f"Retrying without HTML parsing")
+                            # Remove all HTML tags for plain text fallback
+                            plain_message = re.sub(r'<[^>]*>', '', cleaned_message)
+                            await self._bot.send_message(chat_id=cid, text=plain_message)
+                            results.append(True)
+                        except Exception as e2:
+                            logger.error(f"Second attempt also failed: {str(e2)}")
+                            results.append(False)
                 return results
             
             # Check if there's a running event loop we can use
@@ -344,8 +366,30 @@ class TelegramNotifier:
             # Get delay in raw format
             delay_raw = train_info.get('Delay', '')
             
-            # Get DELAY(MINS.) column value specifically
+            # Get DELAY(MINS.) column value specifically - this is critical
             delay_mins = train_info.get('DELAY(MINS.)', '')
+            
+            # If DELAY(MINS.) contains complex station information like "KI (19 mins), COA (35 mins)"
+            # Extract just the first numeric value
+            if delay_mins:
+                import re
+                # Try to extract the first number followed by "mins"
+                mins_match = re.search(r'(\d+)\s*mins', str(delay_mins))
+                if mins_match:
+                    delay_mins = mins_match.group(1)
+                    logger.info(f"Extracted numeric value from DELAY(MINS.): {delay_mins}")
+                else:
+                    # Try to extract the first number in parentheses
+                    parens_match = re.search(r'\((\d+)[^\)]*\)', str(delay_mins))
+                    if parens_match:
+                        delay_mins = parens_match.group(1)
+                        logger.info(f"Extracted numeric value from parentheses in DELAY(MINS.): {delay_mins}")
+                    else:
+                        # Try to extract any numeric value
+                        any_number = re.search(r'(\d+)', str(delay_mins))
+                        if any_number:
+                            delay_mins = any_number.group(1)
+                            logger.info(f"Extracted any numeric value from DELAY(MINS.): {delay_mins}")
             
             # Try to extract numeric delay for filtering
             if delay_raw:
@@ -365,6 +409,7 @@ class TelegramNotifier:
                 train_type = from_to[:3]  # First three characters often indicate train type
         
         # Format EXACTLY as requested in the format: "#train_number | FROM-TO | Delay: value | DELAY(MINS.): value | Started: date"
+        # Use the train emoji 🚆 as specified, but ensure it appears subdued
         message = f"🚆 #{train_id}"
         
         # Ensure FROM-TO is present
@@ -379,7 +424,7 @@ class TelegramNotifier:
         else:
             message += f" | Delay: N/A"
             
-        # Add DELAY(MINS.) information if available
+        # Add DELAY(MINS.) information if available - this is a critical field
         if delay_mins:
             message += f" | DELAY(MINS.): {delay_mins}"
         else:
@@ -390,6 +435,8 @@ class TelegramNotifier:
             message += f" | Started: {start_date}"
         else:
             message += f" | Started: Unknown"
+        
+        logger.info(f"Sending notification with message: {message}")
         
         # Send notification with filtering based on train type and notification preferences
         return self.send_message(
@@ -431,15 +478,39 @@ class TelegramNotifier:
         from_to = location if location else "UNKNOWN-UNKNOWN"
         delay_value = f"{delay} mins late" if delay and delay > 0 else f"{abs(delay)} mins early" if delay and delay < 0 else "On time"
         
-        # Create DELAY(MINS.) value in the same format as the Delay value
-        delay_mins_value = f"{delay}" if delay else "N/A"
+        # Create DELAY(MINS.) value with just the number
+        delay_mins_value = f"{delay}" if delay is not None else "N/A"
+        
+        # If delay is a complex string (like "KI (19 mins), COA (35 mins)"), extract just the first numeric value
+        if isinstance(delay_mins_value, str) and any(char.isdigit() for char in delay_mins_value):
+            import re
+            # Try to extract the first number followed by "mins"
+            mins_match = re.search(r'(\d+)\s*mins', delay_mins_value)
+            if mins_match:
+                delay_mins_value = mins_match.group(1)
+                logger.info(f"Extracted numeric value from complex delay string: {delay_mins_value}")
+            else:
+                # Try to extract the first number in parentheses
+                parens_match = re.search(r'\((\d+)[^\)]*\)', delay_mins_value)
+                if parens_match:
+                    delay_mins_value = parens_match.group(1)
+                    logger.info(f"Extracted numeric value from parentheses: {delay_mins_value}")
+                else:
+                    # Try to extract any numeric value
+                    any_number = re.search(r'(\d+)', delay_mins_value)
+                    if any_number:
+                        delay_mins_value = any_number.group(1)
+                        logger.info(f"Extracted any numeric value from delay string: {delay_mins_value}")
         
         # Get current date for the "Started" field if not available
         from datetime import datetime
         started_date = datetime.now().strftime("%d %b")
         
-        # Format message in the exact required format
+        # Format message in the exact required format with train emoji
         message = f"🚆 #{train_id} | {from_to} | Delay: {delay_value} | DELAY(MINS.): {delay_mins_value} | Started: {started_date}"
+        
+        # Log the formatted message
+        logger.info(f"Sending status notification with message: {message}")
         
         # Send message with appropriate filtering
         return self.send_message(
