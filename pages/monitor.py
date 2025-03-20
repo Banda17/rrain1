@@ -331,10 +331,23 @@ create_pulsing_refresh_animation(refresh_placeholder, "Fetching monitoring data 
 st.info("Fetching monitoring data...")
 monitor_raw_data, monitor_success = fetch_sheet_data(MONITOR_DATA_URL)
 
-# Remove the first row if the data was successfully fetched
+# Only skip the first row if it's a header/summary row (not train data)
 if monitor_success and not monitor_raw_data.empty and len(monitor_raw_data) > 1:
-    # Skip the first row which is typically a header/summary row
-    monitor_raw_data = monitor_raw_data.iloc[1:].reset_index(drop=True)
+    # Check if the first row contains actual train data by looking for the train number
+    first_row = monitor_raw_data.iloc[0]
+    has_train_number = False
+    
+    for col in monitor_raw_data.columns:
+        if col == 'Train Number' and not pd.isna(first_row[col]) and str(first_row[col]).strip():
+            has_train_number = True
+            break
+    
+    # Only skip if it appears to be a header/summary row (no train number)
+    if not has_train_number:
+        logger.info("Skipping first row (appears to be header/summary)")
+        monitor_raw_data = monitor_raw_data.iloc[1:].reset_index(drop=True)
+    else:
+        logger.info("Keeping first row (contains valid train data)")
 
 # Clear the refresh animation when done
 st.session_state['is_refreshing'] = False
