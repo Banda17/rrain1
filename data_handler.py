@@ -46,9 +46,24 @@ class DataHandler:
         self.column_data = {}
         self.last_update = None
         self.update_interval = 300  # 5 minutes in seconds
-        self.db_session = get_database_connection()
-        self.spreadsheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRO2ZV-BOcL11_5NhlrOnn5Keph3-cVp7Tyr1t6RxsoDvxZjdOyDsmRkdvesJLbSnZwY8v3CATt1Of9/pub?gid=0&single=true&output=csv"
         self.performance_metrics = {'load_time': 0.0, 'process_time': 0.0}
+        
+        # Use the existing database session from st.session_state if available
+        # This prevents creating new connections on refresh
+        self._db_session = None
+        self.spreadsheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRO2ZV-BOcL11_5NhlrOnn5Keph3-cVp7Tyr1t6RxsoDvxZjdOyDsmRkdvesJLbSnZwY8v3CATt1Of9/pub?gid=0&single=true&output=csv"
+    
+    @property
+    def db_session(self):
+        """Lazy initialization of database session
+        
+        This ensures we only create a session when it's actually needed
+        and reuse the global connection established during init_db()
+        """
+        if self._db_session is None:
+            logger.debug("Creating new database session (lazy initialization)")
+            self._db_session = get_database_connection()
+        return self._db_session
 
     def _fetch_csv_data(self) -> pd.DataFrame:
         """Fetch CSV data with performance tracking"""

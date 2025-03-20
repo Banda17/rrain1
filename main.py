@@ -1287,16 +1287,19 @@ def extract_station_codes(selected_stations, station_column=None):
     return list(selected_station_codes)
 
 
-# Initialize sessionstate
-initialize_session_state()
+# Initialize session state (for first run only)
+initialize_session_state(force_recreate=False)
 
 # Main page title
 st.title("TRAIN TRACKING")
 
-# Add a refresh button atthe top with just an icon
+# Add a refresh button at the top with just an icon
 col1, col2 = st.columns((10, 2))
 with col2:
-    if st.button("🔄", type="primary"):
+    refresh_tooltip = "Refresh data without reloading the entire system"
+    if st.button("🔄", type="primary", help=refresh_tooltip):
+        # Only reload data, not the entire system
+        st.session_state['last_refresh'] = datetime.now()
         st.rerun()
 try:
     data_handler = st.session_state['icms_data_handler']
