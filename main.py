@@ -429,7 +429,6 @@ st.sidebar.markdown("""
 - [Main Dashboard](/)
 - [Monitor Page](/pages/monitor)
 - [Map View](/pages/map_view)
-- [Reset Notifications](/reset_trains)
 - [ICMS Data](/pages/icms)
 - [Data Status](/pages/data_status)
 - [Raw Data](/pages/raw_data)
@@ -437,6 +436,8 @@ st.sidebar.markdown("""
 - [Notification Settings](/pages/notification_settings)
 - [Tree View](/pages/tree_view)
 """)
+
+# No reset button in main page sidebar as per user request
 
 # Initialize train filter variables for later use
 

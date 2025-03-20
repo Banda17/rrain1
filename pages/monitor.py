@@ -892,9 +892,21 @@ if monitor_success and not monitor_raw_data.empty:
     </div>
     """.format(refresh_time.strftime('%Y-%m-%d %H:%M:%S')), unsafe_allow_html=True)
     
-    # Add a manual refresh button
-    if st.button("Refresh Data Now"):
-        st.experimental_rerun()
+    # Add manual refresh and reset notifications buttons side by side
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Refresh Data Now"):
+            st.experimental_rerun()
+    
+    with col2:
+        # Import the reset function from reset_trains.py
+        from reset_trains import reset_known_trains
+        if st.button("Reset Notifications"):
+            success = reset_known_trains()
+            if success:
+                st.success("Notifications reset successfully! New notifications will appear for all trains.")
+            else:
+                st.error("Failed to reset notifications. Check logs for details.")
     
     # Set up auto-refresh with JavaScript
     st.markdown("""
