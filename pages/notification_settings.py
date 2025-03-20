@@ -13,13 +13,16 @@ st.set_page_config(
 if 'telegram_notifier' not in st.session_state:
     st.session_state.telegram_notifier = TelegramNotifier()
 
-# Load bot token and chat IDs from environment variables if available
+# Load bot token, chat IDs, and channel ID from environment variables if available
 if 'TELEGRAM_BOT_TOKEN' in os.environ and not st.session_state.telegram_bot_token:
     st.session_state.telegram_bot_token = os.environ['TELEGRAM_BOT_TOKEN']
     
 if 'TELEGRAM_CHAT_IDS' in os.environ and not st.session_state.telegram_chat_ids:
     chat_ids_str = os.environ['TELEGRAM_CHAT_IDS']
     st.session_state.telegram_chat_ids = [id.strip() for id in chat_ids_str.split(',')] if chat_ids_str else []
+
+if 'TELEGRAM_CHANNEL_ID' in os.environ and not st.session_state.telegram_channel_id:
+    st.session_state.telegram_channel_id = os.environ['TELEGRAM_CHANNEL_ID']
 
 # Page header
 st.title("🔔 Notification Settings")
@@ -58,6 +61,13 @@ with tabs[1]:
     3. Copy the bot token provided and paste it below
     4. Start a chat with your new bot
     5. Get your chat ID by using [@userinfobot](https://t.me/userinfobot)
+    
+    For channel notifications:
+    1. Create a channel in Telegram (public or private)
+    2. Add your bot as an administrator to the channel with "Post Messages" permission
+    3. For public channels, use the channel username in the format: @channelname
+    4. For private channels, get the channel ID by forwarding a message from the channel to [@getidsbot](https://t.me/getidsbot)
+       and use the ID in the format: -100xxxxxxxxxx
     """)
     
     # Render Telegram settings UI
@@ -68,15 +78,27 @@ with tabs[1]:
     if st.button("Save Telegram Settings as Environment Variables"):
         # This would typically save to .env or similar
         # Here we're just displaying what would be saved
-        if st.session_state.telegram_bot_token and st.session_state.telegram_chat_ids:
+        if st.session_state.telegram_bot_token and (st.session_state.telegram_chat_ids or st.session_state.telegram_channel_id):
             env_vars = f"""
             TELEGRAM_BOT_TOKEN={st.session_state.telegram_bot_token}
+            """
+            
+            # Add chat IDs if configured
+            if st.session_state.telegram_chat_ids:
+                env_vars += f"""
             TELEGRAM_CHAT_IDS={','.join(st.session_state.telegram_chat_ids)}
             """
+                
+            # Add channel ID if configured
+            if st.session_state.telegram_channel_id:
+                env_vars += f"""
+            TELEGRAM_CHANNEL_ID={st.session_state.telegram_channel_id}
+            """
+                
             st.code(env_vars)
             st.success("These values should be added to your environment variables or .streamlit/secrets.toml file.")
         else:
-            st.error("Please configure both Bot Token and Chat IDs before saving.")
+            st.error("Please configure both Bot Token and at least one Chat ID or Channel ID before saving.")
             
 # Footer
 st.markdown("---")
