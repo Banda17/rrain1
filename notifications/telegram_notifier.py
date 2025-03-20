@@ -341,17 +341,36 @@ class TelegramNotifier:
                 except:
                     pass
         
-        # Construct message
-        message = f"🚆 <b>New Train Detected:</b> #{train_id}"
+        # Extract important fields
+        start_date = train_info.get('Start date', '')
+        time_sch_act = train_info.get('Scheduled[ Entry - Exit ]', '')
         
-        if train_name:
-            message += f"\n<b>Name:</b> {train_name}"
-        
+        # Extract route from FROM-TO by removing time information
+        clean_from_to = from_to
         if from_to:
-            message += f"\n<b>Route:</b> {from_to}"
+            # Extract just the route part, remove timing information in brackets if present
+            import re
+            match = re.match(r'([A-Z]+)\s*(\[.*\])?', from_to)
+            if match:
+                clean_from_to = match.group(1).strip()
+                
+        # Get the raw delay value
+        delay_raw = train_info.get('Delay', '')
+        
+        # Construct message according to requested format
+        message = f"🚆 <b>Train #{train_id}</b>"
+        
+        if clean_from_to:
+            message += f"\n<b>Route:</b> {clean_from_to}"
+            
+        if delay_raw:
+            message += f"\n<b>Delay:</b> {delay_raw}"
             
         if delay is not None:
-            message += f"\n<b>Status:</b> Delayed by {delay} minutes"
+            message += f"\n<b>Delayed by:</b> {delay} minutes"
+            
+        if start_date:
+            message += f"\n<b>Started on:</b> {start_date}"
         
         message += "\n\nOpen the train tracking app for more details."
         
@@ -491,32 +510,38 @@ class TelegramNotifier:
                 
                 # If train_info is a dictionary, extract specific fields
                 if isinstance(train_info, dict):
-                    train_name = train_info.get('Train Name', '')
+                    # Extract key fields according to requirements
                     from_to = train_info.get('FROM-TO', '')
+                    delay_raw = train_info.get('Delay', '')
+                    start_date = train_info.get('Start date', '')
                     
-                    # If there's an 'info' field with generic details, use it as a fallback
-                    if not (train_name or from_to) and 'info' in train_info:
-                        additional_info = train_info['info']
-                        message += f"{i}. <b>#{train_id}</b> - {additional_info}"
-                        continue
+                    # Clean FROM-TO to remove time information
+                    clean_from_to = from_to
+                    if from_to:
+                        import re
+                        match = re.match(r'([A-Z]+)\s*(\[.*\])?', from_to)
+                        if match:
+                            clean_from_to = match.group(1).strip()
+                    
+                    # Format according to user request
+                    message += f"{i}. <b>#{train_id}</b>"
+                    
+                    if clean_from_to:
+                        message += f" {clean_from_to}"
+                    
+                    if delay_raw:
+                        message += f" | Delay: {delay_raw}"
+                        
+                    if start_date:
+                        message += f" | Started: {start_date}"
+                    
                 # If train_info is a string, use it directly
                 elif isinstance(train_info, str):
                     message += f"{i}. <b>#{train_id}</b> - {train_info}"
-                    continue
                 else:
-                    train_name = ''
-                    from_to = ''
+                    message += f"{i}. <b>#{train_id}</b>"
             else:
-                train_name = ''
-                from_to = ''
-            
-            message += f"{i}. <b>#{train_id}</b>"
-            
-            if train_name:
-                message += f" - {train_name}"
-                
-            if from_to:
-                message += f" ({from_to})"
+                message += f"{i}. <b>#{train_id}</b>"
                 
             message += "\n"
             
