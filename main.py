@@ -2200,15 +2200,10 @@ try:
                             
                             train_details[train_no] = ", ".join([f"{k}: {v}" for k, v in details.items() if v])
                     
-                    # Initialize push notifier for browser and Telegram notifications
-                    push_notifier = PushNotifier()
-                    
-                    # Check for new trains and send notifications
-                    new_trains = push_notifier.notify_new_trains(train_numbers, train_details)
-                    
-                    # Display a success message if new trains were detected
-                    if new_trains:
-                        st.success(f"Detected {len(new_trains)} new trains: {', '.join(new_trains)}")
+                    # DISABLED NOTIFICATIONS ON MAIN PAGE - Only use Monitor page for notifications
+                    # push_notifier = PushNotifier()
+                    # new_trains = []
+                    # No notifications here - only in Monitor page
 
                 # Create a layout for train data and map side by side
                 train_data_col, map_col = st.columns((2.4, 2.6))
