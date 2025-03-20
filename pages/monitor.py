@@ -823,7 +823,7 @@ if monitor_success and not monitor_raw_data.empty:
             - Get alerts directly on your mobile phone
             - No special app required - uses your regular WhatsApp
             - Messages include detailed train information and delay status
-            - Configured to send alerts only for delays of 30 minutes or more
+            - Configurable delay threshold (adjust how many minutes of delay trigger notifications)
             """)
             
             # Show usage instructions
@@ -843,7 +843,7 @@ if monitor_success and not monitor_raw_data.empty:
             messaging capabilities. The system is configured to send WhatsApp alerts for:
             
             1. New trains detected in the monitoring data
-            2. Significant delays (30+ minutes) for any tracked train
+            2. Significant delays for any tracked train (based on your configurable threshold)
             
             Each notification is formatted with emojis and formatted text to clearly display the
             relevant train information.
