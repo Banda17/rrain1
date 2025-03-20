@@ -360,18 +360,26 @@ class TelegramNotifier:
             if from_to and len(from_to) >= 3:
                 train_type = from_to[:3]  # First three characters often indicate train type
         
-        # Format EXACTLY as requested in the samples
-        # "#22504 | Delay: LT 20 | Started: 17-Mar-2025"
+        # Format EXACTLY as requested in the format: "#train_number | FROM-TO | Delay: value | Started: date"
         message = f"#{train_id}"
         
+        # Ensure FROM-TO is present
         if from_to:
             message += f" | {from_to}"
+        else:
+            message += f" | UNKNOWN-UNKNOWN"
             
+        # Ensure Delay value is present
         if delay_raw:
             message += f" | Delay: {delay_raw}"
+        else:
+            message += f" | Delay: N/A"
             
+        # Ensure Start date is present
         if start_date:
             message += f" | Started: {start_date}"
+        else:
+            message += f" | Started: Unknown"
         
         # Send notification with filtering based on train type and notification preferences
         return self.send_message(
@@ -409,22 +417,16 @@ class TelegramNotifier:
             elif delay < 0:
                 message_type = 'early'
         
-        # Construct message
-        message = f"🚄 <b>Train #{train_id} Update</b>"
+        # Format EXACTLY as requested in the format: "#train_number | FROM-TO | Delay: value | Started: date"
+        from_to = location if location else "UNKNOWN-UNKNOWN"
+        delay_value = f"{delay} mins late" if delay and delay > 0 else f"{abs(delay)} mins early" if delay and delay < 0 else "On time"
         
-        if status:
-            message += f"\n<b>Status:</b> {status}"
-            
-        if location:
-            message += f"\n<b>Location:</b> {location}"
-            
-        if delay is not None:
-            if delay > 0:
-                message += f"\n<b>Delay:</b> {delay} minutes late"
-            elif delay < 0:
-                message += f"\n<b>Running:</b> {abs(delay)} minutes early"
-            else:
-                message += f"\n<b>On time</b>"
+        # Get current date for the "Started" field if not available
+        from datetime import datetime
+        started_date = datetime.now().strftime("%d %b")
+        
+        # Format message in the exact required format
+        message = f"#{train_id} | {from_to} | Delay: {delay_value} | Started: {started_date}"
         
         # Send message with appropriate filtering
         return self.send_message(

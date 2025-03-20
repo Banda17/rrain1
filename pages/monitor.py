@@ -550,6 +550,15 @@ if monitor_success and not monitor_raw_data.empty:
                             to_station = match.group(2)
                             details['FROM-TO'] = f"{from_station}-{to_station}"
                             logger.info(f"Extracted FROM-TO: {details['FROM-TO']} from Station Pair: {station_pair}")
+                        else:
+                            # Try a different pattern for more complex formats
+                            pattern2 = r'\[([A-Z]+)[^\]]*-([A-Z]+)'
+                            match2 = re.search(pattern2, station_pair)
+                            if match2:
+                                from_station = match2.group(1)
+                                to_station = match2.group(2)
+                                details['FROM-TO'] = f"{from_station}-{to_station}"
+                                logger.info(f"Extracted FROM-TO: {details['FROM-TO']} from complex format Station Pair: {station_pair}")
                     
                     # If still not found, try other columns
                     if 'FROM-TO' not in details:
@@ -561,14 +570,52 @@ if monitor_success and not monitor_raw_data.empty:
                 if 'Delay' not in details:
                     for col in monitor_raw_data.columns:
                         if 'delay' in col.lower():
-                            details['Delay'] = str(row[col]).strip()
+                            delay_value = str(row[col]).strip()
+                            # Ensure delay has correct format for notification
+                            if delay_value:
+                                # Try to extract numeric part if present
+                                import re
+                                match = re.search(r'(-?\d+)', delay_value)
+                                if match:
+                                    # Keep original format but ensure it's clean
+                                    details['Delay'] = delay_value.replace('\xa0', ' ').strip()
+                                else:
+                                    # No numeric part found, use as is
+                                    details['Delay'] = delay_value
+                            else:
+                                details['Delay'] = "N/A"
                             break
                 
                 if 'Start date' not in details:
                     for col in monitor_raw_data.columns:
                         if 'date' in col.lower() or 'start' in col.lower():
-                            details['Start date'] = str(row[col]).strip()
+                            start_date = str(row[col]).strip()
+                            if start_date:
+                                # Clean up the date format if needed
+                                import re
+                                # Check if it matches the format like "20 Mar" or similar short date
+                                if re.match(r'^\d{1,2}\s+[A-Za-z]{3}', start_date):
+                                    details['Start date'] = start_date
+                                else:
+                                    # Try to extract date in the expected format
+                                    date_match = re.search(r'(\d{1,2})\s*(?:st|nd|rd|th)?\s*([A-Za-z]{3})', start_date)
+                                    if date_match:
+                                        day = date_match.group(1)
+                                        month = date_match.group(2)
+                                        details['Start date'] = f"{day} {month}"
+                                    else:
+                                        # Use as is if no pattern matches
+                                        details['Start date'] = start_date
+                            else:
+                                # Use current date if no date is found
+                                from datetime import datetime
+                                details['Start date'] = datetime.now().strftime("%d %b")
                             break
+                
+                # If still no Start date, use current date
+                if 'Start date' not in details:
+                    from datetime import datetime
+                    details['Start date'] = datetime.now().strftime("%d %b")
                 
                 # Store the complete structured dictionary
                 train_details[train_no] = details
