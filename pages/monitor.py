@@ -8,8 +8,7 @@ import re
 import json
 import logging
 from animation_utils import create_pulsing_refresh_animation, show_countdown_progress, show_refresh_timestamp
-from push_notification import PushNotifier
-from whatsapp_notifier import WhatsAppNotifier, send_whatsapp_delay_notification
+from notifications import PushNotifier, WhatsAppNotifier, send_whatsapp_delay_notification
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

@@ -15,7 +15,7 @@ import folium
 from folium.plugins import Draw
 from streamlit_folium import folium_static, st_folium
 from map_viewer import MapViewer  # Import MapViewer for offline map handling
-from push_notification import PushNotifier
+from notifications import PushNotifier
 
 # Import the custom formatter for train number styling
 try:
