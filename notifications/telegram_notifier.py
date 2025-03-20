@@ -347,6 +347,7 @@ class TelegramNotifier:
         delay_raw = ""
         delay_mins = ""
         start_date = ""
+        intermediate_stations = ""
         delay = None
         train_type = None
         
@@ -362,6 +363,9 @@ class TelegramNotifier:
                 match = re.search(pattern, station_pair)
                 if match:
                     from_to = f"{match.group(1)}-{match.group(2)}"
+            
+            # Get Intermediate Stations information
+            intermediate_stations = train_info.get('Intermediate Stations', '')
             
             # Get delay in raw format
             delay_raw = train_info.get('Delay', '')
@@ -408,7 +412,7 @@ class TelegramNotifier:
             if from_to and len(from_to) >= 3:
                 train_type = from_to[:3]  # First three characters often indicate train type
         
-        # Format EXACTLY as requested in the format: "#train_number | FROM-TO | Delay: value | DELAY(MINS.): value | Started: date"
+        # Format EXACTLY as requested in the format: "#train_number | FROM-TO | Intermediate Stations | Delay: value | DELAY(MINS.): value | Started: date"
         # Use the train emoji 🚆 as specified, but ensure it appears subdued
         message = f"🚆 #{train_id}"
         
@@ -417,6 +421,10 @@ class TelegramNotifier:
             message += f" | {from_to}"
         else:
             message += f" | UNKNOWN-UNKNOWN"
+            
+        # Add Intermediate Stations information if available
+        if intermediate_stations:
+            message += f" | Intermediate: {intermediate_stations}"
             
         # Ensure Delay value is present
         if delay_raw:
@@ -474,12 +482,15 @@ class TelegramNotifier:
             elif delay < 0:
                 message_type = 'early'
         
-        # Format EXACTLY as requested in the format: "#train_number | FROM-TO | Delay: value | DELAY(MINS.): value | Started: date"
+        # Format EXACTLY as requested in the format: "#train_number | FROM-TO | Intermediate Stations | Delay: value | DELAY(MINS.): value | Started: date"
         from_to = location if location else "UNKNOWN-UNKNOWN"
         delay_value = f"{delay} mins late" if delay and delay > 0 else f"{abs(delay)} mins early" if delay and delay < 0 else "On time"
         
         # Create DELAY(MINS.) value with just the number
         delay_mins_value = f"{delay}" if delay is not None else "N/A"
+        
+        # We don't have intermediate stations for status updates, but we could add them in the future
+        intermediate_stations = ""
         
         # If delay is a complex string (like "KI (19 mins), COA (35 mins)"), extract just the first numeric value
         if isinstance(delay_mins_value, str) and any(char.isdigit() for char in delay_mins_value):
@@ -507,7 +518,14 @@ class TelegramNotifier:
         started_date = datetime.now().strftime("%d %b")
         
         # Format message in the exact required format with train emoji
-        message = f"🚆 #{train_id} | {from_to} | Delay: {delay_value} | DELAY(MINS.): {delay_mins_value} | Started: {started_date}"
+        message = f"🚆 #{train_id} | {from_to}"
+        
+        # Add intermediate stations if available
+        if intermediate_stations:
+            message += f" | Intermediate: {intermediate_stations}"
+            
+        # Continue with the rest of the message
+        message += f" | Delay: {delay_value} | DELAY(MINS.): {delay_mins_value} | Started: {started_date}"
         
         # Log the formatted message
         logger.info(f"Sending status notification with message: {message}")
