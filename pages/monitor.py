@@ -549,7 +549,7 @@ if monitor_success and not monitor_raw_data.empty:
                             from_station = match.group(1)
                             to_station = match.group(2)
                             details['FROM-TO'] = f"{from_station}-{to_station}"
-                            print(f"Extracted FROM-TO: {details['FROM-TO']} from Station Pair: {station_pair}")
+                            logger.info(f"Extracted FROM-TO: {details['FROM-TO']} from Station Pair: {station_pair}")
                     
                     # If still not found, try other columns
                     if 'FROM-TO' not in details:
