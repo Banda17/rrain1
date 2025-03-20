@@ -526,8 +526,49 @@ document.addEventListener('DOMContentLoaded', function() {
             unsafe_allow_html=True)
 
 
-def initialize_session_state():
-    """Initialize all session state variables with proper typing"""
+def initialize_session_state(force_recreate=False):
+    """Initialize all session state variables with proper typing
+    
+    Args:
+        force_recreate: If True, forces recreation of persistent components
+                      like database connection and train schedule
+    """
+    # Track if we need to initialize the database
+    db_initialized = st.session_state.get('db_initialized', False)
+    
+    # These are one-time initialization components (expensive to create)
+    # Only initialize if they don't exist or if force_recreate is True
+    if not db_initialized or force_recreate:
+        # Initialize database once at startup
+        init_db(force_recreate=force_recreate)
+        st.session_state['db_initialized'] = True
+        logger.info("Database initialized")
+    
+    # Persistent components that should only be created once
+    persistent_components = {
+        'train_schedule': {
+            'creator': lambda: TrainSchedule(),
+            'type': TrainSchedule
+        },
+        'map_viewer': {
+            'creator': lambda: MapViewer(),
+            'type': MapViewer  
+        },
+        'telegram_notifier': {
+            'creator': lambda: TelegramNotifier(),
+            'type': TelegramNotifier
+        }
+    }
+    
+    # Initialize persistent components only once unless forced
+    for key, config in persistent_components.items():
+        if key not in st.session_state or force_recreate:
+            logger.info(f"Initializing {key} component")
+            st.session_state[key] = config['creator']()
+        else:
+            logger.debug(f"Using existing {key} component")
+    
+    # Regular state variables that can be recreated as needed
     state_configs = {
         'data_handler': {
             'default': DataHandler(),
@@ -536,10 +577,6 @@ def initialize_session_state():
         'visualizer': {
             'default': Visualizer(),
             'type': Visualizer
-        },
-        'train_schedule': {
-            'default': TrainSchedule(),
-            'type': TrainSchedule
         },
         'last_update': {
             'default': None,
@@ -565,10 +602,6 @@ def initialize_session_state():
             'default': False,
             'type': bool
         },
-        'telegram_notifier': {
-            'default': TelegramNotifier(),
-            'type': TelegramNotifier
-        },
         'telegram_bot_token': {
             'default': '',
             'type': str
@@ -577,19 +610,15 @@ def initialize_session_state():
             'default': [],
             'type': list
         },
-        'map_stations': {  # New state variable for map stations
+        'map_stations': {  # State variable for map stations
             'default': [],
             'type': list
         },
-        'selected_stations': {  # New state variable for selected stations
+        'selected_stations': {  # State variable for selected stations
             'default': [],
             'type': list
         },
-        'map_viewer': {  # Add MapViewer to session state
-            'default': MapViewer(),
-            'type': MapViewer
-        },
-        'train_type_filters': {  # New state variable for train type filtering
+        'train_type_filters': {  # State variable for train type filtering
             'default': {
                 'SUF': True,   # Superfast
                 'MEX': True,   # Express
@@ -620,15 +649,20 @@ def initialize_session_state():
         'known_trains': {  # Set of known train IDs to avoid duplicate notifications
             'default': set(),
             'type': set
+        },
+        'telegram_channel_id': {  # State variable for Telegram channel ID
+            'default': '',
+            'type': str  
         }
     }
-
+    
+    # Set default values for regular state variables if they don't exist
     for key, config in state_configs.items():
         if key not in st.session_state:
             st.session_state[key] = config['default']
 
-    # Initialize ICMS data handler if not in session state
-    if 'icms_data_handler' not in st.session_state:
+    # Initialize ICMS data handler if not in session state or if forced recreate
+    if 'icms_data_handler' not in st.session_state or force_recreate:
         data_handler = DataHandler()
         # Override the spreadsheet URL for ICMS data
         data_handler.spreadsheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRO2ZV-BOcL11_5NhlrOnn5Keph3-cVp7Tyr1t6RxsoDvxZjdOyDsmRkdvesJLbSnZwY8v3CATt1Of9/pub?gid=155911658&single=true&output=csv"

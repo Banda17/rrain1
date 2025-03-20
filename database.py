@@ -24,9 +24,28 @@ class TrainDetails(Base):
     status = Column(String)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-def get_database_connection():
-    """Create database connection using environment variables"""
+# Global database engine and session factory
+_engine = None
+_Session = None
+
+def get_database_connection(recreate=False):
+    """Create or reuse database connection using environment variables
+    
+    Args:
+        recreate: If True, forces creation of a new connection
+                 Even if one already exists
+    
+    Returns:
+        SQLAlchemy session object
+    """
+    global _engine, _Session
+    
     try:
+        # Reuse existing engine if available and not forcing recreation
+        if _engine is not None and _Session is not None and not recreate:
+            logger.debug("Reusing existing database engine")
+            return _Session()
+            
         # Get database connection parameters from environment
         db_url = os.getenv('DATABASE_URL')
         if not db_url:
@@ -43,39 +62,39 @@ def get_database_connection():
             db_url = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
 
         logger.info("Creating database engine...")
-        engine = create_engine(db_url, pool_pre_ping=True)
+        _engine = create_engine(db_url, pool_pre_ping=True)
 
         # Test connection
-        engine.connect()
+        _engine.connect()
         logger.info("Database connection successful")
 
         # Create session factory
-        Session = sessionmaker(bind=engine)
-        return Session()
+        _Session = sessionmaker(bind=_engine)
+        return _Session()
 
     except Exception as e:
         logger.error(f"Database connection error: {str(e)}")
         raise
 
-def init_db():
-    """Initialize database tables"""
+def init_db(force_recreate=False):
+    """Initialize database tables
+    
+    Args:
+        force_recreate: If True, force recreation of database engine
+                       Even if one already exists
+    """
+    global _engine
+    
     try:
         logger.info("Initializing database...")
-        db_url = os.getenv('DATABASE_URL')
-        if not db_url:
-            db_user = os.getenv('PGUSER')
-            db_password = os.getenv('PGPASSWORD')
-            db_host = os.getenv('PGHOST')
-            db_port = os.getenv('PGPORT')
-            db_name = os.getenv('PGDATABASE')
-
-            if not all([db_user, db_password, db_host, db_port, db_name]):
-                raise ValueError("Missing required database environment variables")
-
-            db_url = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
-
-        engine = create_engine(db_url)
-        Base.metadata.create_all(engine)
+        
+        # Use our existing connection mechanism to get a valid engine
+        if _engine is None or force_recreate:
+            # This will initialize the engine as a side effect
+            get_database_connection(recreate=force_recreate)
+        
+        # Create tables using the global engine
+        Base.metadata.create_all(_engine)
         logger.info("Database initialization completed successfully")
 
     except Exception as e:
