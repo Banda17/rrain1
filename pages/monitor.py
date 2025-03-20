@@ -536,65 +536,45 @@ if monitor_success and not monitor_raw_data.empty:
         # Initialize push notifier for browser notifications
         push_notifier = PushNotifier()
         
-        # Initialize WhatsApp notifier
-        whatsapp_notifier = WhatsAppNotifier()
-        
         # Check for new trains and send browser notifications
         new_trains = push_notifier.notify_new_trains(train_numbers, train_details)
         
-        # Check for new trains and send WhatsApp notifications
-        new_trains_whatsapp = whatsapp_notifier.notify_new_trains(train_numbers, train_details)
-        
-        # Combine results for display
-        all_new_trains = list(set(new_trains + new_trains_whatsapp))
-        
-        if all_new_trains:
-            st.success(f"Detected {len(all_new_trains)} new trains: {', '.join(all_new_trains)}")
+        if new_trains:
+            st.success(f"Detected {len(new_trains)} new trains: {', '.join(new_trains)}")
             
             # Add JavaScript to trigger browser notifications
-            if new_trains:
-                js_code = """
-                <script>
-                // Wait for notification system to initialize
-                setTimeout(function() {
-                    if (window.showTrainNotification) {
-                """
-                
-                # Add code for each notification
-                for train in new_trains:
-                    train_detail = train_details.get(train, "New train detected")
-                    js_code += f"""
-                        window.showTrainNotification(
-                            'New Train {train} Detected',
-                            '{train_detail}',
-                            'delay'
-                        );
-                    """
-                
-                js_code += """
-                    }
-                }, 1000);
-                </script>
-                """
-                
-                # Output JavaScript
-                st.markdown(js_code, unsafe_allow_html=True)
-                
-                notification_methods = []
-                if new_trains:
-                    notification_methods.append("browser")
-                if new_trains_whatsapp:
-                    notification_methods.append("WhatsApp")
-                
-                if notification_methods:
-                    st.info(f"Notifications sent via {' and '.join(notification_methods)}!")
+            js_code = """
+            <script>
+            // Wait for notification system to initialize
+            setTimeout(function() {
+                if (window.showTrainNotification) {
+            """
             
-            # Check for delay notifications using configured threshold
-            # Get delay threshold from session state or use default
-            if 'whatsapp_delay_threshold' not in st.session_state:
-                st.session_state.whatsapp_delay_threshold = 30  # Default 30 minutes
+            # Add code for each notification
+            for train in new_trains:
+                train_detail = train_details.get(train, "New train detected")
+                js_code += f"""
+                    window.showTrainNotification(
+                        'New Train {train} Detected',
+                        '{train_detail}',
+                        'delay'
+                    );
+                """
             
-            delay_threshold = st.session_state.whatsapp_delay_threshold
+            js_code += """
+                }
+            }, 1000);
+            </script>
+            """
+            
+            # Output JavaScript
+            st.markdown(js_code, unsafe_allow_html=True)
+            
+            # Indicate notifications were sent
+            st.info("Browser notifications sent for new trains!")
+                        
+            # Use a default delay threshold for browser delay notifications
+            delay_threshold = 30  # Default 30 minutes
             
             # Find 'Delay' column if it exists
             delay_column = None
@@ -639,10 +619,24 @@ if monitor_success and not monitor_raw_data.empty:
                                     break
                             
                             # Log the delay notification being sent
-                            logger.info(f"Sending WhatsApp delay notification for train {train_no} with delay {delay_minutes} minutes at {station}")
+                            logger.info(f"Significant delay detected for train {train_no} with delay {delay_minutes} minutes at {station}")
                             
-                            # Send WhatsApp notification for significant delay
-                            send_whatsapp_delay_notification(train_no, delay_minutes, station, from_to)
+                            # Show browser notification for significant delay
+                            js_delay_code = f"""
+                            <script>
+                            // Wait for notification system to initialize
+                            setTimeout(function() {{
+                                if (window.showTrainNotification) {{
+                                    window.showTrainNotification(
+                                        'Train {train_no} Delayed',
+                                        'Train is {delay_minutes} minutes late at {station} {from_to or ""}',
+                                        'delay'
+                                    );
+                                }}
+                            }}, 1000);
+                            </script>
+                            """
+                            st.markdown(js_delay_code, unsafe_allow_html=True)
                     except Exception as e:
                         logger.error(f"Error checking for delay notification: {str(e)}")
         else:
@@ -718,85 +712,40 @@ if monitor_success and not monitor_raw_data.empty:
     
     # Extra information section
     with st.expander("Additional Information"):
-        st.write("This page monitors train data and sends notifications through multiple channels.")
+        st.write("This page monitors train data and sends browser notifications for train status updates.")
         
-        # Notification channels
-        st.markdown("#### Multi-Channel Notification Features")
+        # Notification information
+        st.markdown("#### Browser Notification Features")
         
-        # Create tabs for different notification types
-        browser_info, whatsapp_info = st.tabs(["Browser Notifications", "WhatsApp Notifications"])
+        st.markdown("""
+        - Receive real-time browser notifications when new trains are detected
+        - Get alerts when trains are significantly delayed
+        - No app installation required - works in modern browsers
+        - Notifications work even when the browser is in the background
+        - Click on notifications to open the monitor page directly
+        """)
         
-        with browser_info:
-            st.markdown("""
-            - Receive real-time browser notifications when new trains are detected
-            - No app installation required - works in modern browsers
-            - Notifications work even when the browser is in the background
-            - Click on notifications to open the monitor page directly
-            """)
-            
-            # Show usage instructions
-            st.markdown("#### How to Enable Browser Notifications")
-            st.markdown("""
-            1. Click on the 'Enable Push Notifications' button in the notification settings section
-            2. Allow notifications when prompted by your browser
-            3. You will now receive notifications when new trains are detected
-            """)
-            
-            # Technical details
-            st.markdown("#### Technical Details")
-            st.markdown("""
-            Browser notifications use the Web Push API and Service Workers to deliver messages 
-            directly to your browser. Your subscription is stored securely and no personal 
-            information is collected.
-            """)
-            
-            # Note about notification format
-            st.markdown("#### Browser Notification Format Example")
-            st.code("New train 12760 detected\nFROM-TO: HYB-TBM, Station: KI, Delay: -6 mins\nTime: 2023-06-15 14:30:45")
+        # Show usage instructions
+        st.markdown("#### How to Enable Browser Notifications")
+        st.markdown("""
+        1. Click on the 'Enable Push Notifications' button in the notification settings section
+        2. Allow notifications when prompted by your browser
+        3. You will now receive notifications when new trains are detected or when delays occur
+        """)
         
-        with whatsapp_info:
-            st.markdown("""
-            - Receive WhatsApp messages for new trains and significant delays
-            - Get alerts directly on your mobile phone
-            - No special app required - uses your regular WhatsApp
-            - Messages include detailed train information and delay status
-            - Configurable delay threshold (adjust how many minutes of delay trigger notifications)
-            """)
-            
-            # Show usage instructions
-            st.markdown("#### How to Enable WhatsApp Notifications")
-            st.markdown("""
-            1. Create a Twilio account with WhatsApp Sandbox
-            2. Join the Sandbox by sending the join code to the Twilio WhatsApp number
-            3. Add your Twilio credentials as secrets in Replit
-            4. Add your phone number to the NOTIFICATION_RECIPIENTS list
-            5. Test the configuration using the "Test WhatsApp Message" button
-            """)
-            
-            # Technical details
-            st.markdown("#### WhatsApp Integration")
-            st.markdown("""
-            WhatsApp notifications are powered by Twilio's API, which provides secure and reliable
-            messaging capabilities. The system is configured to send WhatsApp alerts for:
-            
-            1. New trains detected in the monitoring data
-            2. Significant delays for any tracked train (based on your configurable threshold)
-            
-            Each notification is formatted with emojis and formatted text to clearly display the
-            relevant train information.
-            """)
-            
-            # Note about notification format
-            st.markdown("#### WhatsApp Notification Format Examples")
-            st.code("""🚆 *New train 12760 detected*
-
-FROM: HYB, TO: TBM, Station: VJA
-Time: 2023-06-15 14:30:45
-            """)
-            
-            st.code("""🚨 Train is *45 minutes late* at station VJA, HYB-TBM.
-Time: 2023-06-15 14:30:45
-            """)
+        # Technical details
+        st.markdown("#### Technical Details")
+        st.markdown("""
+        Browser notifications use the Web Push API and Service Workers to deliver messages 
+        directly to your browser. Your subscription is stored securely and no personal 
+        information is collected.
+        """)
+        
+        # Note about notification format
+        st.markdown("#### Browser Notification Format Examples")
+        st.code("New train 12760 detected\nFROM-TO: HYB-TBM, Station: KI, Delay: -6 mins\nTime: 2023-06-15 14:30:45")
+        
+        st.code("Train 12760 Delayed\nTrain is 45 minutes late at GDR HYB-TBM\nTime: 2023-06-15 14:30:45")
     
     # Set up auto-refresh after 5 minutes (300 seconds)
     st.markdown("""
