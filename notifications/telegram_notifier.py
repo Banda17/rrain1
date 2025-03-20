@@ -317,6 +317,9 @@ class TelegramNotifier:
         if not self.is_configured:
             return False
             
+        # Debug the train details we're getting
+        logger.info(f"DEBUG: notify_new_train called with train_id={train_id}, train_info={train_info}")
+        
         train_name = ""
         from_to = ""
         delay = None
@@ -334,45 +337,77 @@ class TelegramNotifier:
             if 'Delay' in train_info:
                 try:
                     delay_val = train_info['Delay']
-                    if isinstance(delay_val, str) and delay_val.isdigit():
-                        delay = int(delay_val)
+                    if isinstance(delay_val, str):
+                        import re
+                        # Try to extract the first number, handling negative numbers too
+                        match = re.search(r'-?\d+', delay_val)
+                        if match:
+                            delay = int(match.group())
+                        elif delay_val.isdigit():
+                            delay = int(delay_val)
                     elif isinstance(delay_val, (int, float)):
                         delay = int(delay_val)
-                except:
+                except Exception as e:
+                    logger.error(f"Error parsing delay: {e}")
                     pass
         
         # Extract important fields
         start_date = train_info.get('Start date', '')
-        time_sch_act = train_info.get('Scheduled[ Entry - Exit ]', '')
         
         # Extract route from FROM-TO by removing time information
         clean_from_to = from_to
         if from_to:
             # Extract just the route part, remove timing information in brackets if present
             import re
-            match = re.match(r'([A-Z]+)\s*(\[.*\])?', from_to)
-            if match:
-                clean_from_to = match.group(1).strip()
-                
+            # Remove anything in parentheses or brackets
+            clean_from_to = re.sub(r'\([^)]*\)', '', from_to)
+            clean_from_to = re.sub(r'\[[^\]]*\]', '', clean_from_to)
+            # Remove any time formats like HH:MM
+            clean_from_to = re.sub(r'\d{1,2}:\d{2}', '', clean_from_to)
+            # Remove extra spaces
+            clean_from_to = ' '.join(clean_from_to.split())
+            
+            # If we have specific train codes, keep just the code
+            if clean_from_to in ['SUF', 'MEX', 'PEXP', 'VNDB', 'DMU', 'MEMU', 'TOD', 'RAJ', 'JSH', 'DNRT']:
+                # We have just the train type code, log it but don't use directly
+                logger.info(f"FROM-TO is just a train type code: {clean_from_to}")
+                # Try to look for a more descriptive route elsewhere in the data
+                for key, value in train_info.items():
+                    if key.lower() in ['route', 'path', 'stations', 'journey'] and value and value != clean_from_to:
+                        clean_from_to = f"{clean_from_to} {value}"
+                        break
+        
+        # Handle case where from_to is empty
+        if not clean_from_to or clean_from_to.isspace():
+            for key, value in train_info.items():
+                if ('from' in key.lower() or 'route' in key.lower() or 'path' in key.lower()) and value and not value.isspace():
+                    clean_from_to = value
+                    break
+        
         # Get the raw delay value
         delay_raw = train_info.get('Delay', '')
         
         # Construct message according to requested format
-        message = f"🚆 <b>Train #{train_id}</b>"
+        message = f"🚆 <b>New Train #{train_id}</b>"
         
         if clean_from_to:
-            message += f"\n<b>Route:</b> {clean_from_to}"
+            message += f"\n🚉 <b>Route:</b> {clean_from_to}"
             
         if delay_raw:
-            message += f"\n<b>Delay:</b> {delay_raw}"
+            message += f"\n⏱️ <b>Raw Delay:</b> {delay_raw}"
             
         if delay is not None:
-            message += f"\n<b>Delayed by:</b> {delay} minutes"
+            if delay > 0:
+                message += f"\n⚠️ <b>Delayed by:</b> {delay} minutes"
+            elif delay < 0:
+                message += f"\n✅ <b>Running early by:</b> {abs(delay)} minutes"
+            else:
+                message += "\n✅ <b>Running on time</b>"
             
         if start_date:
-            message += f"\n<b>Started on:</b> {start_date}"
+            message += f"\n📅 <b>Started on:</b> {start_date}"
         
-        message += "\n\nOpen the train tracking app for more details."
+        message += "\n\n💻 Open the train tracking app for more details."
         
         # Send notification with filtering based on train type and notification preferences
         return self.send_message(

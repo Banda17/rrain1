@@ -521,18 +521,48 @@ if monitor_success and not monitor_raw_data.empty:
     if train_column:
         train_numbers = [str(train_no).strip() for train_no in monitor_raw_data[train_column] if str(train_no).strip()]
         
-        # Create train details dictionary
+        # Create train details dictionary with specific columns we need for notifications
         for _, row in monitor_raw_data.iterrows():
             train_no = str(row[train_column]).strip()
             if train_no:
-                # Create a structured dictionary for Telegram compatibility
+                # Create a structured dictionary with required fields for Telegram compatibility
                 details = {}
+                
+                # Add each column with proper naming for our notification format
                 for col in monitor_raw_data.columns:
                     if col != train_column and not pd.isna(row[col]):
-                        details[col] = row[col]
+                        # Clean and format each value
+                        value = str(row[col]).strip()
+                        details[col] = value
                 
-                # Store both the structured dictionary for Telegram and the formatted string for display
+                # Make sure we have all the required fields for notifications
+                # Some might have different column names in different data sources
+                if 'FROM-TO' not in details:
+                    for col in monitor_raw_data.columns:
+                        if 'from' in col.lower() or 'route' in col.lower():
+                            details['FROM-TO'] = str(row[col]).strip()
+                            break
+                
+                if 'Delay' not in details:
+                    for col in monitor_raw_data.columns:
+                        if 'delay' in col.lower():
+                            details['Delay'] = str(row[col]).strip()
+                            break
+                
+                if 'Start date' not in details:
+                    for col in monitor_raw_data.columns:
+                        if 'date' in col.lower() or 'start' in col.lower():
+                            details['Start date'] = str(row[col]).strip()
+                            break
+                
+                # Store the complete structured dictionary
                 train_details[train_no] = details
+                
+                # Debug output for the first train
+                if len(train_details) == 1:
+                    print(f"DEBUG - First train details: {train_details[train_no]}")
+                    for key, value in details.items():
+                        print(f"  {key}: {value}")
     
     # Check for new trains and send push notifications
     if train_numbers:
