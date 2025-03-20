@@ -365,7 +365,7 @@ class TelegramNotifier:
                 train_type = from_to[:3]  # First three characters often indicate train type
         
         # Format EXACTLY as requested in the format: "#train_number | FROM-TO | Delay: value | DELAY(MINS.): value | Started: date"
-        message = f"<span class='train-emoji'>🚆</span> #{train_id}"
+        message = f"🚆 #{train_id}"
         
         # Ensure FROM-TO is present
         if from_to:
@@ -439,7 +439,7 @@ class TelegramNotifier:
         started_date = datetime.now().strftime("%d %b")
         
         # Format message in the exact required format
-        message = f"<span class='train-emoji'>🚆</span> #{train_id} | {from_to} | Delay: {delay_value} | DELAY(MINS.): {delay_mins_value} | Started: {started_date}"
+        message = f"🚆 #{train_id} | {from_to} | Delay: {delay_value} | DELAY(MINS.): {delay_mins_value} | Started: {started_date}"
         
         # Send message with appropriate filtering
         return self.send_message(
