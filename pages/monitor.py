@@ -283,7 +283,22 @@ st.write("This page displays monitoring data from Google Sheets.")
 
 # Function to fetch data directly from a spreadsheet URL
 @st.cache_data(ttl=300, show_spinner=False)
-def fetch_sheet_data(url):
+def fetch_sheet_data(url, force_refresh=False):
+    """
+    Fetch sheet data from the given URL with optimized caching.
+    
+    Args:
+        url: URL to fetch data from
+        force_refresh: If True, invalidate cache and force a new fetch
+        
+    Returns:
+        Tuple of (DataFrame, success_boolean)
+    """
+    # If force_refresh is True, clear the cache for this function
+    if force_refresh:
+        st.cache_data.clear()
+        logger.info("Cache cleared for fetch_sheet_data due to force_refresh=True")
+    
     try:
         # Use requests to get data with proper headers
         headers = {
@@ -300,21 +315,26 @@ def fetch_sheet_data(url):
             os.makedirs("temp", exist_ok=True)
             with open("temp/cached_monitor.csv", "w", newline='', encoding='utf-8') as f:
                 f.write(response.content.decode('utf-8'))
+            logger.info(f"Successfully cached monitor data to temp/cached_monitor.csv ({len(df)} rows)")
         except Exception as e:
             st.warning(f"Failed to cache monitor data: {str(e)}")
+            logger.error(f"Failed to cache monitor data: {str(e)}")
             
         return df, True
     except Exception as e:
         st.error(f"Error fetching data from {url}: {str(e)}")
+        logger.error(f"Error fetching data from {url}: {str(e)}")
         
         # Try to load from cached file if available
         try:
             if os.path.exists("temp/cached_monitor.csv"):
                 st.warning("Using cached data (offline mode)")
                 df = pd.read_csv("temp/cached_monitor.csv")
+                logger.info(f"Using cached data from temp/cached_monitor.csv ({len(df)} rows)")
                 return df, True
         except Exception as cache_error:
             st.error(f"Failed to load cached data: {str(cache_error)}")
+            logger.error(f"Failed to load cached data: {str(cache_error)}")
             
         return pd.DataFrame(), False
 
@@ -327,9 +347,17 @@ if 'is_refreshing' not in st.session_state:
     
 create_pulsing_refresh_animation(refresh_placeholder, "Fetching monitoring data from Google Sheets...")
 
+# Check if we should force a refresh
+force_refresh = False
+if 'force_data_refresh' in st.session_state and st.session_state.force_data_refresh:
+    force_refresh = True
+    # Reset the flag
+    st.session_state.force_data_refresh = False
+    logger.info("Forcing data refresh due to manual refresh request")
+
 # Fetch monitor data
 st.info("Fetching monitoring data...")
-monitor_raw_data, monitor_success = fetch_sheet_data(MONITOR_DATA_URL)
+monitor_raw_data, monitor_success = fetch_sheet_data(MONITOR_DATA_URL, force_refresh=force_refresh)
 
 # Only skip the first row if it's a header/summary row (not train data)
 if monitor_success and not monitor_raw_data.empty and len(monitor_raw_data) > 1:
@@ -950,6 +978,8 @@ if monitor_success and not monitor_raw_data.empty:
     col1, col2 = st.columns(2)
     with col1:
         if st.button("Refresh Data Now"):
+            # Set a flag to force refresh on next run
+            st.session_state.force_data_refresh = True
             st.rerun()
     
     with col2:

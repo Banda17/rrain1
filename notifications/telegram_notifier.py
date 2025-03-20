@@ -28,7 +28,22 @@ class TelegramNotifier:
             st.session_state.telegram_chat_ids = [id.strip() for id in chat_ids_str.split(',')] if chat_ids_str else []
             
         if 'telegram_channel_id' not in st.session_state:
-            st.session_state.telegram_channel_id = os.environ.get('TELEGRAM_CHANNEL_ID', '')
+            # Use TELEGRAM_CHAT_IDS environment variable for backward compatibility
+            # This allows a single chat ID to be used as a channel ID if needed
+            channel_id = os.environ.get('TELEGRAM_CHANNEL_ID', '')
+            if not channel_id and 'TELEGRAM_CHAT_IDS' in os.environ:
+                # Try to extract the first chat ID as a potential channel ID
+                chat_ids_str = os.environ.get('TELEGRAM_CHAT_IDS', '')
+                if chat_ids_str:
+                    chat_ids_list = [id.strip() for id in chat_ids_str.split(',')]
+                    if chat_ids_list:
+                        # Use the first chat ID as a channel ID if it starts with @ or -100
+                        first_id = chat_ids_list[0]
+                        if first_id.startswith('@') or first_id.startswith('-100'):
+                            channel_id = first_id
+                            logger.info(f"Using first chat ID as channel ID: {channel_id}")
+            
+            st.session_state.telegram_channel_id = channel_id
         
         # Initialize notification preferences with defaults
         if 'telegram_notify_preferences' not in st.session_state:
