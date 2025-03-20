@@ -323,6 +323,7 @@ class TelegramNotifier:
         # Extract required information in the EXACT format requested
         from_to = ""
         delay_raw = ""
+        delay_mins = ""
         start_date = ""
         delay = None
         train_type = None
@@ -343,6 +344,9 @@ class TelegramNotifier:
             # Get delay in raw format
             delay_raw = train_info.get('Delay', '')
             
+            # Get DELAY(MINS.) column value specifically
+            delay_mins = train_info.get('DELAY(MINS.)', '')
+            
             # Try to extract numeric delay for filtering
             if delay_raw:
                 try:
@@ -360,7 +364,7 @@ class TelegramNotifier:
             if from_to and len(from_to) >= 3:
                 train_type = from_to[:3]  # First three characters often indicate train type
         
-        # Format EXACTLY as requested in the format: "#train_number | FROM-TO | Delay: value | Started: date"
+        # Format EXACTLY as requested in the format: "#train_number | FROM-TO | Delay: value | DELAY(MINS.): value | Started: date"
         message = f"#{train_id}"
         
         # Ensure FROM-TO is present
@@ -374,6 +378,12 @@ class TelegramNotifier:
             message += f" | Delay: {delay_raw}"
         else:
             message += f" | Delay: N/A"
+            
+        # Add DELAY(MINS.) information if available
+        if delay_mins:
+            message += f" | DELAY(MINS.): {delay_mins}"
+        else:
+            message += f" | DELAY(MINS.): N/A"
             
         # Ensure Start date is present
         if start_date:
@@ -417,16 +427,19 @@ class TelegramNotifier:
             elif delay < 0:
                 message_type = 'early'
         
-        # Format EXACTLY as requested in the format: "#train_number | FROM-TO | Delay: value | Started: date"
+        # Format EXACTLY as requested in the format: "#train_number | FROM-TO | Delay: value | DELAY(MINS.): value | Started: date"
         from_to = location if location else "UNKNOWN-UNKNOWN"
         delay_value = f"{delay} mins late" if delay and delay > 0 else f"{abs(delay)} mins early" if delay and delay < 0 else "On time"
+        
+        # Create DELAY(MINS.) value in the same format as the Delay value
+        delay_mins_value = f"{delay}" if delay else "N/A"
         
         # Get current date for the "Started" field if not available
         from datetime import datetime
         started_date = datetime.now().strftime("%d %b")
         
         # Format message in the exact required format
-        message = f"#{train_id} | {from_to} | Delay: {delay_value} | Started: {started_date}"
+        message = f"#{train_id} | {from_to} | Delay: {delay_value} | DELAY(MINS.): {delay_mins_value} | Started: {started_date}"
         
         # Send message with appropriate filtering
         return self.send_message(

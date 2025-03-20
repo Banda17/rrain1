@@ -567,6 +567,7 @@ if monitor_success and not monitor_raw_data.empty:
                                 details['FROM-TO'] = str(row[col]).strip()
                                 break
                 
+                # Check for regular Delay field
                 if 'Delay' not in details:
                     for col in monitor_raw_data.columns:
                         if 'delay' in col.lower():
@@ -585,6 +586,12 @@ if monitor_success and not monitor_raw_data.empty:
                             else:
                                 details['Delay'] = "N/A"
                             break
+                
+                # Specifically look for DELAY(MINS.) column separately
+                for col in monitor_raw_data.columns:
+                    if col == "DELAY(MINS.)" or col == "Delay(Mins.)" or "delay" in col.lower() and "mins" in col.lower():
+                        details['DELAY(MINS.)'] = str(row[col]).strip()
+                        break
                 
                 if 'Start date' not in details:
                     for col in monitor_raw_data.columns:
