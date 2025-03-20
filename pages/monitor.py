@@ -695,6 +695,16 @@ if monitor_success and not monitor_raw_data.empty:
                 if 'Start date' not in details:
                     from datetime import datetime
                     details['Start date'] = datetime.now().strftime("%d %b")
+                    
+                # Ensure Intermediate Stations data is included
+                if 'Intermediate Stations' not in details:
+                    for col in monitor_raw_data.columns:
+                        if col == 'Intermediate Stations' or 'intermediate' in col.lower() or 'stations' in col.lower():
+                            intermediate_stations = str(row[col]).strip()
+                            if intermediate_stations:
+                                details['Intermediate Stations'] = intermediate_stations
+                                logger.info(f"Found Intermediate Stations data: {intermediate_stations}")
+                            break
                 
                 # Store the complete structured dictionary
                 train_details[train_no] = details
