@@ -2180,6 +2180,35 @@ try:
 
                 # Call the logging function
                 log_from_to_values(display_df)
+                
+                # Check for new trains and send notifications
+                if 'Train No.' in display_df.columns:
+                    # Extract train numbers from the dataframe
+                    train_numbers = display_df['Train No.'].dropna().astype(str).tolist()
+                    
+                    # Create a dictionary with additional train details for notifications
+                    train_details = {}
+                    for _, row in display_df.iterrows():
+                        if pd.notna(row.get('Train No.')):
+                            train_no = str(row['Train No.'])
+                            details = {}
+                            
+                            # Include relevant columns for notification details
+                            for col in display_df.columns:
+                                if col not in ['Train No.', '#', 'Select'] and pd.notna(row.get(col)):
+                                    details[col] = row[col]
+                            
+                            train_details[train_no] = ", ".join([f"{k}: {v}" for k, v in details.items() if v])
+                    
+                    # Initialize push notifier for browser and Telegram notifications
+                    push_notifier = PushNotifier()
+                    
+                    # Check for new trains and send notifications
+                    new_trains = push_notifier.notify_new_trains(train_numbers, train_details)
+                    
+                    # Display a success message if new trains were detected
+                    if new_trains:
+                        st.success(f"Detected {len(new_trains)} new trains: {', '.join(new_trains)}")
 
                 # Create a layout for train data and map side by side
                 train_data_col, map_col = st.columns((2.4, 2.6))
