@@ -364,8 +364,14 @@ class TelegramNotifier:
                 if match:
                     from_to = f"{match.group(1)}-{match.group(2)}"
             
-            # Get Intermediate Stations information
+            # Get Intermediate Stations information and clean it up
             intermediate_stations = train_info.get('Intermediate Stations', '')
+            
+            # Remove "Data last updated on: ( mins)" text if present
+            if intermediate_stations and "Data last updated on:" in intermediate_stations:
+                import re
+                intermediate_stations = re.sub(r',?\s*Data last updated on:\s*\(\s*mins\)\s*', '', intermediate_stations)
+                logger.info(f"Cleaned intermediate stations text: {intermediate_stations}")
             
             # Get delay in raw format
             delay_raw = train_info.get('Delay', '')
@@ -485,6 +491,12 @@ class TelegramNotifier:
         
         # We don't have T/O-H/O station information for status updates, but we could add them in the future
         intermediate_stations = ""
+        
+        # If somehow we do get intermediate stations with "Data last updated on: ( mins)", clean it up
+        if intermediate_stations and "Data last updated on:" in intermediate_stations:
+            import re
+            intermediate_stations = re.sub(r',?\s*Data last updated on:\s*\(\s*mins\)\s*', '', intermediate_stations)
+            logger.info(f"Cleaned intermediate stations text in status update: {intermediate_stations}")
         
         # If delay is a complex string (like "KI (19 mins), COA (35 mins)"), extract just the first numeric value
         if isinstance(delay_mins_value, str) and any(char.isdigit() for char in delay_mins_value):
