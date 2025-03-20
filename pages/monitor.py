@@ -8,7 +8,7 @@ import re
 import json
 import logging
 from animation_utils import create_pulsing_refresh_animation, show_countdown_progress, show_refresh_timestamp
-from notifications import PushNotifier
+from notifications import PushNotifier, TelegramNotifier
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -757,11 +757,28 @@ if monitor_success and not monitor_raw_data.empty:
         # Initialize push notifier for browser notifications
         push_notifier = PushNotifier()
         
+        # Initialize Telegram notifier for channel messages
+        if 'telegram_notifier' not in st.session_state:
+            st.session_state.telegram_notifier = TelegramNotifier()
+        telegram_notifier = st.session_state.telegram_notifier
+            
         # Check for new trains and send browser notifications
         new_trains = push_notifier.notify_new_trains(train_numbers, train_details)
         
         if new_trains:
             st.success(f"Detected {len(new_trains)} new trains: {', '.join(new_trains)}")
+            
+            # Send Telegram channel notifications for the new trains if channel is configured
+            if telegram_notifier.is_configured and st.session_state.telegram_channel_id:
+                for train_id in new_trains:
+                    train_info = train_details.get(train_id, {}) if train_details else {}
+                    # Send direct channel message using the specialized format
+                    telegram_notifier.notify_new_train(
+                        train_id=train_id,
+                        train_info=train_info,
+                        send_to_channel_only=True  # This flag makes it use the channel format with locomotive emoji
+                    )
+                st.info(f"Sent {len(new_trains)} notifications to Telegram channel.")
             
             # Add JavaScript to trigger browser notifications
             js_code = """

@@ -460,13 +460,15 @@ class TelegramNotifier:
             logger.error(f"Error in send_message: {str(e)}")
             return False
     
-    def notify_new_train(self, train_id: str, train_info: Optional[Dict[str, Any]] = None) -> bool:
+    def notify_new_train(self, train_id: str, train_info: Optional[Dict[str, Any]] = None, 
+                          send_to_channel_only: bool = False) -> bool:
         """
         Send notification about a new train
         
         Args:
             train_id: Train number/ID
             train_info: Optional dictionary with additional train information
+            send_to_channel_only: If True, only send to channel with the exact train format
             
         Returns:
             True if notification was sent successfully
@@ -485,6 +487,70 @@ class TelegramNotifier:
         intermediate_stations = ""
         delay = None
         train_type = None
+        
+        # Check if we should send directly to the channel only
+        if send_to_channel_only and st.session_state.telegram_channel_id:
+            # For channel-only messages, we'll format the message differently with the train emoji 🚂
+            # Exact format: "🚂 #train_number | FROM-TO | T/O-H/O: stations with delay times | Delay: value | Started: date"
+            
+            # Extract information for the exact format
+            if train_info:
+                # Get FROM-TO
+                from_to = train_info.get('FROM-TO', '')
+                
+                # Try to extract station pair if FROM-TO not found
+                if not from_to and 'Station Pair' in train_info:
+                    station_pair = train_info.get('Station Pair', '')
+                    import re
+                    pattern = r'([A-Z]+)[^-]*-([A-Z]+)'
+                    match = re.search(pattern, station_pair)
+                    if match:
+                        from_to = f"{match.group(1)}-{match.group(2)}"
+                
+                # Get T/O-H/O information (Intermediate Stations in our data)
+                intermediate_stations = train_info.get('Intermediate Stations', '') or train_info.get('T/O-H/O', '')
+                
+                # Clean up intermediate stations text
+                if intermediate_stations and "Data last updated on:" in intermediate_stations:
+                    import re
+                    intermediate_stations = re.sub(r',?\s*Data last updated on:\s*\(\s*mins\)\s*', '', intermediate_stations)
+                
+                # Get delay information
+                delay_value = train_info.get('Delay', 'N/A')
+                
+                # Get start date
+                start_date = train_info.get('Start date', '') or train_info.get('Start Date', '')
+                if not start_date:
+                    from datetime import datetime
+                    start_date = datetime.now().strftime("%d %b")
+                
+                # Format the message with train locomotive emoji 🚂 (not train car emoji 🚆)
+                channel_message = f"🚂 #{train_id}"
+                
+                # Add FROM-TO
+                if from_to:
+                    channel_message += f" | {from_to}"
+                else:
+                    channel_message += f" | UNKNOWN-UNKNOWN"
+                    
+                # Add T/O-H/O information if available
+                if intermediate_stations:
+                    channel_message += f" | T/O-H/O: {intermediate_stations}"
+                
+                # Add Delay information
+                channel_message += f" | Delay: {delay_value}"
+                
+                # Add Start date
+                channel_message += f" | Started: {start_date}"
+                
+                # Log the formatted channel message
+                logger.info(f"Sending direct channel message: {channel_message}")
+                
+                # Send directly to the channel using our new method
+                return self.send_to_channel(
+                    message=channel_message,
+                    only_channel=True
+                )
         
         if train_info:
             # Get FROM-TO
@@ -767,10 +833,26 @@ class TelegramNotifier:
                 success = success or summary_result
         else:
             # If we have a reasonable number, send individual notifications for all
+            # If we have a channel ID configured, also send directly to channel with proper format
+            have_channel = bool(st.session_state.telegram_channel_id)
+            
             for train_id in filtered_train_ids:
                 train_info = train_details.get(train_id, {}) if train_details else {}
+                
+                # Send normal notification to chat IDs
                 result = self.notify_new_train(train_id, train_info)
-                success = success or result
+                
+                # If we have a channel ID, also send a direct channel message with the proper format
+                if have_channel:
+                    channel_result = self.notify_new_train(
+                        train_id, 
+                        train_info,
+                        send_to_channel_only=True  # This flag makes it use the channel format with locomotive emoji
+                    )
+                    # Count success from either message
+                    success = success or result or channel_result
+                else:
+                    success = success or result
         
         return success
     
