@@ -8,7 +8,7 @@ import re
 import json
 import logging
 from animation_utils import create_pulsing_refresh_animation, show_countdown_progress, show_refresh_timestamp
-from notifications import PushNotifier, WhatsAppNotifier, send_whatsapp_delay_notification
+from notifications import PushNotifier
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -378,12 +378,12 @@ if monitor_success and not monitor_raw_data.empty:
     monitor_raw_data = monitor_raw_data.replace('Undefined', '-')
     
     # Notification settings section
-    st.write("### Notification Settings")
+    st.write("### Browser Notification Settings")
     
-    # Create tabs for different notification types
-    browser_tab, whatsapp_tab = st.tabs(["Browser Notifications", "WhatsApp Notifications"])
+    # Create container for browser notifications
+    notification_container = st.container()
     
-    with browser_tab:
+    with notification_container:
         # Initialize push notifier
         push_notifier = PushNotifier()
         
@@ -478,95 +478,32 @@ if monitor_success and not monitor_raw_data.empty:
         
         # Render the push notification UI
         push_notifier.render_notification_ui()
-    
-    # WhatsApp notifications tab
-    with whatsapp_tab:
-        # Initialize WhatsApp notifier
-        whatsapp_notifier = WhatsAppNotifier()
         
-        # Render WhatsApp notification settings UI
-        whatsapp_notifier.render_whatsapp_settings_ui()
-        
-        # Add delay threshold configuration
-        st.subheader("Notification Settings")
-        
-        # Add a slider to adjust delay threshold
-        delay_threshold = st.slider(
-            "WhatsApp Delay Notification Threshold (minutes)",
-            min_value=5,
-            max_value=120,
-            value=st.session_state.get('whatsapp_delay_threshold', 30),
-            step=5,
-            help="Minimum delay (in minutes) required to trigger a WhatsApp notification"
-        )
-        
-        # Save the threshold to session state
-        st.session_state.whatsapp_delay_threshold = delay_threshold
-        
-        st.info(f"WhatsApp notifications will be sent for trains delayed {delay_threshold} minutes or more.")
-        
-        # Add a button to test WhatsApp delay notification
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("Test WhatsApp Delay Alert", type="primary"):
-                if whatsapp_notifier.is_configured:
-                    # Use sample data for test
-                    test_train = "12760"
-                    # Use the configured threshold from the slider
-                    test_delay = st.session_state.get('whatsapp_delay_threshold', 30)
-                    test_station = "VJA"
-                    test_route = "HYB-TBM"
-                    
-                    # Send test notification
-                    logger.info(f"Sending test WhatsApp delay notification for train {test_train} with delay {test_delay} minutes")
-                    success = send_whatsapp_delay_notification(test_train, test_delay, test_station, test_route)
-                    
-                    if success:
-                        st.success(f"Test WhatsApp delay alert sent for a {test_delay} minute delay! Check your WhatsApp.")
-                    else:
-                        st.error("Failed to send test WhatsApp alert. Check configuration.")
-                else:
-                    st.error("WhatsApp is not configured. Please set up Twilio first.")
-        
-        with col2:
-            if st.button("Reset WhatsApp Known Trains", type="secondary"):
-                try:
-                    if os.path.exists('temp/known_trains_whatsapp.json'):
-                        os.remove('temp/known_trains_whatsapp.json')
-                    whatsapp_notifier.known_trains = set()
-                    whatsapp_notifier.save_known_trains(set())
-                    st.success("WhatsApp known trains list has been reset. You will receive new train notifications for all trains again.")
-                except Exception as e:
-                    st.error(f"Error resetting WhatsApp known trains: {str(e)}")
-        
-        st.divider()
-        
+        # Add description of browser notifications
         st.markdown("""
-        ### WhatsApp Notification Features
-        - Receive real-time WhatsApp messages when new trains are detected
-        - Get delay alerts directly to your phone
-        - No app installation required - works with any WhatsApp account
-        - Messages include train details and delay information
-        
-        To enable WhatsApp notifications, you need a Twilio account with WhatsApp Sandbox enabled.
+        ### Browser Notification Features
+        - Receive real-time browser notifications when new trains are detected
+        - No app installation required - works in modern browsers
+        - Notifications work even when the browser is in the background
+        - Click on notifications to open the monitor page directly
         """)
         
-        # Add help guide
-        with st.expander("How to Set Up Twilio for WhatsApp"):
+        # How to enable browser notifications
+        with st.expander("How to Enable Browser Notifications"):
             st.markdown("""
-            1. Create a Twilio account at [twilio.com](https://www.twilio.com/)
-            2. Navigate to the Messaging section and select "Try WhatsApp"
-            3. Set up the WhatsApp Sandbox
-            4. Add your phone number to the Sandbox by sending the join code to the Twilio number
-            5. Copy your Account SID and Auth Token from the Twilio Console
-            6. Add these values as secrets in your Replit environment:
-               - TWILIO_ACCOUNT_SID
-               - TWILIO_AUTH_TOKEN
-               - TWILIO_PHONE_NUMBER (without the 'whatsapp:+' prefix)
-               - NOTIFICATION_RECIPIENTS (comma-separated list of phone numbers with country code, e.g., 919876543210)
+            1. Click on the 'Enable Push Notifications' button above
+            2. Allow notifications when prompted by your browser
+            3. You will now receive notifications when new trains are detected
+            
+            **Technical Details:**
+            Browser notifications use the Web Push API and Service Workers to deliver messages 
+            directly to your browser. Your subscription is stored securely and no personal 
+            information is collected.
             """)
             
-            st.warning("Important: WhatsApp messages will only be sent when new trains are detected or significant delays occur.")
+            # Example format
+            st.markdown("#### Browser Notification Format Example")
+            st.code("New train 12760 detected\nFROM-TO: HYB-TBM, Station: KI, Delay: -6 mins\nTime: 2023-06-15 14:30:45")
     
     # Extract train numbers for push notifications
     train_numbers = []
