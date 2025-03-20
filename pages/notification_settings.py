@@ -21,6 +21,10 @@ if 'TELEGRAM_CHAT_IDS' in os.environ and not st.session_state.telegram_chat_ids:
     chat_ids_str = os.environ['TELEGRAM_CHAT_IDS']
     st.session_state.telegram_chat_ids = [id.strip() for id in chat_ids_str.split(',')] if chat_ids_str else []
 
+# Add the new recipient if not already in the list
+if st.session_state.telegram_chat_ids and "998524115" not in st.session_state.telegram_chat_ids:
+    st.session_state.telegram_chat_ids.append("998524115")
+
 if 'TELEGRAM_CHANNEL_ID' in os.environ and not st.session_state.telegram_channel_id:
     st.session_state.telegram_channel_id = os.environ['TELEGRAM_CHANNEL_ID']
 
