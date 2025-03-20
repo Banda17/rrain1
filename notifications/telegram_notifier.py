@@ -186,6 +186,87 @@ class TelegramNotifier:
         # Rate limit exceeded
         return False
     
+    def send_to_channel(self, message: str, only_channel: bool = False, parse_mode: str = 'HTML') -> bool:
+        """
+        Send a message directly to the configured Telegram channel
+        
+        Args:
+            message: Message text to send
+            only_channel: If True, only send to channel and not to individual chat IDs
+            parse_mode: Parse mode for Telegram ('HTML', 'Markdown', or None for plain text)
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        if not self.is_configured:
+            logger.warning("Telegram notifications not properly configured")
+            return False
+            
+        # Check if channel ID is configured
+        channel_id = st.session_state.telegram_channel_id
+        if not channel_id:
+            logger.warning("No channel ID configured for Telegram channel messages")
+            return False
+        
+        # Remove any HTML span tags that might cause issues in Telegram messages
+        import re
+        cleaned_message = message
+        # Remove <span> tags if using HTML mode
+        if parse_mode == 'HTML':
+            cleaned_message = re.sub(r'<span[^>]*>(.*?)</span>', r'\1', cleaned_message)
+        
+        # Create a new event loop for async operations
+        try:
+            async def send_channel_message():
+                try:
+                    # Check if bot is initialized
+                    if self._bot is None:
+                        logger.error(f"Cannot send message to channel {channel_id}: Telegram bot not initialized")
+                        return False
+                    
+                    # Send to channel with specified parse mode
+                    await self._bot.send_message(
+                        chat_id=channel_id, 
+                        text=cleaned_message, 
+                        parse_mode=parse_mode
+                    )
+                    logger.info(f"Successfully sent message to channel {channel_id}")
+                    return True
+                except Exception as e:
+                    logger.error(f"Failed to send Telegram message to channel {channel_id}: {str(e)}")
+                    # If failed with HTML parsing, try without parse_mode
+                    if parse_mode:
+                        try:
+                            logger.info(f"Retrying channel message without parse mode")
+                            # Remove all HTML tags for plain text fallback
+                            plain_message = re.sub(r'<[^>]*>', '', cleaned_message)
+                            await self._bot.send_message(chat_id=channel_id, text=plain_message)
+                            logger.info(f"Successfully sent plain text message to channel {channel_id}")
+                            return True
+                        except Exception as e2:
+                            logger.error(f"Second attempt to channel also failed: {str(e2)}")
+                            return False
+                    return False
+            
+            # Check if there's a running event loop we can use
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_closed():
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+            except RuntimeError:
+                # No event loop found, create a new one
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+            
+            # Run the async function in the event loop
+            success = loop.run_until_complete(send_channel_message())
+            
+            return success
+        except Exception as e:
+            logger.error(f"Failed to send channel message: {str(e)}")
+            return False
+    
     def _should_send_notification(self, message_type: str, train_type: Optional[str] = None, delay: Optional[int] = None) -> bool:
         """
         Check if a notification should be sent based on user preferences
@@ -909,6 +990,26 @@ class TelegramNotifier:
                         st.error("Failed to send test message. Please check your configuration and preferences.")
                 else:
                     st.error("Please configure bot token and at least one chat ID or channel ID first.")
+                    
+            if st.button("Send Test - Direct Channel"):
+                if self.is_configured and st.session_state.telegram_channel_id:
+                    # Create a message with the proper train format and emoji
+                    channel_message = (
+                        "🚂 #12760 | HYB-TBM | T/O-H/O: GDR-RJY: 10 mins late | "
+                        "Delay: -6 mins | Started: 2023-06-15"
+                    )
+                    
+                    success = self.send_to_channel(
+                        message=channel_message,
+                        only_channel=True
+                    )
+                    
+                    if success:
+                        st.success("Direct channel message sent successfully!")
+                    else:
+                        st.error("Failed to send direct channel message. Check your channel ID and bot permissions.")
+                else:
+                    st.error("Please configure bot token and channel ID for direct channel messaging.")
                     
             if st.button("Send Test - Status Change"):
                 if self.is_configured:

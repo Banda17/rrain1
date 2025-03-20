@@ -1,4 +1,14 @@
 Train Number,Station Pair,Intermediate Stations,Delays,Start Date
+12841,SHM 15:15-MAS 17:00,"DVD (80 mins), GDR (108 mins)","LT
+28",19-Mar-2025
+17239,GNT 08:00-VSKP 16:40,"KCC (0 mins), DVD (36 mins)","LT
+36",20-Mar-2025
+11019,CSMT 14:00-BBS 23:35,"KI (17 mins), BZA (13 mins), DVD (24 mins)","LT
+7",19-Mar-2025
+12504,AGTL 05:30-SMVB 20:10,"DVD (172 mins), GDR (217 mins)","LT
+45",18-Mar-2025
+12787,NS 11:25-NSL 07:20,"NS (0 mins), BZA (21 mins), KI (22 mins)","LT
+22",20-Mar-2025
 17240,VSKP 07:10-GNT 15:55,"DVD (0 mins), KCC (5 mins)","LT
 5",20-Mar-2025
 12804,NZM 05:10-VSKP 14:45,"KI (-8 mins), BZA (0 mins), DVD (13 mins)","LT
