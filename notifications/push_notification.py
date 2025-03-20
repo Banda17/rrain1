@@ -465,5 +465,36 @@ class PushNotifier:
         # Log notification event
         if new_trains:
             logger.info(f"Sending push notifications for {len(new_trains)} new trains")
+            
+            # Send browser notifications for each new train
+            if st.session_state.notifications_enabled and len(new_trains) > 0:
+                for train_id in new_trains:
+                    # Get train details if available
+                    train_info = ""
+                    if train_details and train_id in train_details:
+                        train_name = train_details[train_id].get('Train Name', '')
+                        from_to = train_details[train_id].get('FROM-TO', '')
+                        if train_name and from_to:
+                            train_info = f"{train_name} ({from_to})"
+                        elif train_name:
+                            train_info = train_name
+                        elif from_to:
+                            train_info = from_to
+                    
+                    # Add notification to queue
+                    notification = {
+                        'title': f"New Train: {train_id}",
+                        'message': f"New train {train_id} {train_info} detected in the system.",
+                        'type': 'success',
+                        'timestamp': datetime.now().isoformat()
+                    }
+                    st.session_state.notifications.append(notification)
+            
+            # If Telegram notifier is available in session state, use it for notifications
+            if 'telegram_notifier' in st.session_state and st.session_state.telegram_notifier.is_configured:
+                try:
+                    st.session_state.telegram_notifier.notify_multiple_new_trains(new_trains, train_details)
+                except Exception as e:
+                    logger.error(f"Error sending Telegram notifications: {str(e)}")
         
         return new_trains

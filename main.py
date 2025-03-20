@@ -15,7 +15,7 @@ import folium
 from folium.plugins import Draw
 from streamlit_folium import folium_static, st_folium
 from map_viewer import MapViewer  # Import MapViewer for offline map handling
-from notifications import PushNotifier
+from notifications import PushNotifier, TelegramNotifier
 
 # Import the custom formatter for train number styling
 try:
@@ -548,6 +548,18 @@ def initialize_session_state():
         'is_refreshing': {
             'default': False,
             'type': bool
+        },
+        'telegram_notifier': {
+            'default': TelegramNotifier(),
+            'type': TelegramNotifier
+        },
+        'telegram_bot_token': {
+            'default': '',
+            'type': str
+        },
+        'telegram_chat_ids': {
+            'default': [],
+            'type': list
         },
         'map_stations': {  # New state variable for map stations
             'default': [],
