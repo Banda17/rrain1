@@ -525,11 +525,14 @@ if monitor_success and not monitor_raw_data.empty:
         for _, row in monitor_raw_data.iterrows():
             train_no = str(row[train_column]).strip()
             if train_no:
+                # Create a structured dictionary for Telegram compatibility
                 details = {}
                 for col in monitor_raw_data.columns:
                     if col != train_column and not pd.isna(row[col]):
                         details[col] = row[col]
-                train_details[train_no] = ", ".join([f"{k}: {v}" for k, v in details.items() if v])
+                
+                # Store both the structured dictionary for Telegram and the formatted string for display
+                train_details[train_no] = details
     
     # Check for new trains and send push notifications
     if train_numbers:
@@ -552,7 +555,15 @@ if monitor_success and not monitor_raw_data.empty:
             
             # Add code for each notification
             for train in new_trains:
-                train_detail = train_details.get(train, "New train detected")
+                # Format details for browser notification
+                train_detail_dict = train_details.get(train, {})
+                if isinstance(train_detail_dict, dict):
+                    # Convert dictionary to formatted string for browser notification
+                    train_detail = ", ".join([f"{k}: {v}" for k, v in train_detail_dict.items() if v and k != 'Train No.' and k != '#'])
+                else:
+                    # Fallback if train_detail is already a string
+                    train_detail = str(train_detail_dict) if train_detail_dict else "New train detected"
+                
                 js_code += f"""
                     window.showTrainNotification(
                         'New Train {train} Detected',
