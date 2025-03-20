@@ -25,4 +25,5 @@ dependencies = [
     "folium>=0.19.4",
     "requests>=2.32.3",
     "python-dateutil>=2.9.0.post0",
+    "python-telegram-bot>=22.0",
 ]
