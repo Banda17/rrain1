@@ -607,8 +607,8 @@ class TelegramNotifier:
         # for each train so they have the proper detailed format
         success = False
         
-        # Limit to a reasonable number of notifications to avoid spam
-        max_individual_notifications = 5
+        # Send individual notifications for all trains, no summary needed
+        max_individual_notifications = 100  # Increased to a high number to effectively never trigger summary mode
         
         # If we have too many trains, send the first few as individual notifications
         # and then send the rest as a summary
