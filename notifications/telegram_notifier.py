@@ -528,67 +528,42 @@ class TelegramNotifier:
         if not filtered_train_ids:
             logger.info("All trains filtered out by user preferences")
             return False
-        
-        # If just one train remains after filtering, use the single train notification
-        if len(filtered_train_ids) == 1:
-            train_id = filtered_train_ids[0]
-            train_info = train_details.get(train_id, {}) if train_details else {}
-            return self.notify_new_train(train_id, train_info)
             
-        # For multiple trains, create a summary message
-        message = f"🚆 <b>{len(filtered_train_ids)} New Trains Detected:</b>\n\n"
+        # Instead of creating a summary message for all trains, send individual notifications
+        # for each train so they have the proper detailed format
+        success = False
         
-        for i, train_id in enumerate(filtered_train_ids, 1):
-            # Handle different formats of train_details
-            if train_details and train_id in train_details:
-                train_info = train_details[train_id]
+        # Limit to a reasonable number of notifications to avoid spam
+        max_individual_notifications = 5
+        
+        # If we have too many trains, send the first few as individual notifications
+        # and then send the rest as a summary
+        if len(filtered_train_ids) > max_individual_notifications:
+            # Send individual notifications for the first few trains
+            for i, train_id in enumerate(filtered_train_ids[:max_individual_notifications]):
+                train_info = train_details.get(train_id, {}) if train_details else {}
+                result = self.notify_new_train(train_id, train_info)
+                success = success or result
                 
-                # If train_info is a dictionary, extract specific fields
-                if isinstance(train_info, dict):
-                    # Extract key fields according to requirements
-                    from_to = train_info.get('FROM-TO', '')
-                    delay_raw = train_info.get('Delay', '')
-                    start_date = train_info.get('Start date', '')
-                    
-                    # Clean FROM-TO to remove time information
-                    clean_from_to = from_to
-                    if from_to:
-                        import re
-                        match = re.match(r'([A-Z]+)\s*(\[.*\])?', from_to)
-                        if match:
-                            clean_from_to = match.group(1).strip()
-                    
-                    # Format according to user request
-                    message += f"{i}. <b>#{train_id}</b>"
-                    
-                    if clean_from_to:
-                        message += f" {clean_from_to}"
-                    
-                    if delay_raw:
-                        message += f" | Delay: {delay_raw}"
-                        
-                    if start_date:
-                        message += f" | Started: {start_date}"
-                    
-                # If train_info is a string, use it directly
-                elif isinstance(train_info, str):
-                    message += f"{i}. <b>#{train_id}</b> - {train_info}"
-                else:
-                    message += f"{i}. <b>#{train_id}</b>"
-            else:
-                message += f"{i}. <b>#{train_id}</b>"
+            # Create a summary message for the remaining trains
+            remaining = len(filtered_train_ids) - max_individual_notifications
+            if remaining > 0:
+                summary_message = f"🚆 <b>{remaining} more new trains detected:</b>\n\n"
                 
-            message += "\n"
-            
-            # Limit to 10 trains in one message to avoid hitting message length limits
-            if i >= 10 and len(filtered_train_ids) > 10:
-                message += f"\n...and {len(filtered_train_ids) - 10} more trains"
-                break
+                for i, train_id in enumerate(filtered_train_ids[max_individual_notifications:], max_individual_notifications + 1):
+                    summary_message += f"{i}. <b>#{train_id}</b>\n"
+                    
+                summary_message += "\nOpen the train tracking app for more details."
+                summary_result = self.send_message(summary_message, message_type='new_train')
+                success = success or summary_result
+        else:
+            # If we have a reasonable number, send individual notifications for all
+            for train_id in filtered_train_ids:
+                train_info = train_details.get(train_id, {}) if train_details else {}
+                result = self.notify_new_train(train_id, train_info)
+                success = success or result
         
-        message += "\nOpen the train tracking app for more details."
-        
-        # Send with message type 'new_train' for consistent filtering
-        return self.send_message(message, message_type='new_train')
+        return success
     
     def render_settings_ui(self):
         """Render Telegram notification settings UI in Streamlit"""
