@@ -538,10 +538,25 @@ if monitor_success and not monitor_raw_data.empty:
                 # Make sure we have all the required fields for notifications
                 # Some might have different column names in different data sources
                 if 'FROM-TO' not in details:
-                    for col in monitor_raw_data.columns:
-                        if 'from' in col.lower() or 'route' in col.lower():
-                            details['FROM-TO'] = str(row[col]).strip()
-                            break
+                    # First check for Station Pair field which has format like "GHY 06:15-SMVB 10:00"
+                    if 'Station Pair' in details:
+                        station_pair = details['Station Pair']
+                        # Extract just the station codes removing times
+                        import re
+                        pattern = r'([A-Z]+)[^-]*-([A-Z]+)'
+                        match = re.search(pattern, station_pair)
+                        if match:
+                            from_station = match.group(1)
+                            to_station = match.group(2)
+                            details['FROM-TO'] = f"{from_station}-{to_station}"
+                            print(f"Extracted FROM-TO: {details['FROM-TO']} from Station Pair: {station_pair}")
+                    
+                    # If still not found, try other columns
+                    if 'FROM-TO' not in details:
+                        for col in monitor_raw_data.columns:
+                            if 'from' in col.lower() or 'route' in col.lower() or 'pair' in col.lower():
+                                details['FROM-TO'] = str(row[col]).strip()
+                                break
                 
                 if 'Delay' not in details:
                     for col in monitor_raw_data.columns:
