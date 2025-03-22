@@ -1,6 +1,9 @@
 import streamlit as st
 import pandas as pd
 import time
+import os
+import psutil
+import subprocess
 from datetime import datetime, timedelta
 from data_handler import DataHandler
 from visualizer import Visualizer
@@ -434,8 +437,65 @@ st.sidebar.markdown("""
 - [Raw Data](/pages/raw_data)
 - [Station Preview](/pages/station_preview)
 - [Notification Settings](/pages/notification_settings)
+- [Notification Status](/pages/notification_status)
 - [Tree View](/pages/tree_view)
 """)
+
+# Add notification service status indicator in the sidebar
+def is_process_running(process_name="background_notifier.py"):
+    """Check if the background notifier process is running"""
+    for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+        try:
+            if proc.info['cmdline'] and any(process_name in cmd for cmd in proc.info['cmdline']):
+                return True, proc.info['pid']
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            pass
+    return False, None
+
+# Status indicator for notification service
+st.sidebar.markdown("### Notification Service")
+running, pid = is_process_running()
+
+if running:
+    st.sidebar.markdown(
+        """
+        <div style="display: flex; align-items: center;">
+            <div style="background-color: #01B636; border-radius: 50%; width: 12px; height: 12px; margin-right: 8px;"></div>
+            <span style="color: #01B636; font-weight: bold;">ACTIVE</span>
+        </div>
+        """, 
+        unsafe_allow_html=True
+    )
+    st.sidebar.markdown(f"<small>Service running with PID: {pid}</small>", unsafe_allow_html=True)
+else:
+    st.sidebar.markdown(
+        """
+        <div style="display: flex; align-items: center;">
+            <div style="background-color: #FF4B4B; border-radius: 50%; width: 12px; height: 12px; margin-right: 8px;"></div>
+            <span style="color: #FF4B4B; font-weight: bold;">INACTIVE</span>
+        </div>
+        <div style="margin-top: 5px; font-size: 0.8em;">24/7 notifications inactive</div>
+        """, 
+        unsafe_allow_html=True
+    )
+    
+    # Only show button if service is not running
+    if st.sidebar.button("Start Background Service"):
+        try:
+            # Try to start the service in the background
+            subprocess.Popen(
+                ["python", "background_notifier.py"],
+                stdout=subprocess.PIPE, 
+                stderr=subprocess.PIPE,
+                close_fds=True
+            )
+            st.sidebar.success("Service started!")
+            time.sleep(2)
+            st.experimental_rerun()
+        except Exception as e:
+            st.sidebar.error(f"Failed to start: {str(e)}")
+            
+st.sidebar.markdown("<small>Click <a href='/pages/notification_status'>Notification Status</a> for details</small>", unsafe_allow_html=True)
 
 # No reset button in main page sidebar as per user request
 
