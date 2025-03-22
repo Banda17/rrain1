@@ -16,7 +16,7 @@ import logging
 import requests
 import pandas as pd
 import asyncio
-from datetime import datetime
+from datetime import datetime, timedelta
 import io
 import re
 from typing import List, Dict, Any, Optional, Tuple, Set
@@ -404,9 +404,37 @@ def extract_train_details(df: pd.DataFrame) -> Tuple[List[str], Dict[str, Dict[s
     return train_numbers, train_details
 
 
+def reset_known_trains(notifier: Optional[TelegramNotifier] = None) -> None:
+    """Reset the known trains list to trigger new notifications for all trains"""
+    try:
+        # Save an empty set to the known trains file
+        save_known_trains(set())
+        logger.info("🔄 Known trains list has been reset")
+        
+        # Send notification about the reset if notifier is provided
+        if notifier:
+            reset_message = "🔄 <b>Known Trains List Reset</b>\n\n"
+            reset_message += "The known trains list has been reset as scheduled at 01:00. "
+            reset_message += "You will now receive new notifications for all trains.\n\n"
+            reset_message += f"<i>Reset at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</i>"
+            notifier.send_message(reset_message)
+            
+            # Also send to channel
+            if notifier.channel_id:
+                channel_message = "🔄 Daily train list reset complete at 01:00"
+                notifier.send_to_channel(channel_message)
+    except Exception as e:
+        logger.error(f"Failed to reset known trains list: {str(e)}")
+
 def check_for_new_trains(notifier: TelegramNotifier) -> None:
     """Check for new trains and send notifications if any are found"""
     logger.info("Checking for new trains...")
+    
+    # Check if it's time to reset the known trains list (01:00)
+    current_time = datetime.now()
+    if current_time.hour == 1 and current_time.minute < 5:
+        logger.info("It's 01:00-01:05, resetting known trains list as scheduled")
+        reset_known_trains(notifier)
     
     # Load the known trains
     known_trains = load_known_trains()

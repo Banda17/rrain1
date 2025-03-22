@@ -102,5 +102,17 @@ The background service:
 2. Compares the current trains with the list of previously known trains
 3. Sends notifications for any new trains it discovers
 4. Updates the known trains list for future checks
+5. **Automatically resets the known trains list at 01:00 every day** so you get fresh notifications for all trains each day
+6. Sends a notification when the daily reset happens
 
 This happens completely independently of the Streamlit web application, ensuring you get notifications 24/7.
+
+## Manual Reset
+
+If you want to manually reset the known trains list (to receive notifications for all trains again), you can run:
+
+```bash
+python reset_trains.py
+```
+
+This will clear the list of known trains, and all trains will trigger notifications on the next check cycle.

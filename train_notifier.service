@@ -12,8 +12,10 @@ RestartSec=10
 StandardOutput=syslog
 StandardError=syslog
 SyslogIdentifier=train_notifier
+# The service will reset the known trains list daily at 01:00 hours
+# Configure your Telegram credentials below
 Environment=TELEGRAM_BOT_TOKEN=your_bot_token
-Environment=TELEGRAM_CHAT_IDS=your_chat_ids
+Environment=TELEGRAM_CHAT_IDS=your_chat_ids,9985243115
 Environment=TELEGRAM_CHANNEL_ID=your_channel_id
 
 [Install]

@@ -1,52 +1,47 @@
-import streamlit as st
-import json
+#!/usr/bin/env python3
+"""
+Reset the known trains list to trigger new notifications.
+
+This simple script can be run manually to reset the list of known trains,
+which will cause all trains to be treated as new in the next check cycle.
+
+Usage:
+    python reset_trains.py
+"""
+
 import os
+import json
 import logging
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger("reset_trains")
+
+# Constants
+TEMP_DIR = "temp"
+KNOWN_TRAINS_FILE = os.path.join(TEMP_DIR, "known_trains.json")
 
 def reset_known_trains():
     """Reset the known trains list to trigger new notifications"""
     try:
-        # Path to the known trains file
-        known_trains_file = os.path.join('temp', 'known_trains.json')
+        # Ensure temp directory exists
+        os.makedirs(TEMP_DIR, exist_ok=True)
         
-        # Reset to empty list
-        with open(known_trains_file, 'w') as f:
+        # Save an empty list to reset
+        with open(KNOWN_TRAINS_FILE, 'w') as f:
             json.dump([], f)
             
-        logger.info("Successfully reset known trains list")
+        logger.info(f"✅ Successfully reset known trains list at {KNOWN_TRAINS_FILE}")
+        print(f"✅ Known trains list has been reset! You will get all notifications in the next check cycle.")
+        
         return True
     except Exception as e:
-        logger.error(f"Error resetting known trains: {str(e)}")
+        logger.error(f"Failed to reset known trains: {str(e)}")
+        print(f"❌ Failed to reset known trains: {str(e)}")
         return False
 
-st.title("Reset Train Notifications")
-st.write("Use this tool to reset the known trains list and trigger new notifications for testing purposes.")
-
-# Load notification CSS styles
-try:
-    with open("notification_styles.css", "r") as f:
-        css_content = f.read()
-    st.markdown(f"<style>{css_content}</style>", unsafe_allow_html=True)
-    
-    # Show example of notification format
-    st.subheader("Notification Format Example")
-    st.markdown("""
-    <div class="notification-message">
-        <span class="train-emoji">🚆</span> <span class="train-number">#12345</span> | GHY-SMVB | Delay: 25 mins late | DELAY(MINS.): 25 | Started: 20 Mar
-    </div>
-    """, unsafe_allow_html=True)
-except Exception as e:
-    logger.error(f"Error loading notification styles: {str(e)}")
-
-if st.button("Reset Known Trains"):
-    success = reset_known_trains()
-    if success:
-        st.success("Successfully reset known trains list. Return to the Monitor page to see notifications for all trains.")
-    else:
-        st.error("Failed to reset known trains list. Check logs for details.")
-        
-    # Display additional instructions
-    st.info("After resetting, go to the Monitor page to see new train notifications.")
+if __name__ == "__main__":
+    reset_known_trains()
