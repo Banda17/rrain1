@@ -1,0 +1,20 @@
+[Unit]
+Description=Train Notification Background Service
+After=network.target
+
+[Service]
+Type=simple
+User=YOUR_USERNAME
+WorkingDirectory=/path/to/your/application
+ExecStart=/usr/bin/python3 /path/to/your/application/background_notifier.py
+Restart=always
+RestartSec=10
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=train_notifier
+Environment=TELEGRAM_BOT_TOKEN=your_bot_token
+Environment=TELEGRAM_CHAT_IDS=your_chat_ids
+Environment=TELEGRAM_CHANNEL_ID=your_channel_id
+
+[Install]
+WantedBy=multi-user.target
