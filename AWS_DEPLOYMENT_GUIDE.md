@@ -1,387 +1,165 @@
-# Train Tracking Application - AWS Elastic Beanstalk Deployment Guide
+# AWS Elastic Beanstalk Deployment Guide
 
-This document provides comprehensive instructions for deploying the SCR Vijayawada Division Train Tracking application on AWS Elastic Beanstalk.
+This guide provides step-by-step instructions for deploying the Train Tracking application to AWS Elastic Beanstalk.
 
 ## Prerequisites
 
-1. **AWS Account**: Active AWS account with appropriate permissions
-2. **AWS CLI**: Install from [https://aws.amazon.com/cli/](https://aws.amazon.com/cli/)
-3. **EB CLI**: Install with `pip install awsebcli`
-4. **Your Application Code**: Complete codebase of the train tracking application
+1. AWS Account with permissions to create:
+   - Elastic Beanstalk environments
+   - EC2 instances
+   - S3 buckets
+   - RDS databases (optional, for production)
+
+2. AWS CLI and EB CLI installed and configured on your local machine:
+   ```bash
+   pip install awscli awsebcli
+   aws configure  # Set up your AWS credentials
+   ```
 
 ## Step 1: Prepare Your Application
 
-### File Structure
+1. Download your entire project from Replit
+2. Make sure all necessary files are included:
+   - Main application code (Python files)
+   - `.ebextensions/` folder with configuration files
+   - `.platform/` folder with platform hooks
+   - `Procfile` specifying the web and worker processes
+   - `aws_requirements.txt` for Python dependencies
 
-Ensure your application has the following structure:
+## Step 2: Initialize Elastic Beanstalk Application
 
-```
-train-tracking-app/
-├── main.py                         # Main Streamlit application
-├── pages/                          # Streamlit pages
-├── notifications/                  # Notification modules
-├── background_notifier.py          # Background notification service
-├── reset_trains.py                 # Daily reset script
-├── requirements.txt                # Python dependencies
-├── Procfile                        # Process file for Elastic Beanstalk
-├── .ebextensions/                  # EB configuration files
-│   ├── 01_packages.config          # Package installations
-│   ├── 02_python.config            # Python settings
-│   └── 03_cronjob.config           # Cron job for daily reset
-└── .platform/                      # Platform hooks and configurations
-    ├── nginx/
-    │   └── conf.d/
-    │       └── proxy.conf          # Nginx configuration
-    └── hooks/
-        └── predeploy/
-            ├── 01_env.config       # Environment setup
-            └── 02_start_service.config  # Background service starter
-```
-
-### Required Configuration Files
-
-1. **requirements.txt**:
-
-```
-streamlit==1.31.0
-pandas==2.0.3
-folium==0.14.0
-psutil==5.9.5
-python-telegram-bot==13.15
-numpy==1.24.3
-sqlalchemy==2.0.19
-psycopg2-binary==2.9.6
-cairosvg==2.7.0
-plotly==5.15.0
-twilio==8.5.0
-gspread==5.10.0
-google-auth==2.22.0
-oauth2client==4.1.3
-trafilatura==1.6.1
-openpyxl==3.1.2
-python-dateutil==2.8.2
-toml==0.10.2
-```
-
-2. **Procfile**:
-
-```
-web: streamlit run --server.port=$PORT --server.address=0.0.0.0 main.py
-```
-
-3. **.ebextensions/01_packages.config**:
-
-```yaml
-packages:
-  yum:
-    git: []
-    postgresql-devel: []
-    gcc: []
-    python3-devel: []
-```
-
-4. **.ebextensions/02_python.config**:
-
-```yaml
-option_settings:
-  aws:elasticbeanstalk:container:python:
-    WSGIPath: main.py
-  aws:elasticbeanstalk:application:environment:
-    PYTHONPATH: "/var/app/current:$PYTHONPATH"
-```
-
-5. **.ebextensions/03_cronjob.config**:
-
-```yaml
-files:
-  "/etc/cron.d/reset_trains":
-    mode: "000644"
-    owner: root
-    group: root
-    content: |
-      0 1 * * * root python /var/app/current/reset_trains.py >> /var/log/reset_trains.log 2>&1
-
-commands:
-  01_remove_old_cron:
-    command: "rm -f /etc/cron.d/reset_trains.bak"
-  02_start_crond:
-    command: "service crond restart || service cron restart"
-```
-
-6. **.platform/nginx/conf.d/proxy.conf**:
-
-```nginx
-server {
-    listen 80;
-    
-    gzip on;
-    gzip_comp_level 4;
-    gzip_types text/plain text/css application/json application/javascript application/x-javascript text/xml application/xml application/xml+rss text/javascript;
-
-    location / {
-        proxy_pass http://localhost:5000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_read_timeout 90;
-    }
-}
-```
-
-7. **.platform/hooks/predeploy/01_env.config**:
+Navigate to your project directory in the terminal and run:
 
 ```bash
-#!/bin/bash
-# Set environment variables
-echo 'export PORT=5000' >> /opt/elasticbeanstalk/deployment/env
-echo 'export PYTHONUNBUFFERED=1' >> /opt/elasticbeanstalk/deployment/env
-```
-
-8. **.platform/hooks/predeploy/02_start_service.config**:
-
-```bash
-#!/bin/bash
-# Start the background notification service
-cd /var/app/staging
-mkdir -p temp
-chmod +x background_notifier.py
-nohup python background_notifier.py > /var/log/background_notifier.log 2>&1 &
-```
-
-Make the hook scripts executable:
-
-```bash
-chmod +x .platform/hooks/predeploy/01_env.config
-chmod +x .platform/hooks/predeploy/02_start_service.config
-```
-
-## Step 2: Set Up RDS PostgreSQL Database (Optional)
-
-If your application uses PostgreSQL:
-
-1. **Create an RDS instance** through the AWS Console:
-   - Navigate to RDS in AWS Console
-   - Click "Create database"
-   - Select PostgreSQL
-   - Choose appropriate settings for size and availability
-   - Set up security groups to allow access from your Elastic Beanstalk environment
-
-2. **Add database configuration** in `.ebextensions/04_database.config`:
-
-```yaml
-Resources:
-  AWSEBSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: Security group for RDS access
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 5432
-          ToPort: 5432
-          SourceSecurityGroupId: 
-            Fn::GetAtt: [AWSEBSecurityGroup, GroupId]
-
-option_settings:
-  aws:elasticbeanstalk:application:environment:
-    DATABASE_URL: "postgresql://username:password@your-rds-endpoint:5432/database_name"
-```
-
-## Step 3: Create and Deploy the Elastic Beanstalk Application
-
-1. **Initialize the EB application**:
-
-```bash
-# Navigate to your project directory
-cd train-tracking-app
-
-# Initialize Elastic Beanstalk application
+# Initialize the EB application
 eb init -p python-3.8 scr-train-tracking
 
 # When prompted:
-# - Select your region
-# - Create new application if prompted
+# - Select your AWS region (typically closest to your users)
+# - Create a new application
 # - Select Python platform
-# - Choose Python 3.8
-# - Set up SSH if needed
+# - Select latest Python version (3.8)
+# - Set up SSH access if desired
 ```
 
-2. **Create an environment and deploy**:
+## Step 3: Set Environment Variables
 
-```bash
-# Create a production environment
-eb create train-tracking-prod --instance-type t2.small --single
+Before creating your environment, set up the required environment variables:
 
-# This will:
-# - Create a new environment
-# - Deploy your application
-# - Set up the necessary resources
-```
-
-3. **Configure environment variables** through the AWS Console:
-   - Navigate to your Elastic Beanstalk environment
-   - Go to "Configuration" → "Software" → "Environment properties"
-   - Add all required secret keys:
-     - `TELEGRAM_BOT_TOKEN`
-     - `TELEGRAM_CHAT_IDS` 
-     - `TWILIO_ACCOUNT_SID`
-     - `TWILIO_AUTH_TOKEN`
-     - `TWILIO_PHONE_NUMBER`
-     - `SMS_COUNTRY_API_KEY`
-     - `SMS_COUNTRY_API_TOKEN`
-     - `NOTIFICATION_RECIPIENTS`
-
-4. **Deploy updates** after making changes:
-
-```bash
-# After updating your application code
-eb deploy
-```
-
-## Step 4: Monitoring and Maintenance
-
-### Accessing Logs
-
-1. **View application logs** from the EB console:
-   - Navigate to your environment
-   - Go to "Logs" → "Request Logs" → "Full Logs"
-
-2. **SSH into your instance** for troubleshooting:
-
-```bash
-eb ssh
-```
-
-3. **Check specific logs**:
-
-```bash
-# Application logs
-sudo cat /var/log/web.stdout.log
-
-# Background service logs
-sudo cat /var/log/background_notifier.log
-
-# Reset script logs
-sudo cat /var/log/reset_trains.log
-```
-
-### Scaling Configuration
-
-To configure auto-scaling, create `.ebextensions/05_scaling.config`:
+1. Create a file named `.env.yaml` in your project directory with the following content:
 
 ```yaml
 option_settings:
-  aws:autoscaling:asg:
-    MinSize: '1'
-    MaxSize: '3'
-  aws:autoscaling:trigger:
-    BreachDuration: 5
-    UpperThreshold: 80
-    LowerThreshold: 40
-    MeasureName: CPUUtilization
-    Unit: Percent
-    UpperBreachScaleIncrement: 1
-    LowerBreachScaleIncrement: -1
+  aws:elasticbeanstalk:application:environment:
+    # Google Sheets Configuration
+    GOOGLE_SHEETS_PROJECT_ID: "your-project-id"
+    GOOGLE_SHEETS_PRIVATE_KEY_ID: "your-private-key-id"
+    GOOGLE_SHEETS_PRIVATE_KEY: "your-private-key"
+    GOOGLE_SHEETS_CLIENT_EMAIL: "your-client-email"
+    GOOGLE_SHEETS_CLIENT_ID: "your-client-id"
+    GOOGLE_SHEETS_CLIENT_X509_CERT_URL: "your-cert-url"
+    GOOGLE_SHEETS_SPREADSHEET_ID: "your-spreadsheet-id"
+    GOOGLE_SHEETS_SPREADSHEET_NAME: "your-spreadsheet-name"
+
+    # Telegram Bot Configuration
+    TELEGRAM_BOT_TOKEN: "your-telegram-bot-token"
+    TELEGRAM_CHAT_IDS: "your-telegram-chat-ids"
+
+    # Twilio SMS Configuration
+    TWILIO_ACCOUNT_SID: "your-twilio-account-sid"
+    TWILIO_AUTH_TOKEN: "your-twilio-auth-token"
+    TWILIO_PHONE_NUMBER: "your-twilio-phone-number"
+
+    # SMS Country Configuration
+    SMS_COUNTRY_API_KEY: "your-sms-country-api-key"
+    SMS_COUNTRY_API_TOKEN: "your-sms-country-api-token"
+
+    # General Notification Configuration
+    NOTIFICATION_RECIPIENTS: "your-notification-recipients"
+
+    # Database Configuration (Use RDS for production)
+    DATABASE_URL: "postgresql://username:password@your-rds-endpoint:5432/database-name"
 ```
 
-### Health Checks
+> **Important**: Replace all "your-*" values with your actual configuration values.
 
-To customize health checks, create `.ebextensions/06_health.config`:
+## Step 4: Create the Elastic Beanstalk Environment
 
-```yaml
-option_settings:
-  aws:elasticbeanstalk:application:
-    Application Healthcheck URL: /
-  aws:elasticbeanstalk:environment:health:
-    SystemType: enhanced
-    HealthCheckSuccessThreshold: Warning
-```
-
-## Step 5: Production Hardening
-
-For a production environment, add these additional configurations:
-
-1. **HTTPS Configuration** in `.ebextensions/07_https.config`:
-
-```yaml
-Resources:
-  sslSecurityGroupIngress:
-    Type: AWS::EC2::SecurityGroupIngress
-    Properties:
-      GroupId: {"Fn::GetAtt" : ["AWSEBSecurityGroup", "GroupId"]}
-      IpProtocol: tcp
-      ToPort: 443
-      FromPort: 443
-      CidrIp: 0.0.0.0/0
-
-option_settings:
-  aws:elasticbeanstalk:environment:
-    LoadBalancerType: application
-  aws:elbv2:listener:443:
-    Protocol: HTTPS
-    SSLCertificateArns: arn:aws:acm:region:account-id:certificate/certificate-id
-```
-
-2. **Session Stickiness** for consistent user experience:
-
-```yaml
-option_settings:
-  aws:elasticbeanstalk:environment:process:default:
-    StickinessEnabled: true
-    StickinessLBCookieDuration: '86400'
-```
-
-## Step 6: Clean Up Resources
-
-When you no longer need the environment:
+Create your environment with:
 
 ```bash
-# Terminate the environment
-eb terminate train-tracking-prod
+# Create a new environment with the specified configuration
+eb create train-tracking-prod --envvars-file .env.yaml
 ```
 
-**Important**: This deletes the Elastic Beanstalk environment but not:
-- The EB application itself
-- RDS databases
-- S3 buckets created during deployment
+> **Note**: For production environments, you should consider using an RDS database by adding it through the EB console or using `.ebextensions` configuration.
 
-To fully clean up, manually delete these resources through the AWS Console.
+## Step 5: Verify the Deployment
+
+1. Once the environment is created, you can open the application with:
+   ```bash
+   eb open
+   ```
+
+2. Check the logs for any issues:
+   ```bash
+   eb logs
+   ```
+
+3. You can also SSH into the EC2 instance if needed:
+   ```bash
+   eb ssh
+   ```
+
+## Step 6: Update the Application
+
+When you need to update your application:
+
+1. Make changes to your code locally
+2. Commit the changes to Git
+3. Deploy the updated code:
+   ```bash
+   eb deploy
+   ```
+
+## Production Considerations
+
+For a production deployment, consider these additional steps:
+
+1. **Set up a custom domain name** through Route 53 or another DNS provider
+2. **Configure HTTPS** with an SSL certificate from AWS Certificate Manager
+3. **Set up auto-scaling** based on traffic patterns
+4. **Use a dedicated RDS database** for better performance and reliability
+5. **Set up CloudWatch Alarms** for monitoring and notifications
+6. **Configure regular database backups**
+7. **Implement a CI/CD pipeline** with AWS CodePipeline
 
 ## Troubleshooting
 
-### Common Issues and Solutions
-
 1. **Application not starting**:
-   - Check `/var/log/web.stdout.log` for errors
-   - Verify environment variables are set correctly
-   - Make sure the Procfile is properly configured
+   - Check logs: `eb logs`
+   - SSH into the instance: `eb ssh` and check `/var/log/` for application logs
 
-2. **Database connection issues**:
-   - Verify security groups allow traffic from EB to RDS
-   - Check database credentials in environment variables
-   - Ensure the database has been initialized with the required tables
+2. **Environment variables not loading**:
+   - Verify they were set: `eb printenv`
+   - Check if they are correctly referenced in the application
 
 3. **Background service not running**:
-   - Check `/var/log/background_notifier.log` for errors
-   - Verify the predeploy hook is executable
-   - Make sure all required environment variables are accessible to the service
+   - SSH into the instance: `eb ssh`
+   - Check the log file: `cat /var/log/background_notifier.log`
+   - Manually run the service: `cd /var/app/current && python background_notifier.py`
 
-4. **Daily reset not working**:
-   - Check `/var/log/reset_trains.log` for errors
-   - Verify cron is running with `systemctl status crond`
-   - Ensure the cron job configuration is correct
+4. **Database connection issues**:
+   - Verify RDS security group allows connections from your EB environment
+   - Check the connection string in environment variables
+   - Consider using environment variables inside the Elastic Beanstalk console
 
-## Security Considerations
+## Important Notes
 
-1. **Never store secrets in code** - Always use environment variables
-2. **Restrict security groups** to only necessary traffic
-3. **Use IAM roles** for EC2 instances instead of hardcoded credentials
-4. **Enable HTTPS** for all production traffic
-5. **Regularly update dependencies** to patch security vulnerabilities
+- This configuration is set up to deploy both the web application and the background notification service.
+- The platform hooks ensure that your Streamlit secrets and configuration are properly set up.
+- The daily reset cron job is configured to run at 01:00 UTC every day.
+- Make sure to keep your AWS credentials and environment variables secure.
+- Never commit `.env.yaml` or any file containing actual secrets to your Git repository.
 
----
-
-For additional assistance, refer to the [AWS Elastic Beanstalk Documentation](https://docs.aws.amazon.com/elasticbeanstalk/latest/dg/Welcome.html).
+For more information, refer to the [Elastic Beanstalk Documentation](https://docs.aws.amazon.com/elasticbeanstalk/).

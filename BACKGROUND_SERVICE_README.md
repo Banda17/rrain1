@@ -1,118 +1,108 @@
-# 24/7 Background Notification Service
+# Background Notification Service
 
-This guide explains how to set up a background service for continuous 24/7 Telegram notifications from your train tracking system, even when the web application is not open.
+This guide explains how the background notification service works and how to manage it in different environments.
 
-## What You'll Need
+## Overview
 
-- A server or computer that can run continuously (VPS, Raspberry Pi, desktop PC, etc.)
-- Python 3.7+ installed
-- Required Python packages: `requests`, `pandas`, `python-telegram-bot`
-- Your Telegram bot token and chat IDs
+The Train Tracking application includes a background notification service (`background_notifier.py`) that:
 
-## Quick Start
+1. Runs continuously 24/7 to monitor train data
+2. Detects new trains and sends notifications via Telegram
+3. Resets known trains list daily at 01:00 hours
+4. Operates independently of the web interface
 
-1. Install the required packages if not already installed:
-   ```bash
-   pip install requests pandas python-telegram-bot
-   ```
+## In Development Environment (Replit)
 
-2. Test if the background service works with your Telegram configuration:
-   ```bash
-   python test_background_notifier.py
-   ```
+In the Replit environment, the background service can be managed through:
 
-3. If the test is successful, you can now run the background service:
-   ```bash
-   python background_notifier.py
-   ```
+1. The Notification Status page in the Streamlit application
+2. Manual start/stop via the provided UI elements
 
-4. You should receive a startup notification on your Telegram, and the service will start checking for new trains every 5 minutes.
+## In AWS Elastic Beanstalk
 
-## Setting Up as a System Service (For Linux Users)
+When deployed to AWS Elastic Beanstalk, the background service:
 
-1. Edit the `train_notifier.service` file and replace:
-   - `YOUR_USERNAME` with your actual username
-   - `/path/to/your/application` with the actual path
-   - Telegram environment variables with your actual values
+1. Starts automatically on deployment via the `.platform/hooks/predeploy/02_start_service.config` hook
+2. Runs as a background process with output logged to `/var/log/background_notifier.log`
+3. Restarts automatically when the environment is updated
 
-2. Copy the service file to the systemd directory:
+## For Systemd Installations (Linux Servers)
+
+For systemd-based servers (most modern Linux distributions), you can use the included systemd service file:
+
+1. Copy `train_notifier.service` to `/etc/systemd/system/`:
    ```bash
    sudo cp train_notifier.service /etc/systemd/system/
    ```
 
-3. Reload systemd:
+2. Edit the file to update paths if necessary:
    ```bash
-   sudo systemctl daemon-reload
+   sudo nano /etc/systemd/system/train_notifier.service
    ```
 
-4. Enable and start the service:
+3. Enable and start the service:
    ```bash
-   sudo systemctl enable train_notifier.service
-   sudo systemctl start train_notifier.service
+   sudo systemctl enable train_notifier
+   sudo systemctl start train_notifier
    ```
 
-5. Check the status:
+4. Check service status:
    ```bash
-   sudo systemctl status train_notifier.service
+   sudo systemctl status train_notifier
    ```
 
-## Running on Windows
+## Monitoring & Logs
 
-1. Create a batch file `start_notifier.bat` with the following content:
-   ```batch
-   @echo off
-   echo Starting Train Notification Service...
-   python background_notifier.py
-   pause
-   ```
+To check logs for the background service:
 
-2. To run at startup:
-   - Press `Win + R` and type `shell:startup`
-   - Create a shortcut to the batch file in this folder
+- **In AWS**: `eb ssh` into the instance and check `/var/log/background_notifier.log`
+- **In systemd**: Use `sudo journalctl -u train_notifier`
+- **In Replit**: Look for `background_notifier.log` in your project directory
 
-## Checking Logs
+## Daily Reset Feature
 
-The background service creates logs in the `temp/background_notifier.log` file. You can view them with:
+The known trains list is reset daily at 01:00 hours through:
 
-```bash
-tail -f temp/background_notifier.log
-```
+- **In AWS**: A cron job configured in `.ebextensions/03_cronjob.config`
+- **In systemd**: Part of the background service functionality
+- **In Replit**: Part of the background service functionality
 
 ## Troubleshooting
 
-1. **Telegram Bot Issues**
-   - Make sure your bot token is correct
-   - Check that you've started a conversation with your bot
-   - Verify that you've added your bot to any channels with admin rights
+If the notification service isn't working:
 
-2. **Service Not Starting**
-   - Check logs with `sudo journalctl -u train_notifier.service`
-   - Verify that Python and all dependencies are installed
-   - Make sure file paths are correct in the service file
+1. Check if the process is running:
+   ```bash
+   ps aux | grep background_notifier.py
+   ```
 
-3. **No Notifications**
-   - Check the log file for any errors
-   - Verify that your Telegram chat IDs are correct
-   - Make sure the Google Sheets URL is accessible
+2. Verify log files for errors
 
-## How It Works
+3. Ensure the configured Telegram bot token and chat IDs are correct
 
-The background service:
-1. Regularly fetches train data from the Google Sheets URL
-2. Compares the current trains with the list of previously known trains
-3. Sends notifications for any new trains it discovers
-4. Updates the known trains list for future checks
-5. **Automatically resets the known trains list at 01:00 every day** so you get fresh notifications for all trains each day
-6. Sends a notification when the daily reset happens
+4. Check network connectivity to the Telegram API
 
-This happens completely independently of the Streamlit web application, ensuring you get notifications 24/7.
+5. Verify that the required environment variables or secrets are properly set
 
-## Manual Reset
+## Manually Running the Service
 
-If you want to manually reset the known trains list (to receive notifications for all trains again), you can run:
+To manually run the background service:
 
 ```bash
-python reset_trains.py
+python background_notifier.py
 ```
 
-This will clear the list of known trains, and all trains will trigger notifications on the next check cycle.
+For debugging or running in the foreground:
+
+```bash
+python background_notifier.py --debug
+```
+
+## Security Considerations
+
+The background service requires access to:
+
+1. Telegram Bot API credentials
+2. Google Sheets API credentials (for data fetching)
+
+Ensure these credentials are securely stored and properly available to the service process.
